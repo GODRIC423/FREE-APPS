@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Credential Handoff Checklist</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="custody-console">
+    <header class="vault-header" aria-label="Credential Handoff Checklist header">
+      <div class="vault-door" aria-hidden="true"><span></span><i></i><b></b></div>
+      <section class="header-copy">
+        <p class="kicker">Day 17 · Credential Handoff Checklist</p>
+        <h1>Move access safely without ever writing the secret into the app.</h1>
+        <p class="lede">A local-first custody checkpoint for access owners, storage locations, MFA, rotation, and revocation. It tracks metadata only — no passwords, tokens, seed phrases, private keys, or API keys.</p>
+      </section>
+      <nav class="header-actions" aria-label="App controls">
+        <button id="loadDemo" type="button">Load demo</button>
+        <button id="addItem" type="button">Add access item</button>
+        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+      </nav>
+    </header>
+
+    <section class="warning-strip" aria-label="No secret warning">
+      <strong>No-secret workspace:</strong> capture system names, owners, storage references, MFA/revocation checks, and rotation dates only. If a real secret needs handoff, use an approved password manager or encrypted channel outside this static app.
+    </section>
+
+    <section class="status-strip" aria-label="Custody status strip">
+      <article><span>Items</span><strong id="metricItems">0</strong></article>
+      <article><span>Ready</span><strong id="metricReady">0</strong></article>
+      <article><span>Risk flags</span><strong id="metricRisks">0</strong></article>
+      <article><span>Next rotation</span><strong id="metricNext">None</strong></article>
+    </section>
+
+    <section class="checkpoint-grid">
+      <section class="panel intake-panel" aria-label="Access item editor">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Access item</p><h2>Inventory metadata, not secrets.</h2></div></div>
+        <div class="form-grid">
+          <label>System / vendor<input id="systemName" maxlength="120" placeholder="Booking platform" /></label>
+          <label>Access type<select id="accessType"><option>Admin login</option><option>API key</option><option>Shared inbox</option><option>Domain/DNS</option><option>Payment portal</option><option>Database</option><option>Social account</option><option>Other</option></select></label>
+          <label>Primary owner<input id="owner" maxlength="80" placeholder="Brian" /></label>
+          <label>Backup owner<input id="backupOwner" maxlength="80" placeholder="Ops lead" /></label>
+          <label>Storage reference<input id="storageRef" maxlength="160" placeholder="Password manager item name — no secret value" /></label>
+          <label>Access level<select id="accessLevel"><option>Viewer</option><option>Editor</option><option>Admin</option><option>Billing</option><option>Owner</option></select></label>
+          <label>Rotation date<input id="rotationDate" type="date" /></label>
+          <label>Handoff status<select id="status"><option value="intake">Intake</option><option value="verify">Verify</option><option value="handoff">Handoff ready</option><option value="revoke">Revoke / remove</option></select></label>
+        </div>
+        <div class="check-grid" aria-label="Control checks">
+          <label><input id="mfaEnabled" type="checkbox" /> MFA confirmed</label>
+          <label><input id="backupConfirmed" type="checkbox" /> Backup owner confirmed</label>
+          <label><input id="revokePath" type="checkbox" /> Revocation path known</label>
+          <label><input id="leastPrivilege" type="checkbox" /> Least privilege checked</label>
+          <label><input id="storageConfirmed" type="checkbox" /> Storage reference verified</label>
+          <label><input id="noSecretStored" type="checkbox" checked /> No secret value stored here</label>
+        </div>
+        <label class="wide">Notes / revocation instructions<textarea id="notes" maxlength="700" placeholder="Example: revoke from admin console > users > API keys. Do not paste the actual key."></textarea></label>
+        <div class="editor-actions">
+          <button id="saveItem" type="button">Save checkpoint</button>
+          <button id="clearEditor" type="button" class="secondary">Clear editor</button>
+        </div>
+      </section>
+
+      <aside class="panel risk-panel" aria-label="Risk scanner">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Risk gate</p><h2>Find the missing custody controls.</h2></div></div>
+        <div class="score-ring" aria-live="polite"><span id="readinessScore">0%</span><small>handoff readiness</small></div>
+        <div id="riskList" class="risk-list"></div>
+      </aside>
+    </section>
+
+    <section class="panel board-panel" aria-label="Custody checkpoint board">
+      <div class="panel-title"><span>03</span><div><p class="kicker">Custody board</p><h2>Access moves through intake, verify, handoff, and revoke.</h2></div></div>
+      <div id="custodyBoard" class="custody-board" aria-live="polite"></div>
+    </section>
+
+    <section class="output-grid">
+      <section class="panel packet-panel" aria-label="Credential handoff packet">
+        <div class="panel-title"><span>04</span><div><p class="kicker">Handoff packet</p><h2>Copy a safe checklist for the human handoff.</h2></div></div>
+        <textarea id="markdownOutput" readonly aria-label="Generated credential handoff checklist"></textarea>
+      </section>
+      <section class="panel export-panel" aria-label="Export actions">
+        <div class="panel-title"><span>05</span><div><p class="kicker">Export</p><h2>Share metadata only.</h2></div></div>
+        <div class="export-actions">
+          <button id="copyMarkdown" type="button">Copy checklist</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+          <button id="downloadRevocation" type="button">Download revoke plan</button>
+        </div>
+        <div class="safe-card">
+          <h3>What belongs here</h3>
+          <p>System name, owner, backup owner, storage-item label, MFA status, rotation date, revocation path, and human approval notes.</p>
+          <h3>What never belongs here</h3>
+          <p>Raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment data.</p>
+        </div>
+      </section>
+    </section>
+
+    <section class="guardrail" aria-label="Safety boundary">
+      <strong>Safety boundary:</strong> This static local app creates a metadata checklist only. It does not encrypt, store, reveal, validate, transmit, rotate, or revoke actual credentials. Real secret exchange must happen in a dedicated encrypted/password-manager workflow.
+    </section>
+  
+    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
+      <div class="panel-title">
+        <span>Mix</span>
+        <div>
+          <p class="kicker">Day 18 enhancement</p>
+          <h2>Content Repurposer bridge</h2>
+        </div>
+      </div>
+      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
+      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
+      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
+      <div class="content-repurposer-actions">
+        <button id="copyContentRepurposer" type="button">Copy content packet</button>
+        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
+      </div>
+    </section>
+  
+    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
+      <div class="panel-title">
+        <span>Map</span>
+        <div>
+          <p class="kicker">Day 19 enhancement</p>
+          <h2>Home Service Route Planner bridge</h2>
+        </div>
+      </div>
+      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
+      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
+      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
+      <div class="home-service-route-actions">
+        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
+        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      </div>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Home Service Route Planner</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="route-planner-shell">
+    <header class="map-hero" aria-label="Home Service Route Planner header">
+      <section class="hero-copy">
+        <p class="kicker">Day 19 · Dispatch map</p>
+        <h1>Build a practical service route before the vans roll.</h1>
+        <p class="lede">A local-first route desk for home-service jobs: priority, appointment windows, drive buffers, technician load, route order, and exportable dispatch sheets.</p>
+        <div class="hero-actions">
+          <button id="loadDemo" type="button">Load demo day</button>
+          <button id="planRoute" type="button">Plan route</button>
+          <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+        </div>
+      </section>
+      <aside class="map-card" aria-hidden="true">
+        <svg viewBox="0 0 320 260" role="img">
+          <path class="street" d="M20 210 C70 160, 96 178, 125 116 S210 74, 286 36" />
+          <path class="street street-two" d="M42 58 C88 92, 110 92, 145 130 S214 190, 294 164" />
+          <circle class="pin depot" cx="42" cy="210" r="14" />
+          <circle class="pin" cx="124" cy="120" r="11" />
+          <circle class="pin urgent" cx="202" cy="78" r="12" />
+          <circle class="pin" cx="280" cy="38" r="10" />
+          <circle class="pin" cx="230" cy="184" r="10" />
+        </svg>
+        <div class="map-legend"><span>Depot</span><span>Priority</span><span>Route</span></div>
+      </aside>
+    </header>
+
+    <section class="safety-strip" aria-label="Safety boundary">
+      <strong>Draft-only route plan:</strong> this app uses rough drive-time assumptions and local browser storage. Confirm traffic, technician constraints, and customer windows before dispatching.
+    </section>
+
+    <section class="control-grid" aria-label="Route controls">
+      <article class="metric-card"><span>Total route</span><strong id="metricDuration">0h</strong><small>jobs + buffers</small></article>
+      <article class="metric-card"><span>Drive buffer</span><strong id="metricDrive">0m</strong><small>assumed</small></article>
+      <article class="metric-card"><span>Stops</span><strong id="metricStops">0</strong><small>planned</small></article>
+      <article class="metric-card"><span>Risk flags</span><strong id="metricFlags">0</strong><small>review</small></article>
+    </section>
+
+    <section class="planner-grid">
+      <section class="panel dispatch-settings" aria-label="Dispatch settings">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Route desk</p><h2>Set the day assumptions.</h2></div></div>
+        <label>Route date<input id="routeDate" type="date" /></label>
+        <label>Depot / start point<input id="depot" maxlength="90" placeholder="Shop / technician home base" /></label>
+        <label>Technician<input id="technician" maxlength="80" placeholder="Alex · Van 2" /></label>
+        <div class="split">
+          <label>Start time<input id="startTime" type="time" /></label>
+          <label>Max field hours<input id="maxHours" type="number" min="1" max="14" step="0.5" /></label>
+        </div>
+        <div class="split">
+          <label>Default drive between stops<input id="driveMinutes" type="number" min="0" max="180" step="5" /></label>
+          <label>Lunch / admin buffer<input id="adminBuffer" type="number" min="0" max="180" step="5" /></label>
+        </div>
+        <label>Planner note<textarea id="plannerNote" placeholder="Anything the dispatcher should remember before committing this route."></textarea></label>
+      </section>
+
+      <section class="panel job-entry" aria-label="Add route stop">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Stop card</p><h2>Add or update a service job.</h2></div></div>
+        <label>Customer / site<input id="jobCustomer" maxlength="90" placeholder="Morgan Residence" /></label>
+        <label>Address / area<input id="jobAddress" maxlength="120" placeholder="North Loop" /></label>
+        <label>Work summary<textarea id="jobSummary" placeholder="No heat callback, check prior repair, bring igniter kit."></textarea></label>
+        <div class="split three">
+          <label>Priority<select id="jobPriority"><option value="5">Emergency</option><option value="4">High</option><option value="3" selected>Normal</option><option value="2">Low</option></select></label>
+          <label>Window start<input id="jobWindowStart" type="time" /></label>
+          <label>Duration min<input id="jobDuration" type="number" min="15" max="360" step="15" /></label>
+        </div>
+        <div class="button-row">
+          <button id="addJob" type="button">Add stop</button>
+          <button id="resetJobs" type="button" class="ghost">Reset demo</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="route-board" aria-label="Route board">
+      <section class="panel map-panel">
+        <div class="panel-title"><span>03</span><div><p class="kicker">Map board</p><h2>Priority-weighted stop order.</h2></div></div>
+        <div id="mapBoard" class="map-board" aria-live="polite"></div>
+      </section>
+      <section class="panel timeline-panel">
+        <div class="panel-title"><span>04</span><div><p class="kicker">Dispatch timeline</p><h2>Readable day sheet.</h2></div></div>
+        <div id="timeline" class="timeline" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="output-grid">
+      <section class="panel output-panel" aria-label="Generated route plan">
+        <div class="panel-title"><span>05</span><div><p class="kicker">Export packet</p><h2>Copy or download the dispatch sheet.</h2></div></div>
+        <textarea id="routeOutput" readonly aria-label="Generated route plan"></textarea>
+      </section>
+      <aside class="panel roster-panel" aria-label="Stop roster">
+        <div class="panel-title"><span>06</span><div><p class="kicker">Stop roster</p><h2>Edit the active jobs.</h2></div></div>
+        <div id="jobRoster" class="job-roster" aria-live="polite"></div>
+        <div class="export-actions">
+          <button id="copyRoute" type="button">Copy route sheet</button>
+          <button id="downloadMarkdown" type="button">Download MD</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+          <button id="downloadIcs" type="button">Download ICS</button>
+        </div>
+      </aside>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

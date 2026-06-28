@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Content Repurposer</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="remix-studio">
+    <header class="studio-hero" aria-label="Content Repurposer header">
+      <section class="hero-copy">
+        <p class="kicker">Day 18 · Content Repurposer</p>
+        <h1>Turn one build log into a whole publishing packet.</h1>
+        <p class="lede">A local-first remix studio for YouTube titles, descriptions, chapters, short posts, newsletter blurbs, proof notes, and approval-safe content exports.</p>
+        <div class="hero-actions">
+          <button id="loadDemo" type="button">Load demo log</button>
+          <button id="generatePacket" type="button">Generate packet</button>
+          <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+        </div>
+      </section>
+      <aside class="remix-deck" aria-hidden="true">
+        <div class="platter"><span></span></div>
+        <div class="meters"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="faders"><b></b><b></b><b></b></div>
+      </aside>
+    </header>
+
+    <section class="safety-strip" aria-label="Safety boundary">
+      <strong>Draft-only:</strong> this static app creates local content drafts. It does not post, upload, call APIs, scrape accounts, or publish. Human review stays required before public use.
+    </section>
+
+    <section class="scoreboard" aria-label="Content metrics">
+      <article><span>Source words</span><strong id="metricWords">0</strong></article>
+      <article><span>Chapters</span><strong id="metricChapters">0</strong></article>
+      <article><span>Short posts</span><strong id="metricPosts">0</strong></article>
+      <article><span>Review flags</span><strong id="metricFlags">0</strong></article>
+    </section>
+
+    <section class="studio-grid">
+      <section class="panel source-panel" aria-label="Source build log intake">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Source tape</p><h2>Paste the build log or rough notes.</h2></div></div>
+        <label>Project / app name<input id="projectName" maxlength="100" placeholder="Content Repurposer" /></label>
+        <label>Audience<select id="audience"><option>Owner/operator</option><option>Local service business</option><option>Builder audience</option><option>Client proof review</option><option>Internal team</option></select></label>
+        <label>Tone<select id="tone"><option>Plain-spoken</option><option>Founder build log</option><option>Proof-first</option><option>Teaching</option><option>Short and direct</option></select></label>
+        <label>Source notes<textarea id="sourceNotes" placeholder="Paste build log, feature notes, verification notes, screenshots summary, or rough transcript."></textarea></label>
+      </section>
+
+      <section class="panel mixer-panel" aria-label="Content settings mixer">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Channel mixer</p><h2>Choose outputs and boundaries.</h2></div></div>
+        <div class="toggle-grid">
+          <label><input id="includeYoutube" type="checkbox" checked /> YouTube title + description</label>
+          <label><input id="includeChapters" type="checkbox" checked /> Chapters</label>
+          <label><input id="includeShorts" type="checkbox" checked /> Short posts</label>
+          <label><input id="includeNewsletter" type="checkbox" checked /> Newsletter blurb</label>
+          <label><input id="includeProof" type="checkbox" checked /> Proof/caveat checklist</label>
+          <label><input id="approvalRequired" type="checkbox" checked /> Human approval required</label>
+        </div>
+        <label>Primary outcome<input id="outcome" maxlength="140" placeholder="Show a real local-first app built and verified today" /></label>
+        <label>Proof notes<textarea id="proofNotes" placeholder="Smoke test passed, browser console clean, phone URL verified, recording rendered."></textarea></label>
+        <label>Caveats / boundaries<textarea id="caveats" placeholder="Draft-only, local browser storage, no external posting or cloud calls."></textarea></label>
+      </section>
+    </section>
+
+    <section class="panel timeline-panel" aria-label="Chapter cutter">
+      <div class="panel-title"><span>03</span><div><p class="kicker">Chapter cutter</p><h2>Auto-cut a replay timeline from the source.</h2></div></div>
+      <div id="chapterRail" class="chapter-rail" aria-live="polite"></div>
+    </section>
+
+    <section class="output-grid">
+      <section class="panel output-panel" aria-label="Generated content packet">
+        <div class="panel-title"><span>04</span><div><p class="kicker">Publishing packet</p><h2>Copy or export the full draft.</h2></div></div>
+        <textarea id="markdownOutput" readonly aria-label="Generated content packet"></textarea>
+      </section>
+      <aside class="panel post-panel" aria-label="Short post mixer">
+        <div class="panel-title"><span>05</span><div><p class="kicker">Short post mixer</p><h2>Ready-to-review snippets.</h2></div></div>
+        <div id="postCards" class="post-cards" aria-live="polite"></div>
+        <div class="export-actions">
+          <button id="copyMarkdown" type="button">Copy markdown</button>
+          <button id="downloadMarkdown" type="button">Download markdown</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="review-console" aria-label="Review console">
+      <div>
+        <p class="kicker">Approval gate</p>
+        <h2>Before public posting</h2>
+      </div>
+      <ul id="reviewChecklist"></ul>
+    </section>
+  
+    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
+      <div class="panel-title">
+        <span>Map</span>
+        <div>
+          <p class="kicker">Day 19 enhancement</p>
+          <h2>Home Service Route Planner bridge</h2>
+        </div>
+      </div>
+      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
+      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
+      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
+      <div class="home-service-route-actions">
+        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
+        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      </div>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

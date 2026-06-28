@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Proof Vault</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="vault-shell">
+    <header class="vault-hero" aria-label="Proof Vault header">
+      <div class="safe-door" aria-hidden="true"><span>PV</span><i></i><b></b></div>
+      <div class="hero-copy">
+        <p class="kicker">Day 13 · Proof Vault</p>
+        <h1>Lock useful proof into one local case-study vault.</h1>
+        <p class="lede">A local-first evidence shelf for screenshots, report snippets, result notes, proof status, redaction checks, and future case-study angles. It stores only browser-local demo data and never uploads files, calls cloud APIs, sends messages, or exposes customer material.</p>
+      </div>
+      <div class="hero-actions">
+        <button id="loadDemo" type="button">Load demo</button>
+        <button id="clearVault" type="button">Clear vault</button>
+        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+      </div>
+    </header>
+
+    <section class="vault-metrics" aria-label="Vault metrics">
+      <article><span>Evidence cards</span><strong id="metricCards">0</strong></article>
+      <article><span>Ready proof</span><strong id="metricReady">0</strong></article>
+      <article><span>Needs redaction</span><strong id="metricRedact">0</strong></article>
+      <article><span>Guardrail</span><strong>Local only</strong></article>
+    </section>
+
+    <section class="vault-grid">
+      <section class="panel intake" aria-label="Evidence intake">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Intake drawer</p><h2>Catalog one proof artifact</h2></div></div>
+        <div class="form-grid">
+          <label>Source app or workflow
+            <select id="sourceApp">
+              <option>Pilot Forge</option>
+              <option>Lead Leak Radar</option>
+              <option>Owner Report Studio</option>
+              <option>Approval Gate Desk</option>
+              <option>Quote Chase Board</option>
+              <option>Review Request Composer</option>
+              <option>Technician Brief Builder</option>
+              <option>Service Triage Flow</option>
+              <option>Warm Outreach Lab</option>
+              <option>Pilot Pricing Calculator</option>
+              <option>Local Biz Snapshot</option>
+              <option>Script Rehearsal Room</option>
+              <option>Manual / outside source</option>
+            </select>
+          </label>
+          <label>Artifact type
+            <select id="artifactType">
+              <option>Screenshot</option>
+              <option>Report snippet</option>
+              <option>Result metric</option>
+              <option>Owner quote</option>
+              <option>Before / after note</option>
+              <option>Approval record</option>
+            </select>
+          </label>
+          <label>Proof title
+            <input id="proofTitle" maxlength="100" />
+          </label>
+          <label>Location / filename note
+            <input id="location" maxlength="160" placeholder="local path, screenshot label, or where to find it" />
+          </label>
+          <label>Evidence snippet
+            <textarea id="snippet" maxlength="900"></textarea>
+          </label>
+          <label>Measured result or signal
+            <textarea id="result" maxlength="700"></textarea>
+          </label>
+        </div>
+        <div class="intake-actions">
+          <button id="saveCard" type="button">Save / update card</button>
+          <button id="newCard" type="button">New blank card</button>
+        </div>
+      </section>
+
+      <aside class="vault-door-panel" aria-label="Proof controls">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Safe dial</p><h2>Proof readiness</h2></div></div>
+        <label>Status
+          <select id="status">
+            <option>Needs capture</option>
+            <option>Needs redaction</option>
+            <option>Needs owner approval</option>
+            <option>Ready for case study</option>
+          </select>
+        </label>
+        <label>Impact score <output id="impactOut">7</output>
+          <input id="impact" type="range" min="1" max="10" />
+        </label>
+        <label>Confidence <output id="confidenceOut">6</output>
+          <input id="confidence" type="range" min="1" max="10" />
+        </label>
+        <div class="check-stack" aria-label="Redaction checklist">
+          <label><input id="redactNames" type="checkbox" /> Names/customer identifiers removed</label>
+          <label><input id="redactSecrets" type="checkbox" /> Secrets/tokens/account IDs absent</label>
+          <label><input id="approval" type="checkbox" /> Owner approval needed before external use</label>
+        </div>
+        <div class="dial-readout" id="dialReadout">-</div>
+      </aside>
+    </section>
+
+    <section class="shelf-section" aria-label="Evidence shelf">
+      <div class="shelf-head"><p class="kicker">Evidence shelf</p><h2>Pick a card, tighten the proof, export the pack.</h2></div>
+      <div id="cardShelf" class="card-shelf" aria-live="polite"></div>
+    </section>
+
+    <section class="case-study-board" aria-label="Case study builder">
+      <div class="case-copy">
+        <p class="kicker">Case-study angle</p>
+        <h2 id="caseHeadline">-</h2>
+        <p id="caseSummary">-</p>
+      </div>
+      <textarea id="exportText" readonly aria-label="Generated proof vault export"></textarea>
+    </section>
+
+    <section class="export-dock" aria-label="Export proof vault">
+      <button id="copyMarkdown" type="button">Copy proof pack</button>
+      <button id="downloadJson" type="button">Download JSON</button>
+      <button id="downloadCsv" type="button">Download CSV</button>
+    </section>
+  
+    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
+      <div class="panel-title">
+        <span>SOP</span>
+        <div>
+          <p class="kicker">Day 14 enhancement</p>
+          <h2>SOP Builder bridge</h2>
+        </div>
+      </div>
+      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
+      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
+      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
+      <div class="sop-builder-actions">
+        <button id="copySopBuilder" type="button">Copy SOP draft</button>
+        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
+      </div>
+    </section>
+  
+    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
+      <div class="panel-title">
+        <span>Cash</span>
+        <div>
+          <p class="kicker">Day 15 enhancement</p>
+          <h2>Daily Cash Board bridge</h2>
+        </div>
+      </div>
+      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
+      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
+      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
+      <div class="daily-cash-board-actions">
+        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
+        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
+      </div>
+    </section>
+  
+    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
+      <div class="panel-title">
+        <span>Meet</span>
+        <div>
+          <p class="kicker">Day 16 enhancement</p>
+          <h2>Meeting Follow-up Kit bridge</h2>
+        </div>
+      </div>
+      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
+      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
+      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
+      <div class="meeting-followup-kit-actions">
+        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
+        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
+      </div>
+    </section>
+  
+    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
+      <div class="panel-title">
+        <span>Keys</span>
+        <div>
+          <p class="kicker">Day 17 enhancement</p>
+          <h2>Credential Handoff Checklist bridge</h2>
+        </div>
+      </div>
+      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
+      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
+      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
+      <div class="credential-handoff-actions">
+        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
+        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
+      </div>
+    </section>
+  
+    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
+      <div class="panel-title">
+        <span>Mix</span>
+        <div>
+          <p class="kicker">Day 18 enhancement</p>
+          <h2>Content Repurposer bridge</h2>
+        </div>
+      </div>
+      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
+      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
+      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
+      <div class="content-repurposer-actions">
+        <button id="copyContentRepurposer" type="button">Copy content packet</button>
+        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
+      </div>
+    </section>
+  
+    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
+      <div class="panel-title">
+        <span>Map</span>
+        <div>
+          <p class="kicker">Day 19 enhancement</p>
+          <h2>Home Service Route Planner bridge</h2>
+        </div>
+      </div>
+      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
+      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
+      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
+      <div class="home-service-route-actions">
+        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
+        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      </div>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

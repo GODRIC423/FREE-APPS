@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Intake Form Builder</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="builder-shell">
+    <header class="blueprint-hero" aria-label="Intake Form Builder header">
+      <section class="hero-copy">
+        <p class="kicker">Day 20 · Blueprint desk</p>
+        <h1>Draft a service intake form without turning it into a monster.</h1>
+        <p class="lede">A local-first form blueprint tool for shaping the exact questions, required fields, privacy warnings, and export packet before anything goes public.</p>
+        <div class="hero-actions">
+          <button id="loadDemo" type="button">Load demo form</button>
+          <button id="buildForm" type="button">Build blueprint</button>
+          <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+        </div>
+      </section>
+      <aside class="blueprint-card" aria-hidden="true">
+        <div class="grid-paper">
+          <span class="field-block wide"></span>
+          <span class="field-block"></span>
+          <span class="field-block"></span>
+          <span class="field-block full"></span>
+          <span class="field-block short"></span>
+        </div>
+        <div class="draft-stamp">DRAFT · LOCAL</div>
+      </aside>
+    </header>
+
+    <section class="safety-strip" aria-label="Safety boundary">
+      <strong>Draft-only form design:</strong> this app does not publish forms, submit customer data, call webhooks, or connect to CRMs. Export the spec only after a human privacy/proof review.
+    </section>
+
+    <section class="metrics" aria-label="Form metrics">
+      <article><span>Fields</span><strong id="metricFields">0</strong><small>questions</small></article>
+      <article><span>Required</span><strong id="metricRequired">0</strong><small>must answer</small></article>
+      <article><span>Privacy flags</span><strong id="metricFlags">0</strong><small>review</small></article>
+      <article><span>Health</span><strong id="metricHealth">0%</strong><small>draft score</small></article>
+    </section>
+
+    <section class="workspace-grid">
+      <section class="panel context-panel" aria-label="Service context">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Service context</p><h2>Define the form's job.</h2></div></div>
+        <label>Form name<input id="formName" maxlength="90" placeholder="Emergency HVAC intake" /></label>
+        <label>Business / team<input id="businessName" maxlength="90" placeholder="Backhaul Heating" /></label>
+        <label>Intake goal<textarea id="formGoal" placeholder="Collect enough information to route urgent no-heat calls without promising availability."></textarea></label>
+        <div class="split">
+          <label>Channel<select id="channel"><option>Phone screen</option><option>Website form</option><option>Text follow-up</option><option>In-office checklist</option></select></label>
+          <label>Response promise<select id="responsePromise"><option>No promise yet</option><option>Same business day</option><option>Within 2 hours</option><option>Next available slot</option></select></label>
+        </div>
+        <label>Privacy note<textarea id="privacyNote" placeholder="Do not ask for passwords, card numbers, medical data, or unnecessary IDs."></textarea></label>
+      </section>
+
+      <section class="panel toolbox-panel" aria-label="Question toolbox">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Question card</p><h2>Add a field to the blueprint.</h2></div></div>
+        <label>Question label<input id="fieldLabel" maxlength="120" placeholder="What problem should we solve?" /></label>
+        <div class="split three">
+          <label>Type<select id="fieldType"><option value="short-text">Short text</option><option value="long-text">Long text</option><option value="select">Single choice</option><option value="checkboxes">Checklist</option><option value="date">Date</option><option value="phone">Phone</option><option value="email">Email</option><option value="address">Address</option><option value="number">Number</option></select></label>
+          <label>Required<select id="fieldRequired"><option value="yes">Required</option><option value="no">Optional</option></select></label>
+          <label>Section<select id="fieldSection"><option>Contact</option><option>Job details</option><option>Urgency</option><option>Scheduling</option><option>Proof / files</option><option>Consent</option></select></label>
+        </div>
+        <label>Choices / helper text<textarea id="fieldHelp" placeholder="For choice fields: Emergency | This week | Planning. For text fields: tell the user what a good answer includes."></textarea></label>
+        <div class="button-row">
+          <button id="addField" type="button">Add field</button>
+          <button id="addStarterSet" class="ghost" type="button">Add starter set</button>
+          <button id="clearFields" class="ghost" type="button">Clear fields</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="builder-board" aria-label="Builder board">
+      <section class="panel canvas-panel">
+        <div class="panel-title"><span>03</span><div><p class="kicker">Blueprint canvas</p><h2>Drag-free ordered field list.</h2></div></div>
+        <div id="fieldCanvas" class="field-canvas" aria-live="polite"></div>
+      </section>
+      <section class="panel preview-panel">
+        <div class="panel-title"><span>04</span><div><p class="kicker">Live preview</p><h2>What the customer/admin sees.</h2></div></div>
+        <div id="formPreview" class="form-preview" aria-live="polite"></div>
+      </section>
+    </section>
+
+    <section class="output-grid">
+      <section class="panel output-panel" aria-label="Generated form blueprint">
+        <div class="panel-title"><span>05</span><div><p class="kicker">Export packet</p><h2>Copy or download the spec.</h2></div></div>
+        <textarea id="blueprintOutput" readonly aria-label="Generated form blueprint"></textarea>
+      </section>
+      <aside class="panel audit-panel" aria-label="Form audit">
+        <div class="panel-title"><span>06</span><div><p class="kicker">Review desk</p><h2>Privacy and quality checks.</h2></div></div>
+        <div id="auditList" class="audit-list" aria-live="polite"></div>
+        <div class="export-actions">
+          <button id="copyBlueprint" type="button">Copy spec</button>
+          <button id="downloadMarkdown" type="button">Download MD</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+          <button id="downloadShare" type="button">Download share note</button>
+        </div>
+      </aside>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

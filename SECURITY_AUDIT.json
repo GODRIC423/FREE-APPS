@@ -1,0 +1,385 @@
+{
+  "generated_at": "2026-06-28T18:29:00.719727+00:00",
+  "results": [
+    {
+      "day": 1,
+      "slug": "day-01-pilot-forge",
+      "title": "Pilot Forge",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-01-pilot-forge/index.html",
+        "apps/day-01-pilot-forge/README.md",
+        "apps/day-01-pilot-forge/styles.css",
+        "apps/day-01-pilot-forge/app.js"
+      ],
+      "hashes": {
+        "apps/day-01-pilot-forge/index.html": "abd97728953a979e",
+        "apps/day-01-pilot-forge/README.md": "ead747e8df01fa80",
+        "apps/day-01-pilot-forge/styles.css": "635e1e4ac54954f8",
+        "apps/day-01-pilot-forge/app.js": "2f0d7dabff9b4056"
+      }
+    },
+    {
+      "day": 2,
+      "slug": "day-02-lead-leak-radar",
+      "title": "Lead Leak Radar",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-02-lead-leak-radar/index.html",
+        "apps/day-02-lead-leak-radar/README.md",
+        "apps/day-02-lead-leak-radar/styles.css",
+        "apps/day-02-lead-leak-radar/app.js"
+      ],
+      "hashes": {
+        "apps/day-02-lead-leak-radar/index.html": "564b13a82885f957",
+        "apps/day-02-lead-leak-radar/README.md": "574d31476f2c45c3",
+        "apps/day-02-lead-leak-radar/styles.css": "1d1724e3e624441e",
+        "apps/day-02-lead-leak-radar/app.js": "d6d93f1f8cfa95b7"
+      }
+    },
+    {
+      "day": 3,
+      "slug": "day-03-owner-report-studio",
+      "title": "Owner Report Studio",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-03-owner-report-studio/index.html",
+        "apps/day-03-owner-report-studio/README.md",
+        "apps/day-03-owner-report-studio/styles.css",
+        "apps/day-03-owner-report-studio/app.js"
+      ],
+      "hashes": {
+        "apps/day-03-owner-report-studio/index.html": "3e9a3ed8be934a0e",
+        "apps/day-03-owner-report-studio/README.md": "35ae3c12db363af2",
+        "apps/day-03-owner-report-studio/styles.css": "58e27b1a665ccdcc",
+        "apps/day-03-owner-report-studio/app.js": "12242d8e306c5094"
+      }
+    },
+    {
+      "day": 4,
+      "slug": "day-04-approval-gate-desk",
+      "title": "Approval Gate Desk",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-04-approval-gate-desk/index.html",
+        "apps/day-04-approval-gate-desk/README.md",
+        "apps/day-04-approval-gate-desk/styles.css",
+        "apps/day-04-approval-gate-desk/app.js"
+      ],
+      "hashes": {
+        "apps/day-04-approval-gate-desk/index.html": "fa85752273747628",
+        "apps/day-04-approval-gate-desk/README.md": "6e351c9953dfacde",
+        "apps/day-04-approval-gate-desk/styles.css": "455046ebacfc8c1c",
+        "apps/day-04-approval-gate-desk/app.js": "f542930a2c1cfbf8"
+      }
+    },
+    {
+      "day": 5,
+      "slug": "day-05-quote-chase-board",
+      "title": "Quote Chase Board",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-05-quote-chase-board/index.html",
+        "apps/day-05-quote-chase-board/README.md",
+        "apps/day-05-quote-chase-board/styles.css",
+        "apps/day-05-quote-chase-board/app.js"
+      ],
+      "hashes": {
+        "apps/day-05-quote-chase-board/index.html": "5b62945236f74521",
+        "apps/day-05-quote-chase-board/README.md": "51b6cd8791807a5d",
+        "apps/day-05-quote-chase-board/styles.css": "2bb5d7cfa00e2c47",
+        "apps/day-05-quote-chase-board/app.js": "965fbb8efe99171d"
+      }
+    },
+    {
+      "day": 6,
+      "slug": "day-06-review-request-composer",
+      "title": "Review Request Composer",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-06-review-request-composer/index.html",
+        "apps/day-06-review-request-composer/README.md",
+        "apps/day-06-review-request-composer/styles.css",
+        "apps/day-06-review-request-composer/app.js"
+      ],
+      "hashes": {
+        "apps/day-06-review-request-composer/index.html": "277777d52d5845db",
+        "apps/day-06-review-request-composer/README.md": "bf3997f497d904df",
+        "apps/day-06-review-request-composer/styles.css": "5552f5f3bd7942a1",
+        "apps/day-06-review-request-composer/app.js": "d72a8dea2701d948"
+      }
+    },
+    {
+      "day": 7,
+      "slug": "day-07-technician-brief-builder",
+      "title": "Technician Brief Builder",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-07-technician-brief-builder/index.html",
+        "apps/day-07-technician-brief-builder/README.md",
+        "apps/day-07-technician-brief-builder/styles.css",
+        "apps/day-07-technician-brief-builder/app.js"
+      ],
+      "hashes": {
+        "apps/day-07-technician-brief-builder/index.html": "36e0aa41ed15d700",
+        "apps/day-07-technician-brief-builder/README.md": "c40cb1f17a696394",
+        "apps/day-07-technician-brief-builder/styles.css": "faee29b9247adc53",
+        "apps/day-07-technician-brief-builder/app.js": "34631d2c26ba6586"
+      }
+    },
+    {
+      "day": 8,
+      "slug": "day-08-service-triage-flow",
+      "title": "Service Triage Flow",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-08-service-triage-flow/index.html",
+        "apps/day-08-service-triage-flow/README.md",
+        "apps/day-08-service-triage-flow/styles.css",
+        "apps/day-08-service-triage-flow/app.js"
+      ],
+      "hashes": {
+        "apps/day-08-service-triage-flow/index.html": "28fd5e0ca657fe14",
+        "apps/day-08-service-triage-flow/README.md": "4abe779d46ab1a2d",
+        "apps/day-08-service-triage-flow/styles.css": "910037753f8dad33",
+        "apps/day-08-service-triage-flow/app.js": "83a11f8286f92159"
+      }
+    },
+    {
+      "day": 9,
+      "slug": "day-09-warm-outreach-lab",
+      "title": "Warm Outreach Lab",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-09-warm-outreach-lab/index.html",
+        "apps/day-09-warm-outreach-lab/README.md",
+        "apps/day-09-warm-outreach-lab/styles.css",
+        "apps/day-09-warm-outreach-lab/app.js"
+      ],
+      "hashes": {
+        "apps/day-09-warm-outreach-lab/index.html": "9060741e10dddef9",
+        "apps/day-09-warm-outreach-lab/README.md": "8bc210375f190e1f",
+        "apps/day-09-warm-outreach-lab/styles.css": "14ce76955292c5c3",
+        "apps/day-09-warm-outreach-lab/app.js": "298b4ee0cb583f43"
+      }
+    },
+    {
+      "day": 10,
+      "slug": "day-10-pilot-pricing-calculator",
+      "title": "Pilot Pricing Calculator",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-10-pilot-pricing-calculator/index.html",
+        "apps/day-10-pilot-pricing-calculator/README.md",
+        "apps/day-10-pilot-pricing-calculator/styles.css",
+        "apps/day-10-pilot-pricing-calculator/app.js"
+      ],
+      "hashes": {
+        "apps/day-10-pilot-pricing-calculator/index.html": "636eaa7c322de112",
+        "apps/day-10-pilot-pricing-calculator/README.md": "49411354ada14a22",
+        "apps/day-10-pilot-pricing-calculator/styles.css": "130680ae93bfaf79",
+        "apps/day-10-pilot-pricing-calculator/app.js": "b9a8d2cfe0b2af21"
+      }
+    },
+    {
+      "day": 11,
+      "slug": "day-11-local-biz-snapshot",
+      "title": "Local Biz Snapshot",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-11-local-biz-snapshot/index.html",
+        "apps/day-11-local-biz-snapshot/README.md",
+        "apps/day-11-local-biz-snapshot/styles.css",
+        "apps/day-11-local-biz-snapshot/app.js"
+      ],
+      "hashes": {
+        "apps/day-11-local-biz-snapshot/index.html": "b7e099d2dfb9d02c",
+        "apps/day-11-local-biz-snapshot/README.md": "bd5f8a416b981941",
+        "apps/day-11-local-biz-snapshot/styles.css": "0572f58d30b68b46",
+        "apps/day-11-local-biz-snapshot/app.js": "3e74a547b8aab191"
+      }
+    },
+    {
+      "day": 12,
+      "slug": "day-12-script-rehearsal-room",
+      "title": "Script Rehearsal Room",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-12-script-rehearsal-room/index.html",
+        "apps/day-12-script-rehearsal-room/README.md",
+        "apps/day-12-script-rehearsal-room/styles.css",
+        "apps/day-12-script-rehearsal-room/app.js"
+      ],
+      "hashes": {
+        "apps/day-12-script-rehearsal-room/index.html": "af1065678a7fbd0c",
+        "apps/day-12-script-rehearsal-room/README.md": "8b3df54e1af323fe",
+        "apps/day-12-script-rehearsal-room/styles.css": "593b899331599936",
+        "apps/day-12-script-rehearsal-room/app.js": "e177236ce445bbed"
+      }
+    },
+    {
+      "day": 13,
+      "slug": "day-13-proof-vault",
+      "title": "Proof Vault",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-13-proof-vault/index.html",
+        "apps/day-13-proof-vault/README.md",
+        "apps/day-13-proof-vault/styles.css",
+        "apps/day-13-proof-vault/app.js"
+      ],
+      "hashes": {
+        "apps/day-13-proof-vault/index.html": "87dd04fc351a4df0",
+        "apps/day-13-proof-vault/README.md": "7771cbcd8c0505fe",
+        "apps/day-13-proof-vault/styles.css": "e583b46779dc2228",
+        "apps/day-13-proof-vault/app.js": "da38c4210edf6f3f"
+      }
+    },
+    {
+      "day": 14,
+      "slug": "day-14-sop-builder",
+      "title": "SOP Builder",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-14-sop-builder/index.html",
+        "apps/day-14-sop-builder/README.md",
+        "apps/day-14-sop-builder/styles.css",
+        "apps/day-14-sop-builder/app.js"
+      ],
+      "hashes": {
+        "apps/day-14-sop-builder/index.html": "6ca7fd37c2628e70",
+        "apps/day-14-sop-builder/README.md": "3a5995a206461868",
+        "apps/day-14-sop-builder/styles.css": "ee0b57a29541bbb0",
+        "apps/day-14-sop-builder/app.js": "142a1398167f6896"
+      }
+    },
+    {
+      "day": 15,
+      "slug": "day-15-daily-cash-board",
+      "title": "Daily Cash Board",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-15-daily-cash-board/index.html",
+        "apps/day-15-daily-cash-board/README.md",
+        "apps/day-15-daily-cash-board/styles.css",
+        "apps/day-15-daily-cash-board/app.js"
+      ],
+      "hashes": {
+        "apps/day-15-daily-cash-board/index.html": "42d3327ad9c30bc7",
+        "apps/day-15-daily-cash-board/README.md": "ee2ba946fc690edd",
+        "apps/day-15-daily-cash-board/styles.css": "866f4bbae0b28f96",
+        "apps/day-15-daily-cash-board/app.js": "fb321c927ba43818"
+      }
+    },
+    {
+      "day": 16,
+      "slug": "day-16-meeting-follow-up-kit",
+      "title": "Meeting Follow-up Kit",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-16-meeting-follow-up-kit/index.html",
+        "apps/day-16-meeting-follow-up-kit/README.md",
+        "apps/day-16-meeting-follow-up-kit/styles.css",
+        "apps/day-16-meeting-follow-up-kit/app.js"
+      ],
+      "hashes": {
+        "apps/day-16-meeting-follow-up-kit/index.html": "a9edb992700d4397",
+        "apps/day-16-meeting-follow-up-kit/README.md": "16c44275f2cf9427",
+        "apps/day-16-meeting-follow-up-kit/styles.css": "bba2107d557291ac",
+        "apps/day-16-meeting-follow-up-kit/app.js": "2f98fdae31993a1e"
+      }
+    },
+    {
+      "day": 17,
+      "slug": "day-17-credential-handoff-checklist",
+      "title": "Credential Handoff Checklist",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-17-credential-handoff-checklist/index.html",
+        "apps/day-17-credential-handoff-checklist/README.md",
+        "apps/day-17-credential-handoff-checklist/styles.css",
+        "apps/day-17-credential-handoff-checklist/app.js"
+      ],
+      "hashes": {
+        "apps/day-17-credential-handoff-checklist/index.html": "b0581064869a94d7",
+        "apps/day-17-credential-handoff-checklist/README.md": "2f31406967d9332b",
+        "apps/day-17-credential-handoff-checklist/styles.css": "274acb7cf9768b59",
+        "apps/day-17-credential-handoff-checklist/app.js": "d1b7b1fc2fb4c6ef"
+      }
+    },
+    {
+      "day": 18,
+      "slug": "day-18-content-repurposer",
+      "title": "Content Repurposer",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-18-content-repurposer/index.html",
+        "apps/day-18-content-repurposer/README.md",
+        "apps/day-18-content-repurposer/styles.css",
+        "apps/day-18-content-repurposer/app.js"
+      ],
+      "hashes": {
+        "apps/day-18-content-repurposer/index.html": "0070a58153562b7a",
+        "apps/day-18-content-repurposer/README.md": "c47f8322c8343522",
+        "apps/day-18-content-repurposer/styles.css": "0592b65296d0b2be",
+        "apps/day-18-content-repurposer/app.js": "3946a9b5415dbd00"
+      }
+    },
+    {
+      "day": 19,
+      "slug": "day-19-home-service-route-planner",
+      "title": "Home Service Route Planner",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-19-home-service-route-planner/index.html",
+        "apps/day-19-home-service-route-planner/README.md",
+        "apps/day-19-home-service-route-planner/styles.css",
+        "apps/day-19-home-service-route-planner/app.js"
+      ],
+      "hashes": {
+        "apps/day-19-home-service-route-planner/index.html": "8a88c056451e1043",
+        "apps/day-19-home-service-route-planner/README.md": "7c5c1df1e9e0d486",
+        "apps/day-19-home-service-route-planner/styles.css": "60e0a98d1df76242",
+        "apps/day-19-home-service-route-planner/app.js": "9de14547358ab170"
+      }
+    },
+    {
+      "day": 20,
+      "slug": "day-20-intake-form-builder",
+      "title": "Intake Form Builder",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/day-20-intake-form-builder/index.html",
+        "apps/day-20-intake-form-builder/README.md",
+        "apps/day-20-intake-form-builder/styles.css",
+        "apps/day-20-intake-form-builder/app.js"
+      ],
+      "hashes": {
+        "apps/day-20-intake-form-builder/index.html": "485cd16365c1d804",
+        "apps/day-20-intake-form-builder/README.md": "ca53bc9efdfa4c74",
+        "apps/day-20-intake-form-builder/styles.css": "7dc670643676a448",
+        "apps/day-20-intake-form-builder/app.js": "4035f0d33916fc6c"
+      }
+    }
+  ]
+}

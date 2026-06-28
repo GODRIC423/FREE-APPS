@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SOP Builder</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="factory-shell">
+    <header class="factory-hero" aria-label="SOP Builder header">
+      <div class="factory-mark" aria-hidden="true"><span>SOP</span><i></i><b></b></div>
+      <section class="hero-copy">
+        <p class="kicker">Day 14 · SOP Builder</p>
+        <h1>Turn repeated work into a clean operating line.</h1>
+        <p class="lede">A local-first assembly-line workspace for task triggers, steps, quality checks, handoff notes, and owner-ready SOP exports. It keeps everything draft-only in this browser: no cloud sync, no accounts, no customer actions.</p>
+      </section>
+      <nav class="hero-actions" aria-label="App controls">
+        <button id="loadDemo" type="button">Load demo</button>
+        <button id="addStep" type="button">Add step</button>
+        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+      </nav>
+    </header>
+
+    <section class="line-metrics" aria-label="SOP metrics">
+      <article><span>Steps</span><strong id="metricSteps">0</strong></article>
+      <article><span>Checks</span><strong id="metricChecks">0</strong></article>
+      <article><span>Readiness</span><strong id="metricReady">0%</strong></article>
+      <article><span>Boundary</span><strong>Draft SOP</strong></article>
+    </section>
+
+    <section class="workshop-grid">
+      <section class="panel intake-panel" aria-label="Task intake">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Intake bay</p><h2>Define the repeated task</h2></div></div>
+        <div class="form-grid">
+          <label>Task name<input id="taskName" maxlength="100" /></label>
+          <label>Trigger<input id="trigger" maxlength="160" placeholder="When should this SOP start?" /></label>
+          <label>Owner<input id="owner" maxlength="90" /></label>
+          <label>Inputs needed<input id="inputs" maxlength="220" /></label>
+          <label>Done definition<textarea id="done" maxlength="500"></textarea></label>
+          <label>Risk / exception<textarea id="risk" maxlength="500"></textarea></label>
+        </div>
+      </section>
+
+      <aside class="panel gate-panel" aria-label="Quality gates">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Inspection gates</p><h2>Guard the process</h2></div></div>
+        <label><input id="checkInputs" type="checkbox" /> Inputs are explicit before work begins</label>
+        <label><input id="checkDecision" type="checkbox" /> Decision owner is named</label>
+        <label><input id="checkFallback" type="checkbox" /> Fallback/exception path is written</label>
+        <label><input id="checkApproval" type="checkbox" /> Human approval before customer-facing action</label>
+        <div class="readiness-dial" id="readinessDial">0% draft</div>
+      </aside>
+    </section>
+
+    <section class="conveyor-panel panel" aria-label="Step conveyor">
+      <div class="panel-title"><span>03</span><div><p class="kicker">Step conveyor</p><h2>Move each step from rough to repeatable.</h2></div></div>
+      <div id="stepLane" class="step-lane" aria-live="polite"></div>
+    </section>
+
+    <section class="output-grid">
+      <section class="panel packet-panel" aria-label="Generated SOP packet">
+        <div class="panel-title"><span>04</span><div><p class="kicker">Handoff packet</p><h2>Owner-ready SOP draft</h2></div></div>
+        <textarea id="exportText" readonly aria-label="Generated SOP export"></textarea>
+        <div class="export-actions">
+          <button id="copyMarkdown" type="button">Copy SOP</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+        </div>
+      </section>
+      <aside class="panel scoreboard" aria-label="SOP scoreboard">
+        <p class="kicker">Line status</p>
+        <h2 id="scoreHeadline">Draft needs work</h2>
+        <p id="scoreSummary">Add task details, steps, checks, and a human approval boundary.</p>
+        <ol id="nextActions"></ol>
+      </aside>
+    </section>
+  
+    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
+      <div class="panel-title">
+        <span>Cash</span>
+        <div>
+          <p class="kicker">Day 15 enhancement</p>
+          <h2>Daily Cash Board bridge</h2>
+        </div>
+      </div>
+      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
+      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
+      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
+      <div class="daily-cash-board-actions">
+        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
+        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
+      </div>
+    </section>
+  
+    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
+      <div class="panel-title">
+        <span>Meet</span>
+        <div>
+          <p class="kicker">Day 16 enhancement</p>
+          <h2>Meeting Follow-up Kit bridge</h2>
+        </div>
+      </div>
+      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
+      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
+      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
+      <div class="meeting-followup-kit-actions">
+        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
+        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
+      </div>
+    </section>
+  
+    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
+      <div class="panel-title">
+        <span>Keys</span>
+        <div>
+          <p class="kicker">Day 17 enhancement</p>
+          <h2>Credential Handoff Checklist bridge</h2>
+        </div>
+      </div>
+      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
+      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
+      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
+      <div class="credential-handoff-actions">
+        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
+        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
+      </div>
+    </section>
+  
+    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
+      <div class="panel-title">
+        <span>Mix</span>
+        <div>
+          <p class="kicker">Day 18 enhancement</p>
+          <h2>Content Repurposer bridge</h2>
+        </div>
+      </div>
+      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
+      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
+      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
+      <div class="content-repurposer-actions">
+        <button id="copyContentRepurposer" type="button">Copy content packet</button>
+        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
+      </div>
+    </section>
+  
+    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
+      <div class="panel-title">
+        <span>Map</span>
+        <div>
+          <p class="kicker">Day 19 enhancement</p>
+          <h2>Home Service Route Planner bridge</h2>
+        </div>
+      </div>
+      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
+      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
+      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
+      <div class="home-service-route-actions">
+        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
+        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      </div>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

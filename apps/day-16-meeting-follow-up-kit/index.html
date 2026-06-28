@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Meeting Follow-up Kit</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="meeting-room">
+    <header class="room-header" aria-label="Meeting Follow-up Kit header">
+      <div class="table-orbit" aria-hidden="true"><span></span><i></i><b></b></div>
+      <section class="header-copy">
+        <p class="kicker">Day 16 · Meeting Follow-up Kit</p>
+        <h1>Leave every meeting with the email, tasks, risks, and decisions already sorted.</h1>
+        <p class="lede">A local-first conference-table studio for turning rough meeting notes into a draft follow-up packet. No sends, no calendar writes, no CRM writes, no cloud.</p>
+      </section>
+      <nav class="header-actions" aria-label="App controls">
+        <button id="loadDemo" type="button">Load demo</button>
+        <button id="addCommitment" type="button">Add action</button>
+        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+      </nav>
+    </header>
+
+    <section class="brief-strip" aria-label="Meeting status strip">
+      <article><span>Tasks</span><strong id="metricTasks">0</strong></article>
+      <article><span>Decisions</span><strong id="metricDecisions">0</strong></article>
+      <article><span>Risks</span><strong id="metricRisks">0</strong></article>
+      <article><span>Next due</span><strong id="metricNext">None</strong></article>
+    </section>
+
+    <section class="conference-grid">
+      <section class="panel notes-panel" aria-label="Meeting notes intake">
+        <div class="panel-title"><span>01</span><div><p class="kicker">Raw notes</p><h2>Drop the messy meeting memory here.</h2></div></div>
+        <div class="form-grid">
+          <label>Meeting title<input id="meetingTitle" maxlength="120" /></label>
+          <label>Meeting date<input id="meetingDate" type="date" /></label>
+          <label>Attendees<input id="attendees" maxlength="220" /></label>
+          <label>Follow-up sender<input id="sender" maxlength="80" /></label>
+          <label class="wide">Meeting goal<textarea id="meetingGoal" maxlength="400"></textarea></label>
+          <label class="wide">Notes / transcript fragments<textarea id="meetingNotes" maxlength="2500"></textarea></label>
+        </div>
+      </section>
+
+      <aside class="panel sorter-panel" aria-label="Decision and risk sorter">
+        <div class="panel-title"><span>02</span><div><p class="kicker">Sorter</p><h2>Classify the follow-up payload.</h2></div></div>
+        <div class="pill-lab">
+          <label>Decision<input id="decisionInput" maxlength="180" placeholder="Approved 7-day proof window" /></label>
+          <button id="addDecision" type="button">Add decision</button>
+          <label>Risk / blocker<input id="riskInput" maxlength="180" placeholder="Need owner approval before sending" /></label>
+          <button id="addRisk" type="button" class="secondary">Add risk</button>
+          <label>Open question<input id="questionInput" maxlength="180" placeholder="Who owns the booking link?" /></label>
+          <button id="addQuestion" type="button" class="secondary">Add question</button>
+        </div>
+        <div class="chip-board">
+          <section><h3>Decisions</h3><div id="decisionChips"></div></section>
+          <section><h3>Risks</h3><div id="riskChips"></div></section>
+          <section><h3>Questions</h3><div id="questionChips"></div></section>
+        </div>
+      </aside>
+    </section>
+
+    <section class="panel action-panel" aria-label="Action owner board">
+      <div class="panel-title"><span>03</span><div><p class="kicker">Action board</p><h2>Owners, due dates, and draft-only next steps.</h2></div></div>
+      <div class="action-editor">
+        <label>Task<input id="taskTitle" maxlength="140" placeholder="Draft owner recap" /></label>
+        <label>Owner<input id="taskOwner" maxlength="80" /></label>
+        <label>Due<input id="taskDue" type="date" /></label>
+        <label>Type<select id="taskType"><option value="email">Email draft</option><option value="ops">Ops task</option><option value="risk">Risk check</option><option value="decision">Decision confirm</option></select></label>
+        <button id="saveTask" type="button">Save action</button>
+        <button id="clearTask" type="button" class="secondary">Clear</button>
+      </div>
+      <div id="taskBoard" class="task-board" aria-live="polite"></div>
+    </section>
+
+    <section class="output-grid">
+      <section class="panel email-panel" aria-label="Draft follow-up email">
+        <div class="panel-title"><span>04</span><div><p class="kicker">Draft email</p><h2>Human-reviewed follow-up note.</h2></div></div>
+        <textarea id="emailOutput" readonly aria-label="Generated draft follow-up email"></textarea>
+      </section>
+      <section class="panel packet-panel" aria-label="Export packet">
+        <div class="panel-title"><span>05</span><div><p class="kicker">Packet</p><h2>Share the recap or export structured data.</h2></div></div>
+        <textarea id="markdownOutput" readonly aria-label="Generated meeting follow-up packet"></textarea>
+        <div class="export-actions">
+          <button id="copyMarkdown" type="button">Copy recap</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+          <button id="downloadIcs" type="button">Download task reminders</button>
+        </div>
+      </section>
+    </section>
+
+    <section class="guardrail" aria-label="Safety boundary">
+      <strong>Safety boundary:</strong> This is a static local planning app. It drafts follow-up text and files only; it does not send messages, invite calendars, write CRM records, call APIs, store secrets, or contact customers.
+    </section>
+  
+    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
+      <div class="panel-title">
+        <span>Keys</span>
+        <div>
+          <p class="kicker">Day 17 enhancement</p>
+          <h2>Credential Handoff Checklist bridge</h2>
+        </div>
+      </div>
+      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
+      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
+      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
+      <div class="credential-handoff-actions">
+        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
+        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
+      </div>
+    </section>
+  
+    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
+      <div class="panel-title">
+        <span>Mix</span>
+        <div>
+          <p class="kicker">Day 18 enhancement</p>
+          <h2>Content Repurposer bridge</h2>
+        </div>
+      </div>
+      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
+      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
+      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
+      <div class="content-repurposer-actions">
+        <button id="copyContentRepurposer" type="button">Copy content packet</button>
+        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
+      </div>
+    </section>
+  
+    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
+      <div class="panel-title">
+        <span>Map</span>
+        <div>
+          <p class="kicker">Day 19 enhancement</p>
+          <h2>Home Service Route Planner bridge</h2>
+        </div>
+      </div>
+      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
+      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
+      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
+      <div class="home-service-route-actions">
+        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
+        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      </div>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

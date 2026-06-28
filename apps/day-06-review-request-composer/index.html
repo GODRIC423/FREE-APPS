@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Review Request Composer</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="mailroom-shell">
+    <header class="mailroom-header" aria-label="Review Request Composer header">
+      <div>
+        <p class="kicker">Day 06 · Review Request Composer</p>
+        <h1>Ask for the review at the right moment, in a human voice.</h1>
+        <p class="lede">A local-first mailroom for completed jobs: choose who is ready, compose a low-pressure request, and export a review ask packet. Nothing is sent from this app.</p>
+      </div>
+      <div class="header-actions">
+        <button id="demoBtn" type="button">Load demo</button>
+        <button id="newCandidateBtn" type="button">New candidate</button>
+        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
+      </div>
+    </header>
+
+    <section class="signal-board" aria-label="Review request metrics">
+      <article><span>Ready to ask</span><strong id="metricReady">0</strong></article>
+      <article><span>Warm proof</span><strong id="metricProof">0</strong></article>
+      <article><span>Needs delay</span><strong id="metricDelay">0</strong></article>
+      <article><span>Draft safety</span><strong>Manual send</strong></article>
+    </section>
+
+    <section class="mailroom-grid">
+      <aside class="candidate-rail panel" aria-label="Review candidates">
+        <div class="panel-head">
+          <span>IN</span>
+          <div>
+            <p class="kicker">Candidate stack</p>
+            <h2>Completed work worth asking about</h2>
+          </div>
+        </div>
+        <div id="candidateList" class="candidate-list"></div>
+      </aside>
+
+      <section class="envelope-stage panel" aria-label="Review request editor">
+        <div class="panel-head wide">
+          <span>✉</span>
+          <div>
+            <p class="kicker">Composer desk</p>
+            <h2 id="editorTitle">Select a customer</h2>
+          </div>
+          <strong id="readinessPill" class="readiness-pill">Draft-only</strong>
+        </div>
+        <div class="stamp-strip" aria-label="Readiness actions">
+          <button id="markReadyBtn" type="button">Mark ready</button>
+          <button id="markWaitBtn" type="button">Wait</button>
+          <button id="markAskedBtn" type="button">Asked manually</button>
+        </div>
+        <div class="editor-grid">
+          <label>Customer / account
+            <input id="customer" maxlength="90" />
+          </label>
+          <label>Completed job
+            <input id="job" maxlength="110" />
+          </label>
+          <div class="split">
+            <label>Completed date
+              <input id="completedDate" type="date" />
+            </label>
+            <label>Preferred channel
+              <select id="channel">
+                <option>SMS draft</option>
+                <option>Email draft</option>
+                <option>Invoice note</option>
+                <option>Phone follow-up</option>
+              </select>
+            </label>
+          </div>
+          <div class="split">
+            <label>Satisfaction signal
+              <select id="satisfaction">
+                <option>Happy / thanked us</option>
+                <option>Problem solved</option>
+                <option>Repeat customer</option>
+                <option>Neutral / unsure</option>
+                <option>Had an issue</option>
+              </select>
+            </label>
+            <label>Ask style
+              <select id="askStyle">
+                <option>Warm and short</option>
+                <option>Grateful owner note</option>
+                <option>Technician handoff</option>
+                <option>Ultra low-pressure</option>
+              </select>
+            </label>
+          </div>
+          <label>Specific proof / job detail
+            <textarea id="proof" maxlength="300"></textarea>
+          </label>
+          <label>Generated request draft
+            <textarea id="requestDraft" readonly aria-label="Generated review request draft"></textarea>
+          </label>
+        </div>
+      </section>
+
+      <aside class="timing-tower panel" aria-label="Timing and safety checklist">
+        <div class="panel-head">
+          <span>CHK</span>
+          <div>
+            <p class="kicker">Timing tower</p>
+            <h2>Ask only when it is earned</h2>
+          </div>
+        </div>
+        <ol id="timingList" class="timing-list"></ol>
+        <div class="safety-card">
+          <strong>Safety boundary</strong>
+          <p>Draft/export only. Verify job quality, customer mood, platform policy, and owner approval before sending by phone, email, SMS, or CRM.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="preview-table panel" aria-label="Review request queue">
+      <div class="panel-head wide">
+        <span>Q</span>
+        <div>
+          <p class="kicker">Queue preview</p>
+          <h2>Who gets asked, when, and why</h2>
+        </div>
+      </div>
+      <div id="queueRows" class="queue-rows"></div>
+    </section>
+
+    <section class="export-dock panel" aria-label="Export review request packet">
+      <div class="panel-head wide">
+        <span>EX</span>
+        <div>
+          <p class="kicker">Export/share</p>
+          <h2>Review ask packet</h2>
+        </div>
+        <div class="header-actions">
+          <button id="copyMarkdown" type="button">Copy markdown</button>
+          <button id="downloadJson" type="button">Download JSON</button>
+          <button id="downloadCsv" type="button">Download CSV</button>
+        </div>
+      </div>
+      <textarea id="exportText" readonly aria-label="Generated review request packet"></textarea>
+    </section>
+    <!-- DAY07_TECH_BRIEF_BRIDGE_START -->
+    <section id="tech-brief-bridge" class="panel tech-brief-bridge" aria-label="Technician Brief Builder bridge">
+      <div class="tech-brief-head">
+        <span>TB</span>
+        <div>
+          <p class="kicker">Day 7 enhancement</p>
+          <h2>Technician Brief Builder bridge</h2>
+        </div>
+        <div class="tech-brief-actions">
+          <button id="copyTechBriefBridge" type="button">Copy tech brief</button>
+          <button id="downloadTechBriefBridge" type="button">Download JSON</button>
+        </div>
+      </div>
+      <p class="tech-brief-intro">Convert this app's current plan into a dispatch-ready technician handoff: customer context, job issue, parts/checks, risk notes, and no-promise boundary.</p>
+      <div id="techBriefCards" class="tech-brief-cards" aria-live="polite"></div>
+      <textarea id="techBriefText" readonly aria-label="Generated Technician Brief Builder bridge"></textarea>
+    </section>
+    <!-- DAY07_TECH_BRIEF_BRIDGE_END -->
+
+    <!-- DAY08_SERVICE_TRIAGE_BRIDGE_START -->
+    <section id="service-triage-bridge" class="panel service-triage-bridge" aria-label="Service Triage Flow bridge">
+      <div class="service-triage-head">
+        <span>ST</span>
+        <div>
+          <p class="kicker">Day 8 enhancement</p>
+          <h2>Service Triage Flow bridge</h2>
+        </div>
+        <div class="service-triage-actions">
+          <button id="copyServiceTriageBridge" type="button">Copy triage packet</button>
+          <button id="downloadServiceTriageBridge" type="button">Download JSON</button>
+        </div>
+      </div>
+      <p class="service-triage-intro">Convert this app's current work into a safe caller/admin triage starter: caller context, urgency cue, route, next questions, and no-promise boundary.</p>
+      <div id="serviceTriageCards" class="service-triage-cards" aria-live="polite"></div>
+      <textarea id="serviceTriageText" readonly aria-label="Generated Service Triage Flow bridge"></textarea>
+    </section>
+    <!-- DAY08_SERVICE_TRIAGE_BRIDGE_END -->
+
+    <!-- DAY09_WARM_OUTREACH_BRIDGE_START -->
+    <section id="warm-outreach-bridge" class="warm-outreach-bridge panel" aria-label="Warm Outreach Lab bridge">
+      <div class="warm-outreach-head">
+        <span>WO</span>
+        <div>
+          <p class="kicker">Day 9 enhancement</p>
+          <h2>Warm Outreach Lab bridge</h2>
+        </div>
+        <div class="warm-outreach-actions">
+          <button id="copyWarmOutreachBridge" type="button">Copy outreach starter</button>
+          <button id="downloadWarmOutreachBridge" type="button">Download JSON</button>
+        </div>
+      </div>
+      <p class="warm-outreach-intro">Turn this app's current output into a human-reviewed warm outreach starter: prospect context, noticed issue, proof cue, constraint, and draft-only ask.</p>
+      <div id="warmOutreachCards" class="warm-outreach-cards" aria-live="polite"></div>
+      <textarea id="warmOutreachText" readonly aria-label="Generated Warm Outreach Lab bridge"></textarea>
+    </section>
+    <!-- DAY09_WARM_OUTREACH_BRIDGE_END -->
+
+    <!-- DAY10_PILOT_PRICING_BRIDGE_START -->
+    <section id="pilot-pricing-bridge" class="pilot-pricing-bridge panel" aria-label="Pilot Pricing Calculator bridge">
+      <div class="pilot-pricing-head">
+        <span>$$</span>
+        <div>
+          <p class="kicker">Day 10 enhancement</p>
+          <h2>Pilot Pricing Calculator bridge</h2>
+        </div>
+        <div class="pilot-pricing-actions">
+          <button id="copyPilotPricingBridge" type="button">Copy pricing memo</button>
+          <button id="downloadPilotPricingBridge" type="button">Download JSON</button>
+        </div>
+      </div>
+      <p class="pilot-pricing-intro">Convert this app's current output into a draft pilot-pricing note: recovered value cue, effort/risk proxy, proof-window boundary, and a review-ready range.</p>
+      <div id="pilotPricingCards" class="pilot-pricing-cards" aria-live="polite"></div>
+      <textarea id="pilotPricingText" readonly aria-label="Generated Pilot Pricing Calculator bridge"></textarea>
+    </section>
+    <!-- DAY10_PILOT_PRICING_BRIDGE_END -->
+
+    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START -->
+    <section id="local-biz-snapshot-bridge" class="local-biz-snapshot-bridge panel" aria-label="Local Biz Snapshot bridge">
+      <div class="local-biz-snapshot-head">
+        <span>LB</span>
+        <div>
+          <p class="kicker">Day 11 enhancement</p>
+          <h2>Local Biz Snapshot bridge</h2>
+        </div>
+        <div class="local-biz-snapshot-actions">
+          <button id="copyLocalBizSnapshotBridge" type="button">Copy snapshot</button>
+          <button id="downloadLocalBizSnapshotBridge" type="button">Download JSON</button>
+        </div>
+      </div>
+      <p class="local-biz-snapshot-intro">Turn this app's current output into a prospect dossier: business profile cue, likely lead leaks, first wedge, and human-reviewed next step.</p>
+      <div id="localBizSnapshotCards" class="local-biz-snapshot-cards" aria-live="polite"></div>
+      <textarea id="localBizSnapshotText" readonly aria-label="Generated Local Biz Snapshot bridge"></textarea>
+    </section>
+    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END -->
+
+    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START -->
+    <section id="script-rehearsal-room-bridge" class="script-rehearsal-room-bridge panel" aria-label="Script Rehearsal Room bridge">
+      <div class="script-rehearsal-head">
+        <span>SR</span>
+        <div>
+          <p class="kicker">Day 12 enhancement</p>
+          <h2>Script Rehearsal Room bridge</h2>
+        </div>
+        <div class="script-rehearsal-actions">
+          <button id="copyScriptRehearsalBridge" type="button">Copy run sheet</button>
+          <button id="downloadScriptRehearsalBridge" type="button">Download JSON</button>
+        </div>
+      </div>
+      <p class="script-rehearsal-intro">Turn this app's current output into a call-practice run sheet: objective, opening line, discovery prompts, objection card, and human-review boundary.</p>
+      <div id="scriptRehearsalCards" class="script-rehearsal-cards" aria-live="polite"></div>
+      <textarea id="scriptRehearsalText" readonly aria-label="Generated Script Rehearsal Room bridge"></textarea>
+    </section>
+    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END -->
+
+  
+    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
+      <div class="panel-title">
+        <span>PV</span>
+        <div>
+          <p class="kicker">Day 13 enhancement</p>
+          <h2>Proof Vault bridge</h2>
+        </div>
+      </div>
+      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
+      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
+      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
+      <div class="proof-vault-actions">
+        <button id="copyProofVault" type="button">Copy proof card</button>
+        <button id="downloadProofVault" type="button">Download proof JSON</button>
+      </div>
+    </section>
+  
+    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
+      <div class="panel-title">
+        <span>SOP</span>
+        <div>
+          <p class="kicker">Day 14 enhancement</p>
+          <h2>SOP Builder bridge</h2>
+        </div>
+      </div>
+      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
+      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
+      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
+      <div class="sop-builder-actions">
+        <button id="copySopBuilder" type="button">Copy SOP draft</button>
+        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
+      </div>
+    </section>
+  
+    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
+      <div class="panel-title">
+        <span>Cash</span>
+        <div>
+          <p class="kicker">Day 15 enhancement</p>
+          <h2>Daily Cash Board bridge</h2>
+        </div>
+      </div>
+      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
+      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
+      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
+      <div class="daily-cash-board-actions">
+        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
+        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
+      </div>
+    </section>
+  
+    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
+      <div class="panel-title">
+        <span>Meet</span>
+        <div>
+          <p class="kicker">Day 16 enhancement</p>
+          <h2>Meeting Follow-up Kit bridge</h2>
+        </div>
+      </div>
+      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
+      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
+      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
+      <div class="meeting-followup-kit-actions">
+        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
+        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
+      </div>
+    </section>
+  
+    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
+      <div class="panel-title">
+        <span>Keys</span>
+        <div>
+          <p class="kicker">Day 17 enhancement</p>
+          <h2>Credential Handoff Checklist bridge</h2>
+        </div>
+      </div>
+      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
+      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
+      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
+      <div class="credential-handoff-actions">
+        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
+        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
+      </div>
+    </section>
+  
+    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
+      <div class="panel-title">
+        <span>Mix</span>
+        <div>
+          <p class="kicker">Day 18 enhancement</p>
+          <h2>Content Repurposer bridge</h2>
+        </div>
+      </div>
+      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
+      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
+      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
+      <div class="content-repurposer-actions">
+        <button id="copyContentRepurposer" type="button">Copy content packet</button>
+        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
+      </div>
+    </section>
+  
+    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
+      <div class="panel-title">
+        <span>Map</span>
+        <div>
+          <p class="kicker">Day 19 enhancement</p>
+          <h2>Home Service Route Planner bridge</h2>
+        </div>
+      </div>
+      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
+      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
+      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
+      <div class="home-service-route-actions">
+        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
+        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      </div>
+    </section>
+  
+    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
+      <div class="panel-title">
+        <span>Form</span>
+        <div>
+          <p class="kicker">Day 20 enhancement</p>
+          <h2>Intake Form Builder bridge</h2>
+        </div>
+      </div>
+      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
+      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
+      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
+      <div class="intake-form-actions">
+        <button id="copyIntakeForm" type="button">Copy intake spec</button>
+        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
