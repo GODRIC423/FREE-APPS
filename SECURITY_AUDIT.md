@@ -8,6 +8,46 @@ Generated: 2026-06-28T18:29:00.719635+00:00
 - Copied only static browser source files per app: `index.html`, `styles.css`, `app.js`.
 - Excluded runtime LAN token files, phone-preview servers, build scripts, caches, databases, `.env`, and local launchers.
 
+## Gallery update (2026-06-29)
+
+A visual landing gallery and per-app preview screenshots were added from the "Free App Download
+Studio" export. The following studio assets were reviewed and **deliberately excluded** to keep the
+public export clean and consistent with this posture:
+
+- `support.js` — the `dc-runtime` authoring framework (depends on bundled React/ReactDOM globals; not a standalone page).
+- `App Studio.dc.html` / `.thumbnail` — internal design-canvas authoring source, not a renderable static page.
+- `_ds/` Adeul design-system bundle (`_ds_bundle.js`, `readme.md`, token CSS) — its readme documents **private** founder repositories and internal surfaces (CRM, cockpit app); not suitable for a public export.
+
+Instead, `index.html` was re-implemented as a self-contained gallery (vanilla HTML/CSS/JS, no
+frameworks, no external CDNs, no network calls) that reproduces the studio look. Secret/credential,
+local-path, and external-URL scans of all added assets returned clean (the only `token`/`secret`
+string matches were the design-token CSS filenames and app copy such as "without ever writing the
+secret into the app").
+
+### Added files
+
+- `index.html` — sha256-prefix `46c951595bd4de77`
+- `screenshots/day-01.jpg` — sha256-prefix `6390ceb5d68f85ab`
+- `screenshots/day-02.jpg` — sha256-prefix `c1aeedb7e34a96f1`
+- `screenshots/day-03.jpg` — sha256-prefix `94a2ec16070f9c9d`
+- `screenshots/day-04.jpg` — sha256-prefix `3e748cc6589c46b3`
+- `screenshots/day-05.jpg` — sha256-prefix `10c2b6d7ac40a8bb`
+- `screenshots/day-06.jpg` — sha256-prefix `1e4e84feb0e0f95f`
+- `screenshots/day-07.jpg` — sha256-prefix `5b0ff6988676023f`
+- `screenshots/day-08.jpg` — sha256-prefix `0308587a041f7a5f`
+- `screenshots/day-09.jpg` — sha256-prefix `154404f6289648d0`
+- `screenshots/day-10.jpg` — sha256-prefix `6676cd89e2621470`
+- `screenshots/day-11.jpg` — sha256-prefix `530a6f654dd101dd`
+- `screenshots/day-12.jpg` — sha256-prefix `7dda6ac4c69ba76b`
+- `screenshots/day-13.jpg` — sha256-prefix `972dc4a2261d4305`
+- `screenshots/day-14.jpg` — sha256-prefix `6325dfa56f1a63a7`
+- `screenshots/day-15.jpg` — sha256-prefix `db19f7a360f0bfff`
+- `screenshots/day-16.jpg` — sha256-prefix `2f2cd58e4b7d1bd4`
+- `screenshots/day-17.jpg` — sha256-prefix `0a866cf3ec5daf26`
+- `screenshots/day-18.jpg` — sha256-prefix `40e1bceb50e23fea`
+- `screenshots/day-19.jpg` — sha256-prefix `af73ae5eb8038083`
+- `screenshots/day-20.jpg` — sha256-prefix `84dd0fbbc671762a`
+
 ## Summary
 
 - Apps processed: 20

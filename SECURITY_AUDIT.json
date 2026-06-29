@@ -381,5 +381,39 @@
         "apps/day-20-intake-form-builder/app.js": "4035f0d33916fc6c"
       }
     }
-  ]
+  ],
+  "gallery_update": {
+    "date": "2026-06-29",
+    "summary": "Added a self-contained visual gallery (index.html) and 20 per-app preview screenshots from the Free App Download Studio export.",
+    "excluded": [
+      "support.js (dc-runtime authoring framework; requires bundled React/ReactDOM)",
+      "App Studio.dc.html / .thumbnail (internal design-canvas authoring source, not a standalone page)",
+      "_ds/ Adeul design-system bundle (readme documents private founder repositories and internal surfaces)"
+    ],
+    "scans": "secret/credential, local-path, IP, and external-URL scans of added assets returned clean",
+    "notes": "index.html re-implemented as vanilla HTML/CSS/JS with no frameworks, no external CDNs, and no network calls.",
+    "added_files": {
+      "index.html": "46c951595bd4de77",
+      "screenshots/day-01.jpg": "6390ceb5d68f85ab",
+      "screenshots/day-02.jpg": "c1aeedb7e34a96f1",
+      "screenshots/day-03.jpg": "94a2ec16070f9c9d",
+      "screenshots/day-04.jpg": "3e748cc6589c46b3",
+      "screenshots/day-05.jpg": "10c2b6d7ac40a8bb",
+      "screenshots/day-06.jpg": "1e4e84feb0e0f95f",
+      "screenshots/day-07.jpg": "5b0ff6988676023f",
+      "screenshots/day-08.jpg": "0308587a041f7a5f",
+      "screenshots/day-09.jpg": "154404f6289648d0",
+      "screenshots/day-10.jpg": "6676cd89e2621470",
+      "screenshots/day-11.jpg": "530a6f654dd101dd",
+      "screenshots/day-12.jpg": "7dda6ac4c69ba76b",
+      "screenshots/day-13.jpg": "972dc4a2261d4305",
+      "screenshots/day-14.jpg": "6325dfa56f1a63a7",
+      "screenshots/day-15.jpg": "db19f7a360f0bfff",
+      "screenshots/day-16.jpg": "2f2cd58e4b7d1bd4",
+      "screenshots/day-17.jpg": "0a866cf3ec5daf26",
+      "screenshots/day-18.jpg": "40e1bceb50e23fea",
+      "screenshots/day-19.jpg": "af73ae5eb8038083",
+      "screenshots/day-20.jpg": "84dd0fbbc671762a"
+    }
+  }
 }

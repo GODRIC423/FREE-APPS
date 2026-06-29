@@ -2,13 +2,25 @@
 
 A curated public export of local-first static app prototypes.
 
+**Browse the gallery:** open [`index.html`](index.html) — a self-contained App Studio landing page
+with search, category filters, and click-to-preview screenshots of every app. No build step, no
+dependencies, no network calls.
+
 ## Security posture
 
 - Only static app files are included: `index.html`, `styles.css`, `app.js`, and generated public READMEs.
+- The landing gallery (`index.html`) and the `screenshots/` previews are also fully static: vanilla
+  HTML/CSS/JS with no frameworks, no external CDNs, and no network requests.
 - Runtime token files, LAN phone-preview bridges, build scripts, caches, databases, `.env` files, and local machine paths are excluded.
+- The studio export's internal authoring runtime (`dc-runtime` / `support.js`), the `*.dc.html`
+  source, and the Adeul design-system bundle (which documents private founder repositories) are
+  **deliberately excluded** — the public gallery is a clean re-implementation of the same look.
 - These apps do not include backend code, shell access, GitHub credentials, private-repo access, CRM/webhook writes, payment/account integrations, or external CDNs.
 
 ## Apps
+
+Each app links to its source folder; preview images live in [`screenshots/`](screenshots/) and are
+shown in the [gallery](index.html).
 
 - [Day 01 — Pilot Forge](apps/day-01-pilot-forge/)
 - [Day 02 — Lead Leak Radar](apps/day-02-lead-leak-radar/)

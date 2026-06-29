@@ -1,21 +1,342 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>FREE APPS</title><style>body{font-family:system-ui;margin:2rem;line-height:1.5;max-width:920px} a{color:#0b63ce} .note{padding:1rem;background:#f5f7fb;border:1px solid #d9e1f2;border-radius:12px}</style></head><body><h1>FREE APPS</h1><p class="note">Static local-first browser apps. No backend, no API keys, no private-repo access, no account-writing integrations.</p><ol><li><a href="apps/day-01-pilot-forge/index.html">Day 01 — Pilot Forge</a></li>
-<li><a href="apps/day-02-lead-leak-radar/index.html">Day 02 — Lead Leak Radar</a></li>
-<li><a href="apps/day-03-owner-report-studio/index.html">Day 03 — Owner Report Studio</a></li>
-<li><a href="apps/day-04-approval-gate-desk/index.html">Day 04 — Approval Gate Desk</a></li>
-<li><a href="apps/day-05-quote-chase-board/index.html">Day 05 — Quote Chase Board</a></li>
-<li><a href="apps/day-06-review-request-composer/index.html">Day 06 — Review Request Composer</a></li>
-<li><a href="apps/day-07-technician-brief-builder/index.html">Day 07 — Technician Brief Builder</a></li>
-<li><a href="apps/day-08-service-triage-flow/index.html">Day 08 — Service Triage Flow</a></li>
-<li><a href="apps/day-09-warm-outreach-lab/index.html">Day 09 — Warm Outreach Lab</a></li>
-<li><a href="apps/day-10-pilot-pricing-calculator/index.html">Day 10 — Pilot Pricing Calculator</a></li>
-<li><a href="apps/day-11-local-biz-snapshot/index.html">Day 11 — Local Biz Snapshot</a></li>
-<li><a href="apps/day-12-script-rehearsal-room/index.html">Day 12 — Script Rehearsal Room</a></li>
-<li><a href="apps/day-13-proof-vault/index.html">Day 13 — Proof Vault</a></li>
-<li><a href="apps/day-14-sop-builder/index.html">Day 14 — SOP Builder</a></li>
-<li><a href="apps/day-15-daily-cash-board/index.html">Day 15 — Daily Cash Board</a></li>
-<li><a href="apps/day-16-meeting-follow-up-kit/index.html">Day 16 — Meeting Follow-up Kit</a></li>
-<li><a href="apps/day-17-credential-handoff-checklist/index.html">Day 17 — Credential Handoff Checklist</a></li>
-<li><a href="apps/day-18-content-repurposer/index.html">Day 18 — Content Repurposer</a></li>
-<li><a href="apps/day-19-home-service-route-planner/index.html">Day 19 — Home Service Route Planner</a></li>
-<li><a href="apps/day-20-intake-form-builder/index.html">Day 20 — Intake Form Builder</a></li></ol></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FREE APPS — App Studio</title>
+<meta name="description" content="Twenty small local-first browser tools that each do one useful job — and never leave your browser. No accounts, no cloud, no sign-ups.">
+<style>
+  :root{
+    --bg:#05070b; --ink:#eaf6ff; --ink-2:#aebfce; --muted:#8aa0b6; --faint:#5d7388;
+    --cyan:#48f5db; --blue:#69b9ff; --violet:#9d86ff; --amber:#ffce8a; --gold:#b8884a; --rose:#ff8a8a;
+    --line:rgba(120,180,220,.16); --line-2:rgba(120,180,220,.32);
+    --mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  img{max-width:100%}
+  input::placeholder{color:var(--faint)}
+  ::selection{background:rgba(72,245,219,.28)}
+  @keyframes ai-rise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+  @keyframes ai-fade{from{opacity:0}to{opacity:1}}
+
+  .bg-glow{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(900px 600px at 12% -8%, rgba(72,245,219,.14), transparent 60%),
+               radial-gradient(900px 620px at 92% -4%, rgba(157,134,255,.16), transparent 58%),
+               radial-gradient(700px 500px at 50% 120%, rgba(105,185,255,.08), transparent 60%)}
+  .wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:0 24px 96px}
+
+  header.topbar{display:flex;align-items:center;justify-content:space-between;padding:26px 2px 0;gap:16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mark{width:34px;height:34px;border-radius:10px;background:radial-gradient(circle at 30% 25%, var(--cyan), var(--violet));box-shadow:0 0 22px -4px rgba(72,245,219,.7)}
+  .brand strong{font-weight:600;font-size:15px;letter-spacing:-.01em}
+  .brand .kicker{font-size:11px;color:var(--muted);font-family:var(--mono);letter-spacing:.12em;text-transform:uppercase}
+  .topbar a.site{font-size:13px;color:var(--muted);text-decoration:none;font-family:var(--mono);letter-spacing:.08em}
+  .topbar a.site:hover{color:var(--ink-2)}
+
+  .hero{display:flex;flex-wrap:wrap;gap:40px;align-items:center;padding:54px 2px 40px}
+  .hero .copy{flex:1 1 440px;min-width:300px}
+  .hero .eyebrow{margin:0 0 18px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.3em;font-size:11.5px;color:var(--cyan)}
+  .hero h1{margin:0;font-size:clamp(34px,4.6vw,56px);line-height:1.04;font-weight:600;letter-spacing:-.03em;text-wrap:balance}
+  .hero p.lede{margin:22px 0 0;max-width:520px;font-size:17px;line-height:1.6;color:var(--ink-2)}
+  .stats{display:flex;gap:10px;margin-top:28px;flex-wrap:wrap}
+  .stat{display:flex;align-items:baseline;gap:8px;padding:9px 16px;border-radius:999px;background:rgba(255,255,255,.035);border:1px solid var(--line)}
+  .stat strong{font-size:16px}
+  .stat span{font-size:13px;color:var(--muted)}
+
+  .spotlight{flex:1 1 380px;min-width:300px;animation:ai-rise .6s cubic-bezier(.2,.8,.2,1) both}
+  .spotlight .card{position:relative;border-radius:20px;overflow:hidden;border:1px solid rgba(120,180,220,.18);background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));box-shadow:0 1px 0 rgba(255,255,255,.07) inset, 0 36px 70px -34px rgba(0,0,0,.85)}
+  .spotlight .badge{position:absolute;top:14px;left:14px;z-index:2;display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(5,7,11,.6);backdrop-filter:blur(6px);border:1px solid rgba(184,136,74,.4)}
+  .spotlight .badge .dot{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  .spotlight .badge span.t{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:#e8d3b4}
+  .spotlight img{display:block;width:100%;height:248px;object-fit:cover;object-position:top center;border-bottom:1px solid rgba(120,180,220,.14)}
+  .spotlight .body{padding:18px 20px 20px}
+  .spotlight .body .day{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .spotlight .body h3{margin:6px 0 0;font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .spotlight .body p{margin:8px 0 16px;font-size:14px;line-height:1.5;color:var(--ink-2)}
+
+  .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;padding:11px 20px;border-radius:999px;background:linear-gradient(135deg,var(--cyan),var(--blue));color:#042b2b;font-weight:600;font-size:14px;text-decoration:none;border:none;cursor:pointer;box-shadow:0 10px 28px -10px rgba(72,245,219,.7);font-family:inherit}
+  .btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap;padding:10px 18px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(120,180,220,.22);color:var(--ink);font-weight:500;font-size:13.5px;text-decoration:none;cursor:pointer;font-family:inherit}
+  .btn-ghost:hover{border-color:var(--line-2)}
+
+  .controls{position:sticky;top:0;z-index:5;margin:8px -24px 0;padding:16px 24px;background:linear-gradient(180deg,rgba(5,7,11,.92),rgba(5,7,11,.66));backdrop-filter:blur(14px);border-bottom:1px solid rgba(120,180,220,.12)}
+  .controls .row{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .search{display:flex;align-items:center;gap:10px;flex:1 1 240px;max-width:340px;padding:11px 16px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(120,180,220,.18)}
+  .search span{color:var(--faint);font-size:14px;font-family:var(--mono)}
+  .search input{flex:1;background:transparent;border:none;outline:none;color:var(--ink);font-size:14px;font-family:inherit}
+  .count{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .chip{padding:8px 15px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;color:var(--muted);background:rgba(255,255,255,.03);border:1px solid rgba(120,180,220,.16)}
+  .chip .n{opacity:.6;margin-left:7px;font-size:11.5px}
+  .chip[aria-pressed="true"]{font-weight:600;color:#c9fff4;background:rgba(72,245,219,.13);border:1px solid rgba(72,245,219,.5);box-shadow:0 6px 18px -8px rgba(72,245,219,.5)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;margin-top:28px}
+  .appcard{display:flex;flex-direction:column;overflow:hidden;border-radius:18px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 22px 44px -30px rgba(0,0,0,.8);transition:transform .15s cubic-bezier(.2,.8,.2,1), box-shadow .15s, border-color .15s}
+  .appcard:hover{transform:translateY(-2px);border-color:var(--line-2);box-shadow:0 1px 0 rgba(255,255,255,.07) inset, 0 30px 56px -28px rgba(0,0,0,.9)}
+  .appcard .thumb{position:relative;width:100%;height:188px;flex:0 0 auto;border-bottom:1px solid rgba(120,180,220,.12)}
+  .appcard .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center}
+  .appcard .thumb .preview-btn{position:absolute;inset:0;width:100%;height:100%;border:none;background:linear-gradient(180deg,rgba(5,7,11,0),rgba(5,7,11,.05));cursor:pointer;opacity:0;transition:opacity .15s;display:flex;align-items:center;justify-content:center}
+  .appcard .thumb:hover .preview-btn,.appcard .thumb .preview-btn:focus-visible{opacity:1}
+  .appcard .thumb .preview-btn span{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;background:rgba(5,7,11,.72);backdrop-filter:blur(6px);border:1px solid rgba(120,180,220,.3);color:var(--ink);font-size:13px;font-weight:500}
+  .appcard .body{flex:1;min-width:0;padding:18px 20px 20px;display:flex;flex-direction:column}
+  .appcard .meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .appcard .meta .day{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#7d93a8}
+  .appcard .meta .cat{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase}
+  .appcard .meta .cat .d{width:6px;height:6px;border-radius:50%}
+  .appcard h3{margin:8px 0 0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .appcard p{margin:7px 0 0;font-size:14px;line-height:1.5;color:var(--ink-2)}
+  .appcard .actions{display:flex;gap:9px;margin-top:16px}
+
+  .empty{text-align:center;padding:70px 20px;color:#7d93a8}
+  .empty p{font-family:var(--mono);letter-spacing:.16em;text-transform:uppercase;font-size:12px}
+
+  footer.foot{margin-top:64px;padding-top:24px;border-top:1px solid rgba(120,180,220,.12);display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:center;color:var(--faint);font-size:13px}
+  footer.foot .tag{font-family:var(--mono);letter-spacing:.1em}
+
+  .lightbox{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:28px;background:rgba(2,4,8,.82);backdrop-filter:blur(10px);animation:ai-fade .2s ease both}
+  .lightbox .panel{position:relative;width:min(840px,100%);max-height:90vh;overflow:hidden;display:flex;flex-direction:column;border-radius:20px;border:1px solid rgba(120,180,220,.2);background:linear-gradient(180deg,rgba(20,26,34,.96),rgba(10,14,20,.96));box-shadow:0 40px 90px -30px rgba(0,0,0,.9);animation:ai-rise .3s cubic-bezier(.2,.8,.2,1) both}
+  .lightbox .close{position:absolute;top:14px;right:14px;z-index:2;width:34px;height:34px;border-radius:50%;background:rgba(5,7,11,.65);backdrop-filter:blur(6px);border:1px solid rgba(120,180,220,.28);color:var(--ink);font-size:16px;cursor:pointer;line-height:1}
+  .lightbox .shot{overflow:auto;background:var(--bg)}
+  .lightbox .shot img{display:block;width:100%;object-fit:contain}
+  .lightbox .info{padding:20px 24px 22px;border-top:1px solid rgba(120,180,220,.14);display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+  .lightbox .info .day{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase}
+  .lightbox .info h3{margin:5px 0 0;font-size:21px;font-weight:600;letter-spacing:-.01em}
+  .lightbox .info p{margin:6px 0 0;font-size:14px;line-height:1.5;color:var(--ink-2);max-width:460px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="wrap">
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <strong>Adeul Free Apps</strong><br>
+        <span class="kicker">App Studio</span>
+      </div>
+    </div>
+    <a class="site" href="https://adeulintelligence.com" target="_blank" rel="noopener">adeulintelligence.com →</a>
+  </header>
+
+  <section class="hero">
+    <div class="copy">
+      <p class="eyebrow">Local-first · No accounts · No cloud</p>
+      <h1>Twenty small tools that each do one useful job — and never leave your browser.</h1>
+      <p class="lede">Free apps for service businesses: catch missed leads, draft owner reports, chase quotes, ship clean handoffs. Open one in a click, or preview it first. Nothing is sent, stored, or signed up for.</p>
+      <div class="stats">
+        <div class="stat"><strong style="color:var(--cyan)">20</strong><span>apps</span></div>
+        <div class="stat"><strong style="color:var(--blue)">0</strong><span>sign-ups</span></div>
+        <div class="stat"><strong style="color:var(--violet)">100%</strong><span>in your browser</span></div>
+      </div>
+    </div>
+    <div class="spotlight">
+      <div class="card">
+        <div class="badge"><span class="dot"></span><span class="t">Start here</span></div>
+        <img src="screenshots/day-01.jpg" alt="Pilot Forge preview">
+        <div class="body">
+          <p class="day">Day 01 · Planning</p>
+          <h3>Pilot Forge</h3>
+          <p>Turn a rough idea into a scoped pilot, ROI case, and action board — in one sitting.</p>
+          <a class="btn-primary" href="apps/day-01-pilot-forge/index.html">Launch Pilot Forge →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="controls">
+    <div class="row">
+      <label class="search">
+        <span aria-hidden="true">⌕</span>
+        <input id="search" type="search" placeholder="Search the studio…" aria-label="Search apps" autocomplete="off">
+      </label>
+      <span class="count" id="count">20 / 20 apps</span>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="Filter by category"></div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" hidden><p>No apps match that search</p></div>
+
+  <footer class="foot">
+    <span>Built by Adeul Intelligence — AI that turns bottlenecks into working systems.</span>
+    <span class="tag">Production over demos.</span>
+  </footer>
+</div>
+
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="App preview">
+  <div class="panel">
+    <button class="close" id="lb-close" title="Close" aria-label="Close preview">✕</button>
+    <div class="shot"><img id="lb-img" src="" alt=""></div>
+    <div class="info">
+      <div>
+        <p class="day" id="lb-day"></p>
+        <h3 id="lb-name"></h3>
+        <p id="lb-tagline"></p>
+      </div>
+      <a class="btn-primary" id="lb-launch" href="#" target="_blank" rel="noopener">Launch app →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var ACCENT = {
+    Leads:"#69B9FF", Outreach:"#9D86FF", Operations:"#48F5DB",
+    Reports:"#FFCE8A", Planning:"#B8884A", Content:"#FF8A8A"
+  };
+  var RAW = [
+    ["01","day-01-pilot-forge","Pilot Forge","Turn a rough idea into a scoped pilot, ROI case, and action board — in one sitting.","Planning"],
+    ["02","day-02-lead-leak-radar","Lead Leak Radar","A leak map for missed calls, dead forms, and slow follow-up — not another pilot card.","Leads"],
+    ["03","day-03-owner-report-studio","Owner Report Studio","Broadcast the owner's day without touching a customer system.","Reports"],
+    ["04","day-04-approval-gate-desk","Approval Gate Desk","Stamp drafts, not customers — with a clean approve / reject / revise log.","Operations"],
+    ["05","day-05-quote-chase-board","Quote Chase Board","Move every estimate until it's won, paused, or deliberately closed.","Leads"],
+    ["06","day-06-review-request-composer","Review Request Composer","Ask for the review at the right moment, in a human voice.","Outreach"],
+    ["07","day-07-technician-brief-builder","Technician Brief Builder","Turn messy job notes into a field-ready dispatch brief.","Operations"],
+    ["08","day-08-service-triage-flow","Service Triage Flow","Route a messy service call without guessing.","Operations"],
+    ["09","day-09-warm-outreach-lab","Warm Outreach Lab","Mix outreach that sounds human before anyone sends it.","Outreach"],
+    ["10","day-10-pilot-pricing-calculator","Pilot Pricing Calculator","Price the pilot from proof, risk, and recovered value.","Planning"],
+    ["11","day-11-local-biz-snapshot","Local Biz Snapshot","Turn a local business into a one-page wedge dossier.","Leads"],
+    ["12","day-12-script-rehearsal-room","Script Rehearsal Room","Practice the call before the real owner hears it.","Outreach"],
+    ["13","day-13-proof-vault","Proof Vault","Lock useful proof into one local case-study vault.","Reports"],
+    ["14","day-14-sop-builder","SOP Builder","Turn repeated work into a clean operating line.","Operations"],
+    ["15","day-15-daily-cash-board","Daily Cash Board","Run the day from cash-first moves, not vague busyness.","Reports"],
+    ["16","day-16-meeting-follow-up-kit","Meeting Follow-up Kit","Leave every meeting with the email, tasks, and decisions already sorted.","Outreach"],
+    ["17","day-17-credential-handoff-checklist","Credential Handoff Checklist","Move access safely without ever writing the secret into the app.","Operations"],
+    ["18","day-18-content-repurposer","Content Repurposer","Turn one build log into a whole publishing packet.","Content"],
+    ["19","day-19-home-service-route-planner","Home Service Route Planner","Build a practical service route before the vans roll.","Operations"],
+    ["20","day-20-intake-form-builder","Intake Form Builder","Draft a service intake form without turning it into a monster.","Operations"]
+  ];
+  var CATALOG = RAW.map(function (r) {
+    return {
+      day:r[0], dir:r[1], name:r[2], tagline:r[3], cat:r[4],
+      accent:ACCENT[r[4]] || "#69B9FF",
+      img:"screenshots/day-" + r[0] + ".jpg",
+      url:"apps/" + r[1] + "/index.html"
+    };
+  });
+  var ORDER = ["All","Leads","Outreach","Operations","Reports","Planning","Content"];
+
+  var state = { query:"", cat:"All" };
+  var grid = document.getElementById("grid");
+  var empty = document.getElementById("empty");
+  var count = document.getElementById("count");
+  var chipsEl = document.getElementById("chips");
+  var searchEl = document.getElementById("search");
+
+  function el(tag, attrs, html) {
+    var n = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  function filtered() {
+    var q = state.query.trim().toLowerCase();
+    return CATALOG.filter(function (a) {
+      var catOk = state.cat === "All" || a.cat === state.cat;
+      var qOk = !q || (a.name + " " + a.tagline + " " + a.cat).toLowerCase().indexOf(q) !== -1;
+      return catOk && qOk;
+    });
+  }
+
+  function renderChips() {
+    chipsEl.innerHTML = "";
+    ORDER.forEach(function (c) {
+      var n = c === "All" ? CATALOG.length : CATALOG.filter(function (a) { return a.cat === c; }).length;
+      var b = el("button", {
+        "class":"chip", "type":"button",
+        "aria-pressed": String(state.cat === c)
+      }, esc(c) + '<span class="n">' + n + "</span>");
+      b.addEventListener("click", function () { state.cat = c; render(); });
+      chipsEl.appendChild(b);
+    });
+  }
+
+  function card(a) {
+    var c = el("article", { "class":"appcard" });
+    c.innerHTML =
+      '<div class="thumb">' +
+        '<img src="' + a.img + '" alt="' + esc(a.name) + ' preview" loading="lazy">' +
+        '<button class="preview-btn" type="button" title="Preview ' + esc(a.name) + '" aria-label="Preview ' + esc(a.name) + '">' +
+          '<span>⤢ Preview</span>' +
+        '</button>' +
+      '</div>' +
+      '<div class="body">' +
+        '<div class="meta">' +
+          '<span class="day">Day ' + esc(a.day) + '</span>' +
+          '<span class="cat" style="color:' + a.accent + '"><span class="d" style="background:' + a.accent + '"></span>' + esc(a.cat) + '</span>' +
+        '</div>' +
+        '<h3>' + esc(a.name) + '</h3>' +
+        '<p>' + esc(a.tagline) + '</p>' +
+        '<div class="actions">' +
+          '<button class="btn-primary preview-btn-2" type="button">⤢ Preview</button>' +
+          '<a class="btn-ghost" href="' + a.url + '">Launch →</a>' +
+        '</div>' +
+      '</div>';
+    c.querySelector(".preview-btn").addEventListener("click", function () { openPreview(a); });
+    c.querySelector(".preview-btn-2").addEventListener("click", function () { openPreview(a); });
+    return c;
+  }
+
+  function render() {
+    renderChips();
+    var list = filtered();
+    grid.innerHTML = "";
+    list.forEach(function (a) { grid.appendChild(card(a)); });
+    count.textContent = list.length + " / " + CATALOG.length + " apps";
+    empty.hidden = list.length !== 0;
+    grid.hidden = list.length === 0;
+  }
+
+  // Preview lightbox
+  var lb = document.getElementById("lightbox");
+  var lbImg = document.getElementById("lb-img");
+  var lbDay = document.getElementById("lb-day");
+  var lbName = document.getElementById("lb-name");
+  var lbTag = document.getElementById("lb-tagline");
+  var lbLaunch = document.getElementById("lb-launch");
+  var lbClose = document.getElementById("lb-close");
+  var lastFocus = null;
+
+  function openPreview(a) {
+    lastFocus = document.activeElement;
+    lbImg.src = a.img;
+    lbImg.alt = a.name + " preview";
+    lbDay.textContent = "Day " + a.day + " · " + a.cat;
+    lbDay.style.color = a.accent;
+    lbName.textContent = a.name;
+    lbTag.textContent = a.tagline;
+    lbLaunch.href = a.url;
+    lb.hidden = false;
+    document.body.style.overflow = "hidden";
+    lbClose.focus();
+  }
+  function closePreview() {
+    lb.hidden = true;
+    document.body.style.overflow = "";
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  lbClose.addEventListener("click", closePreview);
+  lb.addEventListener("click", function (e) { if (e.target === lb) closePreview(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !lb.hidden) closePreview();
+  });
+  searchEl.addEventListener("input", function (e) { state.query = e.target.value; render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>
