@@ -1,255 +1,263 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Script Rehearsal Room — practice sales and discovery calls with a talk-track builder, objection flashcards, a paced rehearsal timer, and scored session history. Local-first, no tracking." />
   <title>Script Rehearsal Room</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="rehearsal-room">
-    <header class="stage-hero" aria-label="Script Rehearsal Room header">
-      <div class="marquee" aria-hidden="true"><span>SR</span><i></i><b></b></div>
-      <div class="hero-copy">
-        <p class="kicker">Day 12 · Script Rehearsal Room</p>
-        <h1>Practice the call before the real owner hears it.</h1>
-        <p class="lede">A local-first rehearsal stage for sales and discovery calls: cue cards, objection drills, talk/listen timing, notes, and a draft-only call plan export. No calls, sends, recordings, CRM writes, or cloud services.</p>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">SR</span>
+      <div class="brand-copy">
+        <strong>Script Rehearsal Room</strong>
+        <span>Practice the call before it counts</span>
       </div>
-      <div class="hero-actions">
-        <button id="loadDemo" type="button">Load demo</button>
-        <button id="clearRoom" type="button">Clear room</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </div>
-    </header>
+    </div>
+    <nav class="header-actions" aria-label="App actions">
+      <a class="btn btn-ghost back-link" href="../../index.html">&#8592; All apps</a>
+      <button id="loadDemoBtn" class="btn" type="button">Load demo</button>
+      <button id="helpBtn" class="btn" type="button">How to use</button>
+      <button id="themeToggle" class="btn btn-icon" type="button" aria-label="Toggle color theme">&#9789;</button>
+    </nav>
+  </header>
 
-    <section class="control-rail" aria-label="Rehearsal metrics">
-      <article><span>Scene</span><strong id="metricScene">Discovery</strong></article>
-      <article><span>Readiness</span><strong id="metricReadiness">-</strong></article>
-      <article><span>Talk / listen</span><strong id="metricRatio">-</strong></article>
-      <article><span>Guardrail</span><strong>Draft only</strong></article>
-    </section>
-
-    <section class="stage-grid">
-      <section class="panel director-board" aria-label="Director board inputs">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Director board</p><h2>Set the scene</h2></div></div>
-        <div class="form-grid">
-          <label>Call type
-            <select id="callType">
-              <option>Discovery</option>
-              <option>Follow-up</option>
-              <option>Pilot pitch</option>
-              <option>Objection handling</option>
-              <option>Renewal / save</option>
-            </select>
-          </label>
-          <label>Prospect / customer
-            <input id="prospect" maxlength="90" />
-          </label>
-          <label>Primary objective
-            <input id="objective" maxlength="130" />
-          </label>
-          <label>Proof or context to mention
-            <textarea id="proof" maxlength="800"></textarea>
-          </label>
-          <label>Boundary / promise to avoid
-            <textarea id="boundary" maxlength="700"></textarea>
-          </label>
-        </div>
-      </section>
-
-      <section class="panel cue-stack" aria-label="Cue cards">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Cue stack</p><h2>Opening + discovery prompts</h2></div></div>
-        <div class="teleprompter" aria-live="polite">
-          <div class="cue-label">Opening line</div>
-          <p id="openingLine">-</p>
-        </div>
-        <div id="questionCards" class="question-cards"></div>
-        <label>Add one must-ask question
-          <input id="customQuestion" maxlength="140" />
-        </label>
-      </section>
-
-      <aside class="panel objection-deck" aria-label="Objection cards">
-        <div class="panel-title"><span>03</span><div><p class="kicker">Objection deck</p><h2>Drill the hard part</h2></div></div>
-        <div id="objectionCards" class="objection-cards"></div>
-        <button id="drawObjection" type="button">Draw objection</button>
-        <div class="drawn-card" id="drawnCard" aria-live="polite">Draw a card to rehearse a response.</div>
-      </aside>
+  <main class="shell">
+    <section class="stat-strip" aria-label="Live rehearsal metrics" aria-live="polite">
+      <article class="stat">
+        <strong id="statReadiness">0</strong>
+        <span id="statReadinessSub">Readiness /100</span>
+      </article>
+      <article class="stat">
+        <strong id="statScript">0:00</strong>
+        <span id="statScriptSub">Script estimate</span>
+      </article>
+      <article class="stat">
+        <strong id="statMastery">&#8212;</strong>
+        <span id="statMasterySub">Objection mastery</span>
+      </article>
+      <article class="stat">
+        <strong id="statSessions">0</strong>
+        <span id="statSessionsSub">Sessions logged</span>
+      </article>
     </section>
 
-    <section class="rehearsal-console" aria-label="Practice console">
-      <div class="practice-timer">
-        <div class="timer-face"><span id="timerDisplay">06:00</span><small id="timerLabel">target run</small></div>
-        <div class="timer-actions">
-          <button id="startTimer" type="button">Start</button>
-          <button id="resetTimer" type="button">Reset</button>
-        </div>
-      </div>
-      <div class="slider-board">
-        <label>Talk time target <output id="talkOut">40%</output>
-          <input id="talkTarget" type="range" min="20" max="70" step="5" />
-        </label>
-        <label>Confidence <output id="confidenceOut">6</output>
-          <input id="confidence" type="range" min="1" max="10" />
-        </label>
-        <label>Objection readiness <output id="objectionOut">5</output>
-          <input id="objectionReadiness" type="range" min="1" max="10" />
-        </label>
-      </div>
-      <label class="notes-pad">Rehearsal notes
-        <textarea id="notes" maxlength="1000"></textarea>
-      </label>
-    </section>
+    <div class="layout">
+      <div class="col col-main">
+        <section class="panel" aria-labelledby="sceneTitle">
+          <div class="panel-head">
+            <h2 id="sceneTitle">1 &#183; Set the scene</h2>
+            <p class="panel-sub">Who you're calling, what one thing you want, and the promise you must not make.</p>
+          </div>
+          <div class="form-grid">
+            <label class="field">Call type
+              <select id="callType">
+                <option>Discovery</option>
+                <option>Follow-up</option>
+                <option>Pilot pitch</option>
+                <option>Demo</option>
+                <option>Objection clinic</option>
+                <option>Renewal / save</option>
+              </select>
+            </label>
+            <label class="field">Prospect / customer <span class="req" aria-hidden="true">*</span>
+              <input id="prospect" maxlength="120" placeholder="e.g. Dana — owner, North Star Plumbing" aria-required="true" />
+            </label>
+            <label class="field wide">Primary objective <span class="req" aria-hidden="true">*</span>
+              <input id="objective" maxlength="160" placeholder="One outcome, e.g. earn a two-week pilot" aria-required="true" />
+            </label>
+            <label class="field wide">Boundary / promise to avoid
+              <textarea id="boundary" rows="2" maxlength="600" placeholder="e.g. No revenue promises. Nothing customer-facing without owner approval."></textarea>
+            </label>
+          </div>
+        </section>
 
-    <section class="run-sheet" aria-label="Generated run sheet">
-      <div class="run-sheet-head"><p class="kicker">Run sheet</p><h2 id="runSheetTitle">-</h2><span id="readinessStamp">Draft</span></div>
-      <div id="runSheetCards" class="run-sheet-cards" aria-live="polite"></div>
-      <textarea id="exportText" readonly aria-label="Generated rehearsal run sheet"></textarea>
-    </section>
+        <section class="panel" aria-labelledby="scriptTitle">
+          <div class="panel-head">
+            <h2 id="scriptTitle">2 &#183; Build the talk track</h2>
+            <p class="panel-sub">Sections hold short cards: a cue plus the exact line you'll say. <span id="scriptTotals" class="totals-badge">No cards yet</span></p>
+          </div>
+          <div id="sectionsList" class="sections-list"></div>
+          <button id="addSectionBtn" class="btn" type="button">+ Add section</button>
+        </section>
 
-    <section class="export-dock" aria-label="Export rehearsal plan">
-      <button id="copyMarkdown" type="button">Copy run sheet</button>
-      <button id="downloadJson" type="button">Download JSON</button>
-      <button id="downloadCsv" type="button">Download CSV</button>
-    </section>
-  
-    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
-      <div class="panel-title">
-        <span>PV</span>
-        <div>
-          <p class="kicker">Day 13 enhancement</p>
-          <h2>Proof Vault bridge</h2>
-        </div>
+        <section class="panel" aria-labelledby="exportTitle">
+          <div class="panel-head">
+            <h2 id="exportTitle">5 &#183; Export &amp; handoff</h2>
+            <p class="panel-sub">Everything exported is a draft for human review — this app never calls, records, sends, or writes to a CRM.</p>
+          </div>
+          <div class="export-actions">
+            <button id="copyMdBtn" class="btn-primary" type="button">Copy run sheet (Markdown)</button>
+            <button id="printBtn" class="btn" type="button">Print run sheet</button>
+            <button id="downloadJsonBtn" class="btn" type="button">Download JSON</button>
+            <button id="downloadCsvBtn" class="btn" type="button">Sessions CSV</button>
+            <label class="btn file-btn">Import JSON
+              <input id="importFile" type="file" accept="application/json,.json" />
+            </label>
+            <button id="resetBtn" class="btn-danger" type="button">Reset all</button>
+          </div>
+          <details class="preview-wrap">
+            <summary>Preview the Markdown run sheet</summary>
+            <pre id="mdPreview" aria-label="Markdown run sheet preview"></pre>
+          </details>
+        </section>
       </div>
-      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
-      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
-      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
-      <div class="proof-vault-actions">
-        <button id="copyProofVault" type="button">Copy proof card</button>
-        <button id="downloadProofVault" type="button">Download proof JSON</button>
+
+      <div class="col col-side">
+        <section class="panel" aria-labelledby="drillTitle">
+          <div class="panel-head">
+            <h2 id="drillTitle">3 &#183; Objection drill</h2>
+            <p class="panel-sub">Flip the card, say your response out loud, then grade yourself honestly.</p>
+          </div>
+
+          <div id="drillEmpty" class="empty">
+            <p>The deck is empty.</p>
+            <p class="dim">Add the pushback you fear below, or load the demo deck.</p>
+          </div>
+
+          <div id="drillStage">
+            <button id="drillCard" class="flashcard" type="button" aria-label="Objection flashcard. Press Enter or Space to flip.">
+              <span class="flashcard-inner">
+                <span class="face front">
+                  <span class="face-label">Objection</span>
+                  <span id="drillFront" class="face-text"></span>
+                  <span class="face-hint">Tap to reveal your response</span>
+                </span>
+                <span class="face back">
+                  <span class="face-label">Your response</span>
+                  <span id="drillBack" class="face-text"></span>
+                </span>
+              </span>
+            </button>
+            <div class="drill-controls">
+              <span id="drillProgress" class="drill-progress" aria-live="polite">Card 1 of 1</span>
+              <div class="drill-buttons">
+                <button id="drillShuffleBtn" class="btn btn-ghost" type="button">Shuffle</button>
+                <button id="drillSkipBtn" class="btn btn-ghost" type="button">Skip</button>
+                <button id="drillNeedsBtn" class="btn btn-warn" type="button" disabled>Needs work</button>
+                <button id="drillNailedBtn" class="btn-primary" type="button" disabled>Nailed it</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="deck-add">
+            <label class="field">New objection
+              <input id="objFront" maxlength="160" placeholder="e.g. &quot;We don't have budget for this.&quot;" />
+            </label>
+            <label class="field">Your best response
+              <textarea id="objBack" rows="2" maxlength="400" placeholder="What you'll say when it lands."></textarea>
+            </label>
+            <button id="addObjectionBtn" class="btn" type="button">Add to deck</button>
+          </div>
+          <div id="objectionList" class="deck-list"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="timerTitle">
+          <div class="panel-head">
+            <h2 id="timerTitle">4 &#183; Rehearse against the clock</h2>
+            <p class="panel-sub">Speak the script out loud. Pace hints track which section you should be wrapping.</p>
+          </div>
+          <div class="timer-row">
+            <div class="timer-face">
+              <span id="timerDisplay">0:00</span>
+              <div class="timer-bar" role="presentation"><div id="timerFill"></div></div>
+            </div>
+            <label class="field target-field">Target (min)
+              <input id="targetMinutes" type="number" min="1" max="30" step="1" value="6" inputmode="numeric" />
+            </label>
+          </div>
+          <p id="paceNote" class="pace-note">No script yet — estimates appear as you add cards.</p>
+          <p id="paceHint" class="pace-hint" aria-live="polite"></p>
+          <div class="timer-actions">
+            <button id="timerToggleBtn" class="btn-primary" type="button">Start</button>
+            <button id="timerResetBtn" class="btn" type="button">Reset</button>
+            <button id="timerFinishBtn" class="btn" type="button" disabled>Finish &amp; score</button>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="historyTitle">
+          <div class="panel-head heading-with-action">
+            <div>
+              <h2 id="historyTitle">Session history</h2>
+              <p class="panel-sub">Self-scores over time. The trend matters more than any one number.</p>
+            </div>
+            <button id="logSessionBtn" class="btn btn-ghost" type="button">Log session</button>
+          </div>
+          <div id="sessionList" class="session-list"></div>
+        </section>
       </div>
-    </section>
-  
-    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
-      <div class="panel-title">
-        <span>SOP</span>
-        <div>
-          <p class="kicker">Day 14 enhancement</p>
-          <h2>SOP Builder bridge</h2>
-        </div>
-      </div>
-      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
-      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
-      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
-      <div class="sop-builder-actions">
-        <button id="copySopBuilder" type="button">Copy SOP draft</button>
-        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
-      </div>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    </div>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <span>Local-first &#183; No accounts &#183; No tracking — data stays in this browser</span>
+    <a href="../../index.html">&#8592; All apps</a>
+  </footer>
+
+  <article id="printSheet" aria-hidden="true"></article>
+
+  <dialog id="helpDialog" class="modal" aria-labelledby="helpTitle">
+    <div class="modal-body">
+      <h2 id="helpTitle">How to use Script Rehearsal Room</h2>
+      <ol class="help-steps">
+        <li><strong>Set the scene.</strong> Pick the call type, name the prospect, your single objective, and the promise you must not make.</li>
+        <li><strong>Build the talk track.</strong> Each section holds short cards — a cue plus the exact line you'll say. Word counts convert to speaking time at 140 wpm.</li>
+        <li><strong>Stock the objection deck.</strong> Add every piece of pushback you fear, with your best response on the back.</li>
+        <li><strong>Drill flashcards.</strong> Flip a card to reveal your response, say it out loud, then grade yourself: <em>Nailed it</em> or <em>Needs work</em>. Shuffle to fight memorised order.</li>
+        <li><strong>Rehearse against the clock.</strong> Set a target length, press Start, and speak the script. Pace hints tell you which section you should be wrapping.</li>
+        <li><strong>Finish &amp; score.</strong> End the run, rate Opening / Discovery / Objections / Close, and jot a note. Sessions build your trend history.</li>
+        <li><strong>Export &amp; hand off.</strong> Copy the Markdown run sheet, print it, or download JSON/CSV. Everything is a draft for human review.</li>
+      </ol>
+      <h3>Keyboard shortcuts</h3>
+      <table class="shortcuts">
+        <tbody>
+          <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+          <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Copy the run sheet as Markdown</td></tr>
+          <tr><td><kbd>Enter</kbd> / <kbd>Space</kbd></td><td>Flip the focused flashcard</td></tr>
+        </tbody>
+      </table>
+      <div class="dialog-actions">
+        <button id="helpCloseBtn" class="btn-primary" type="button">Got it</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="scoreDialog" class="modal" aria-labelledby="scoreTitle">
+    <form id="scoreForm" class="modal-body">
+      <h2 id="scoreTitle">Score this rehearsal</h2>
+      <p class="dim">Timed run: <span id="scoreDuration">&#8212;</span>. Be honest — the trend matters more than the number.</p>
+      <div class="score-grid">
+        <label class="field">Opening <output id="score_opening_out">3</output>
+          <input type="range" id="score_opening" min="1" max="5" step="1" value="3" />
+        </label>
+        <label class="field">Discovery <output id="score_discovery_out">3</output>
+          <input type="range" id="score_discovery" min="1" max="5" step="1" value="3" />
+        </label>
+        <label class="field">Objections <output id="score_objections_out">3</output>
+          <input type="range" id="score_objections" min="1" max="5" step="1" value="3" />
+        </label>
+        <label class="field">Close <output id="score_close_out">3</output>
+          <input type="range" id="score_close" min="1" max="5" step="1" value="3" />
+        </label>
+      </div>
+      <label class="field">Notes
+        <textarea id="sessionNotes" rows="3" maxlength="400" placeholder="What worked? What stumbled?"></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button id="scoreCancelBtn" class="btn" type="button">Cancel</button>
+        <button class="btn-primary" type="submit">Save session</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button id="toastAction" class="btn btn-ghost" type="button" hidden>Undo</button>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>

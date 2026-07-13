@@ -1,368 +1,968 @@
-const STORAGE_KEY = 'meeting-follow-up-kit-v1';
-const now = new Date();
-const isoDate = offset => { const d = new Date(now); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); };
-const newId = () => 'mfu-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
-const taskTypes = { email:'Email draft', ops:'Ops task', risk:'Risk check', decision:'Decision confirm' };
-const demoState = {
-  theme: 'dark',
-  selectedTaskId: null,
-  meetingTitle: 'Missed-call recovery pilot kickoff',
-  meetingDate: isoDate(0),
-  attendees: 'Brian, Owner, Office Manager',
-  sender: 'Brian',
-  meetingGoal: 'Agree on the proof window, the first lane to test, and what needs owner approval before customer-facing action.',
-  meetingNotes: 'Owner wants a narrow missed-call follow-up pilot. Start with after-hours calls and stale web forms. Proof metric is recovered booked calls over 14 days. Need office manager to confirm phone handoff rules. No customer-facing texts until owner approves exact draft. Potential risk: existing booking link may be stale.',
-  decisions: ['Use a 14-day proof window', 'Start with after-hours missed calls and stale web forms'],
-  risks: ['Owner must approve exact customer-facing copy', 'Booking link ownership is unclear'],
-  questions: ['Who owns the current booking link?', 'What is the baseline missed-call volume?'],
-  tasks: [
-    { id:newId(), title:'Draft owner recap and approval ask', owner:'Brian', due:isoDate(0), type:'email', done:false },
-    { id:newId(), title:'Confirm phone handoff rules with office manager', owner:'Office Manager', due:isoDate(1), type:'ops', done:false },
-    { id:newId(), title:'Check booking link status before any send', owner:'Ops desk', due:isoDate(1), type:'risk', done:false },
-    { id:newId(), title:'Confirm baseline missed-call volume', owner:'Owner', due:isoDate(2), type:'decision', done:false }
-  ]
-};
-function clone(value){ return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
-function clean(value){ return String(value || '').replace(/\s+/g, ' ').trim(); }
-function esc(value){ return String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-function normalizeTask(task){ return { id:task.id || newId(), title:clean(task.title) || 'Untitled follow-up action', owner:clean(task.owner) || 'Owner', due:task.due || isoDate(1), type:taskTypes[task.type] ? task.type : 'ops', done:Boolean(task.done) }; }
-function normalize(value){ const next = { ...clone(demoState), ...(value || {}) }; next.theme = next.theme === 'light' ? 'light' : 'dark'; next.decisions = Array.isArray(value?.decisions) ? value.decisions.map(clean).filter(Boolean) : clone(demoState.decisions); next.risks = Array.isArray(value?.risks) ? value.risks.map(clean).filter(Boolean) : clone(demoState.risks); next.questions = Array.isArray(value?.questions) ? value.questions.map(clean).filter(Boolean) : clone(demoState.questions); next.tasks = Array.isArray(value?.tasks) && value.tasks.length ? value.tasks.map(normalizeTask) : clone(demoState.tasks); return next; }
-function loadState(){ try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) return normalize(JSON.parse(raw)); } catch {} return clone(demoState); }
-let state = loadState();
-const $ = id => document.getElementById(id);
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function applyTheme(){ document.documentElement.dataset.theme = state.theme; $('themeToggle').textContent = state.theme === 'light' ? 'Dark' : 'Light'; $('themeToggle').setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false'); }
-function syncInputs(){ $('meetingTitle').value = state.meetingTitle || ''; $('meetingDate').value = state.meetingDate || isoDate(0); $('attendees').value = state.attendees || ''; $('sender').value = state.sender || ''; $('meetingGoal').value = state.meetingGoal || ''; $('meetingNotes').value = state.meetingNotes || ''; }
-function readInputs(){ state.meetingTitle = clean($('meetingTitle').value); state.meetingDate = $('meetingDate').value || isoDate(0); state.attendees = clean($('attendees').value); state.sender = clean($('sender').value); state.meetingGoal = clean($('meetingGoal').value); state.meetingNotes = $('meetingNotes').value.trim(); }
-function nextTask(){ return [...state.tasks].filter(t => !t.done).sort((a,b) => (a.due || '').localeCompare(b.due || ''))[0]; }
-function metrics(){ return { tasks: state.tasks.filter(t => !t.done).length, decisions: state.decisions.length, risks: state.risks.length, next: nextTask() }; }
-function addChip(kind, value){ const v = clean(value); if(!v) return; state[kind].push(v); renderAll(); toast('Added'); }
-function removeChip(kind, idx){ state[kind].splice(idx, 1); renderAll(); }
-function setTaskEditor(task){ state.selectedTaskId = task?.id || null; $('taskTitle').value = task?.title || ''; $('taskOwner').value = task?.owner || ''; $('taskDue').value = task?.due || isoDate(1); $('taskType').value = task?.type || 'ops'; saveState(); }
-function readTaskEditor(){ return normalizeTask({ id:state.selectedTaskId || newId(), title:$('taskTitle').value, owner:$('taskOwner').value, due:$('taskDue').value, type:$('taskType').value, done:false }); }
-function saveTask(){ const task = readTaskEditor(); const idx = state.tasks.findIndex(t => t.id === task.id); if(idx >= 0) state.tasks[idx] = { ...state.tasks[idx], ...task }; else state.tasks.push(task); state.selectedTaskId = task.id; renderAll(); toast('Action saved'); }
-function toggleTask(id){ const task = state.tasks.find(t => t.id === id); if(task) task.done = !task.done; renderAll(); }
-function removeTask(id){ state.tasks = state.tasks.filter(t => t.id !== id); if(state.selectedTaskId === id) setTaskEditor(null); renderAll(); }
-function emailDraft(){ const openTasks = state.tasks.filter(t => !t.done); return [`Subject: Follow-up from ${state.meetingTitle || 'today\'s meeting'}`,'',`Hi all,`,'',`Quick recap from ${state.meetingTitle || 'the meeting'} on ${state.meetingDate || isoDate(0)}.`,'',state.meetingGoal ? `Goal: ${state.meetingGoal}` : 'Goal: confirm the next safe step and owners.','',state.decisions.length ? `Decisions:\n${state.decisions.map(v => `- ${v}`).join('\n')}` : 'Decisions:\n- No confirmed decisions captured yet.', '', openTasks.length ? `Actions:\n${openTasks.map(t => `- ${t.title} — owner: ${t.owner}; due: ${t.due}; type: ${taskTypes[t.type]}`).join('\n')}` : 'Actions:\n- No open actions captured yet.', '', state.risks.length ? `Risks / blockers:\n${state.risks.map(v => `- ${v}`).join('\n')}` : 'Risks / blockers:\n- None captured yet.', '', state.questions.length ? `Open questions:\n${state.questions.map(v => `- ${v}`).join('\n')}` : '', '', 'Safety note: this is a draft generated locally. Please review before sending or taking any customer-facing action.', '', `— ${state.sender || 'Sender'}`].filter(Boolean).join('\n'); }
-function markdownPacket(){ const m = metrics(); return ['# Meeting Follow-up Kit recap','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local follow-up packet. Human approval is required before sending emails, calendar invites, CRM updates, customer messages, billing, or public changes.','',`## Meeting`, `Title: ${state.meetingTitle || 'Untitled meeting'}`, `Date: ${state.meetingDate || isoDate(0)}`, `Attendees: ${state.attendees || 'Not listed'}`, `Goal: ${state.meetingGoal || 'Not captured'}`,'',`## Metrics`, `Open tasks: ${m.tasks}`, `Decisions: ${m.decisions}`, `Risks: ${m.risks}`, `Next due: ${m.next ? `${m.next.title} (${m.next.due})` : 'None'}`,'',`## Decisions`, ...(state.decisions.length ? state.decisions.map(v => `- ${v}`) : ['- None captured yet.']),'',`## Actions`, ...(state.tasks.map(t => `- [${t.done ? 'x':' '}] ${t.title} — ${t.owner} — ${t.due} — ${taskTypes[t.type]}`)),'',`## Risks`, ...(state.risks.length ? state.risks.map(v => `- ${v}`) : ['- None captured yet.']),'',`## Questions`, ...(state.questions.length ? state.questions.map(v => `- ${v}`) : ['- None captured yet.']),'',`## Draft follow-up email`,'```',emailDraft(),'```','',`## Source notes`,state.meetingNotes || 'No notes captured.'].join('\n'); }
-function csv(){ const rows = [['title','owner','due','type','done']]; state.tasks.forEach(t => rows.push([t.title,t.owner,t.due,taskTypes[t.type],t.done ? 'yes':'no'])); return rows.map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); }
-function ics(){ const lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Hermes//Meeting Follow-up Kit//EN']; state.tasks.filter(t => !t.done).forEach(t => { const date = (t.due || isoDate(1)).replaceAll('-',''); lines.push('BEGIN:VTODO',`UID:${t.id}@meeting-follow-up-kit`,`DTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').split('.')[0]}Z`,`DUE;VALUE=DATE:${date}`,`SUMMARY:${t.title.replace(/\n/g,' ')}`,`DESCRIPTION:Owner: ${t.owner}; Type: ${taskTypes[t.type]}`,'END:VTODO'); }); lines.push('END:VCALENDAR'); return lines.join('\r\n'); }
-function renderMetrics(){ const m = metrics(); $('metricTasks').textContent = String(m.tasks); $('metricDecisions').textContent = String(m.decisions); $('metricRisks').textContent = String(m.risks); $('metricNext').textContent = m.next ? m.next.due : 'None'; }
-function renderChips(){ const draw = (kind, id) => { $(id).innerHTML = state[kind].map((v, idx) => `<span class="chip">${esc(v)} <button type="button" aria-label="Remove" data-chip-kind="${kind}" data-chip-idx="${idx}">×</button></span>`).join('') || '<p class="empty">None yet.</p>'; }; draw('decisions','decisionChips'); draw('risks','riskChips'); draw('questions','questionChips'); document.querySelectorAll('[data-chip-kind]').forEach(btn => btn.addEventListener('click', () => removeChip(btn.dataset.chipKind, Number(btn.dataset.chipIdx)))); }
-function renderTasks(){ const lanes = ['email','ops','risk','decision']; $('taskBoard').innerHTML = lanes.map(type => `<section class="task-lane"><h3>${esc(taskTypes[type])}</h3>${state.tasks.filter(t => t.type === type).map(t => `<article class="task-card"><h3>${esc(t.title)}</h3><p>${esc(t.done ? 'Done' : 'Open')}</p><div class="task-meta"><span>${esc(t.owner)}</span><span>Due ${esc(t.due)}</span></div><div class="card-actions"><button type="button" data-edit="${esc(t.id)}">Edit</button><button type="button" class="secondary" data-toggle="${esc(t.id)}">${t.done ? 'Reopen':'Done'}</button><button type="button" class="secondary" data-remove="${esc(t.id)}">Remove</button></div></article>`).join('') || '<p class="empty">No actions.</p>'}</section>`).join(''); document.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => setTaskEditor(state.tasks.find(t => t.id === btn.dataset.edit)))); document.querySelectorAll('[data-toggle]').forEach(btn => btn.addEventListener('click', () => toggleTask(btn.dataset.toggle))); document.querySelectorAll('[data-remove]').forEach(btn => btn.addEventListener('click', () => removeTask(btn.dataset.remove))); }
-function renderOutputs(){ $('emailOutput').value = emailDraft(); $('markdownOutput').value = markdownPacket(); }
-function renderAll(){ readInputs(); applyTheme(); renderMetrics(); renderChips(); renderTasks(); renderOutputs(); saveState(); }
-function download(name, text, type){ const blob = new Blob([text], {type}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); }
-function toast(msg){ const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(window.__toastTimer); window.__toastTimer = setTimeout(() => el.classList.remove('show'), 1700); }
-function copy(text){ navigator.clipboard?.writeText(text).then(() => toast('Copied')).catch(() => { $('markdownOutput').focus(); $('markdownOutput').select(); toast('Select/copy manually'); }); }
-['meetingTitle','meetingDate','attendees','sender','meetingGoal','meetingNotes'].forEach(id => $(id).addEventListener('input', renderAll));
-$('themeToggle').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; renderAll(); toast(`${state.theme === 'light' ? 'Light':'Dark'} mode saved`); });
-$('loadDemo').addEventListener('click', () => { state = normalize(demoState); syncInputs(); setTaskEditor(state.tasks[0]); renderAll(); toast('Demo meeting loaded'); });
-$('addCommitment').addEventListener('click', () => { setTaskEditor({ title:'New follow-up action', owner:'Owner', due:isoDate(1), type:'ops', done:false }); });
-$('addDecision').addEventListener('click', () => { addChip('decisions', $('decisionInput').value); $('decisionInput').value = ''; });
-$('addRisk').addEventListener('click', () => { addChip('risks', $('riskInput').value); $('riskInput').value = ''; });
-$('addQuestion').addEventListener('click', () => { addChip('questions', $('questionInput').value); $('questionInput').value = ''; });
-$('saveTask').addEventListener('click', saveTask);
-$('clearTask').addEventListener('click', () => { setTaskEditor(null); toast('Task editor cleared'); });
-$('copyMarkdown').addEventListener('click', () => copy($('markdownOutput').value));
-$('downloadJson').addEventListener('click', () => download('meeting-follow-up-kit.json', JSON.stringify({ ...state, emailDraft:emailDraft(), markdown:markdownPacket(), generatedAt:new Date().toISOString(), safety:'draft-only; human review before sends/calendar/CRM/customer actions' }, null, 2), 'application/json'));
-$('downloadCsv').addEventListener('click', () => download('meeting-follow-up-tasks.csv', csv(), 'text/csv'));
-$('downloadIcs').addEventListener('click', () => download('meeting-follow-up-reminders.ics', ics(), 'text/calendar'));
-syncInputs();
-setTaskEditor(state.tasks[0]);
-renderAll();
-
-// Day 17 Credential Handoff Checklist bridge: no-secret access custody handoff.
+/* Meeting Follow-up Kit — remake
+   Turn rough meeting notes into a structured recap: decisions, action items
+   with owners/dates/status, risks, open questions, and a tone-adjustable
+   follow-up email draft. Local-first; nothing is ever sent anywhere. */
 (() => {
-  const section = document.getElementById('credential-handoff-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('credentialHandoffCards');
-  const textEl = document.getElementById('credentialHandoffText');
-  const copyBtn = document.getElementById('copyCredentialHandoff');
-  const downloadBtn = document.getElementById('downloadCredentialHandoff');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCred = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'credentialHandoffText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1400);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1400);
+  'use strict';
+
+  /* ============================== Constants ============================== */
+
+  const STORAGE_KEY = 'fable-remake:day-16-meeting-follow-up-kit:v1';
+  const STATUSES = ['open', 'doing', 'done'];
+  const STATUS_LABELS = { open: 'Open', doing: 'In progress', done: 'Done' };
+  const TONES = ['friendly', 'professional', 'direct'];
+  const KIND_LABELS = { decision: 'Decision', action: 'Action', risk: 'Risk', question: 'Question' };
+  const KIND_TARGET = { decision: 'decisions', risk: 'risks', question: 'questions' };
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const uid = () => 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+  const clean = (v) => String(v ?? '').replace(/\s+/g, ' ').trim();
+  const pad2 = (n) => String(n).padStart(2, '0');
+  const toISO = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const todayISO = () => toISO(new Date());
+  const isoPlus = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return toISO(d); };
+  const parseISO = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const fmtShort = (iso) => { const d = parseISO(iso); return d ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : ''; };
+  const fmtLong = (iso) => { const d = parseISO(iso); return d ? d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }) : ''; };
+  const isDateStr = (v) => /^\d{4}-\d{2}-\d{2}$/.test(v || '');
+
+  /* ============================ State helpers ============================ */
+
+  function defaultState() {
+    return { version: 1, theme: null, seenGuide: false, activeMeetingId: null, meetings: [] };
   }
-  function findSystems(text){
-    const lower = text.toLowerCase();
-    const systems = [];
-    if(/email|inbox|follow-up|message|sms/.test(lower)) systems.push('Messaging/inbox access');
-    if(/calendar|booking|appointment|schedule/.test(lower)) systems.push('Booking/calendar access');
-    if(/crm|lead|customer|quote|invoice/.test(lower)) systems.push('CRM/customer record access');
-    if(/api|webhook|integration|automation/.test(lower)) systems.push('API/integration access');
-    if(/payment|billing|price|cash|invoice/.test(lower)) systems.push('Billing/payment portal access');
-    return systems.length ? [...new Set(systems)].slice(0,4) : ['App/operator access'];
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const systems = findSystems(output);
-    const riskWords = (output.match(/secret|token|key|password|customer|payment|send|crm|public|invoice|api/gi) || []).length;
+
+  function blankMeeting() {
     return {
-      sourceApp: name,
-      systems,
-      primaryOwner: 'Assign primary owner',
-      backupOwner: 'Assign backup owner',
-      storageReference: 'Password-manager item label only — do not paste secret value',
-      requiredChecks: ['MFA confirmed', 'Least privilege confirmed', 'Storage reference verified', 'Revocation path documented', 'Rotation date set', 'No raw secret stored in this app/export'],
-      revocationPlan: systems.map(system => `${system}: document where to remove user/key and who can execute it.`),
-      riskFlags: riskWords ? [`${riskWords} sensitive/action words detected in source output; review access boundaries.`] : ['No obvious credential/action keywords detected; still review manually.'],
-      approvalBoundary: 'Human approval required before sharing, rotating, revoking, sending, CRM changes, billing actions, customer contact, or public changes.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
+      id: uid(), title: '', date: todayISO(), attendees: '', sender: '', goal: '',
+      notes: '', tone: 'professional',
+      decisions: [], risks: [], questions: [], actions: [],
+      createdAt: Date.now(), updatedAt: Date.now()
     };
   }
-  function markdown(packet){
-    return ['# Credential Handoff Checklist bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: metadata only. Do not paste raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment details. Use an encrypted/password-manager workflow for the actual secret handoff.','',`## Source`,packet.sourceApp,'',`## Systems/access surfaces`,...packet.systems.map(v => `- ${v}`),'',`## Owners`,`- Primary owner: ${packet.primaryOwner}`,`- Backup owner: ${packet.backupOwner}`,'',`## Storage reference`,packet.storageReference,'',`## Required checks`,...packet.requiredChecks.map(v => `- [ ] ${v}`),'',`## Revocation plan`,...packet.revocationPlan.map(v => `- ${v}`),'',`## Risk flags`,...packet.riskFlags.map(v => `- ${v}`),'',`## Approval boundary`,packet.approvalBoundary,'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Surfaces', String(packet.systems.length)],
-      ['Secret values', 'Never store'],
-      ['Checks', String(packet.requiredChecks.length)],
-      ['Revoke path', 'Required'],
-      ['Approval', 'Human gate']
-    ].map(([label, value]) => `<article><span>${escCred(label)}</span><strong>${escCred(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-credential-handoff-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 18 Content Repurposer bridge: draft-only publishing packet.
-(() => {
-  const section = document.getElementById('content-repurposer-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('contentRepurposerCards');
-  const textEl = document.getElementById('contentRepurposerText');
-  const copyBtn = document.getElementById('copyContentRepurposer');
-  const downloadBtn = document.getElementById('downloadContentRepurposer');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escContent = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'contentRepurposerText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
+  const normItem = (it) => {
+    if (typeof it === 'string') return { id: uid(), text: clean(it) };
+    if (!it || typeof it !== 'object') return { id: uid(), text: '' };
+    return { id: typeof it.id === 'string' ? it.id : uid(), text: clean(it.text) };
+  };
+  const normItems = (list) => (Array.isArray(list) ? list.map(normItem).filter((i) => i.text) : []);
+
+  function normAction(a) {
+    if (typeof a === 'string') a = { title: a };
+    if (!a || typeof a !== 'object') a = {};
+    return {
+      id: typeof a.id === 'string' ? a.id : uid(),
+      title: clean(a.title),
+      owner: clean(a.owner),
+      due: isDateStr(a.due) ? a.due : '',
+      status: STATUSES.includes(a.status) ? a.status : (a.done === true ? 'done' : 'open')
+    };
   }
-  function splitSentences(text){ return clean(text).split(/(?<=[.!?])\s+/).filter(Boolean); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const sentences = splitSentences(output);
-    const proofWords = (output.match(/verified|smoke|browser|export|recording|phone|proof|score|ready|passed/gi) || []).length;
-    const publicWords = (output.match(/send|publish|post|customer|client|public|crm|payment|billing/gi) || []).length;
-    const title = `${name}: turn the output into a proof-ready draft`.slice(0, 92);
-    const chapters = [
-      ['00:00', 'What the app produced', sentences[0] || `${name} generated a useful local-first output.`],
-      ['00:35', 'Core workflow', sentences[1] || 'Walk through the main inputs, decisions, and generated packet.'],
-      ['01:15', 'Proof and caveats', sentences[2] || 'Show verification, limits, and human-review boundaries.'],
-      ['02:00', 'Next action', 'Copy/export the draft packet, then review before public use.']
+
+  function normMeeting(m) {
+    if (!m || typeof m !== 'object') m = {};
+    return {
+      id: typeof m.id === 'string' ? m.id : uid(),
+      title: String(m.title ?? ''),
+      date: isDateStr(m.date) ? m.date : todayISO(),
+      attendees: String(m.attendees ?? ''),
+      sender: String(m.sender ?? ''),
+      goal: String(m.goal ?? ''),
+      notes: String(m.notes ?? ''),
+      tone: TONES.includes(m.tone) ? m.tone : 'professional',
+      decisions: normItems(m.decisions),
+      risks: normItems(m.risks),
+      questions: normItems(m.questions),
+      actions: Array.isArray(m.actions) ? m.actions.map(normAction).filter((a) => a.title) : [],
+      createdAt: Number(m.createdAt) || Date.now(),
+      updatedAt: Number(m.updatedAt) || Date.now()
+    };
+  }
+
+  function normalize(raw) {
+    const st = defaultState();
+    if (!raw || typeof raw !== 'object') return st;
+    st.theme = raw.theme === 'light' ? 'light' : raw.theme === 'dark' ? 'dark' : null;
+    st.seenGuide = Boolean(raw.seenGuide);
+    if (Array.isArray(raw.meetings)) {
+      st.meetings = raw.meetings.map(normMeeting);
+    } else if (raw.meetingTitle !== undefined || Array.isArray(raw.tasks)) {
+      // Legacy single-meeting export from the original app — migrate it.
+      st.meetings = [normMeeting({
+        title: raw.meetingTitle, date: raw.meetingDate, attendees: raw.attendees,
+        sender: raw.sender, goal: raw.meetingGoal, notes: raw.meetingNotes,
+        decisions: raw.decisions, risks: raw.risks, questions: raw.questions,
+        actions: (Array.isArray(raw.tasks) ? raw.tasks : []).map((t) => ({
+          title: t?.title, owner: t?.owner, due: t?.due, status: t?.done ? 'done' : 'open'
+        }))
+      })];
+    }
+    st.activeMeetingId = st.meetings.some((m) => m.id === raw.activeMeetingId)
+      ? raw.activeMeetingId : (st.meetings[0] ? st.meetings[0].id : null);
+    return st;
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch { /* corrupt storage — start fresh */ }
+    return defaultState();
+  }
+
+  let state = loadState();
+  let saveTimer = null;
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* quota */ }
+    }, 250);
+  }
+
+  /* ============================ Domain logic ============================= */
+
+  const activeMeeting = () => state.meetings.find((m) => m.id === state.activeMeetingId) || null;
+  const isOverdue = (a) => Boolean(a.due) && a.status !== 'done' && a.due < todayISO();
+
+  function meetingMetrics(m) {
+    if (!m) return { decisions: 0, openActions: 0, overdue: 0, questions: 0 };
+    return {
+      decisions: m.decisions.length,
+      openActions: m.actions.filter((a) => a.status !== 'done').length,
+      overdue: m.actions.filter(isOverdue).length,
+      questions: m.questions.length
+    };
+  }
+
+  function sortedActions(m) {
+    const rank = (a) => (a.status === 'done' ? 1 : 0);
+    return m.actions
+      .map((a, i) => ({ a, i }))
+      .sort((x, y) => (rank(x.a) - rank(y.a)) || (x.a.due || '9999').localeCompare(y.a.due || '9999') || (x.i - y.i))
+      .map((w) => w.a);
+  }
+
+  /* --- Note scanning: classify lines into decisions / actions / risks / questions --- */
+
+  function classifyLine(text) {
+    const t = text.toLowerCase();
+    if (/\?\s*$/.test(text) || /^(who|what|when|where|why|how|should we|can we|do we|is there|are we)\b/.test(t)) return 'question';
+    if (/\b(decided|decision|agreed|agreement|approved|confirmed|chose|we will go with|locked?(?: in)?|signed? off)\b/.test(t)) return 'decision';
+    if (/\b(risk|blocker|blocked|blocking|concern|worried|worry|issue|dependency|slip|behind schedule|delay|delayed|unclear|hasn'?t confirmed|not confirmed|stale)\b/.test(t)) return 'risk';
+    if (/\b(action|todo|to do|follow(?:s|ing)? up|will|needs? to|must|should|takes? over|owns?|by (?:mon|tue|wed|thu|fri|sat|sun|next|end|eod|eow))\b/.test(t)) return 'action';
+    return null;
+  }
+
+  function extractOwner(text) {
+    const m = /^([A-Z][a-z]+(?: [A-Z][a-z]+)?) (?:will|to|should|needs? to|must|takes?|owns?)\b/.exec(text.trim());
+    return m ? m[1] : '';
+  }
+
+  function suggestFromNotes(m) {
+    const existing = new Set([
+      ...m.decisions.map((i) => i.text.toLowerCase()),
+      ...m.risks.map((i) => i.text.toLowerCase()),
+      ...m.questions.map((i) => i.text.toLowerCase()),
+      ...m.actions.map((a) => a.title.toLowerCase())
+    ]);
+    const parts = String(m.notes || '').split(/\n+|(?<=[.!?])\s+/).map(clean).filter((s) => s.length > 6);
+    const seen = new Set();
+    const out = [];
+    for (const p of parts) {
+      const key = p.toLowerCase();
+      if (seen.has(key) || existing.has(key)) continue;
+      const kind = classifyLine(p);
+      if (!kind) continue;
+      seen.add(key);
+      out.push({ id: uid(), kind, text: p });
+      if (out.length >= 12) break;
+    }
+    return out;
+  }
+
+  /* --- Follow-up email generator with tone options --- */
+
+  const firstNames = (attendees) =>
+    String(attendees || '').split(/[,;]+/).map(clean).filter(Boolean).map((n) => n.split(' ')[0]);
+
+  function emailDraft(m) {
+    const tone = TONES.includes(m.tone) ? m.tone : 'professional';
+    const open = m.actions.filter((a) => a.status !== 'done');
+    const done = m.actions.filter((a) => a.status === 'done');
+    const dateLong = fmtLong(m.date);
+    const title = clean(m.title) || 'our meeting';
+    const names = firstNames(m.attendees);
+
+    const subject = {
+      friendly: `Recap & next steps — ${clean(m.title) || "today's meeting"}`,
+      professional: `Meeting follow-up: ${clean(m.title) || 'summary and action items'}`,
+      direct: `${clean(m.title) || 'Meeting'} — decisions & actions`
+    }[tone];
+    const greeting = {
+      friendly: names.length && names.length <= 3 ? `Hi ${names.join(', ')},` : 'Hi everyone,',
+      professional: 'Hello all,',
+      direct: 'Team,'
+    }[tone];
+    const opener = {
+      friendly: `Thanks for making the time${dateLong ? ` on ${dateLong}` : ''} — good discussion. Quick recap so nothing slips through the cracks:`,
+      professional: `Thank you for attending ${title}${dateLong ? ` on ${dateLong}` : ''}. Below is a summary of what was agreed and the resulting action items.`,
+      direct: `Recap from ${title}${dateLong ? ` (${dateLong})` : ''}. Skim the actions — corrections welcome.`
+    }[tone];
+
+    const L = [`Subject: ${subject}`, '', greeting, '', opener, ''];
+    if (clean(m.goal)) L.push(`Purpose: ${clean(m.goal)}`, '');
+
+    let hasBody = false;
+    const section = (label, lines) => { hasBody = true; L.push(label, ...lines, ''); };
+    if (m.decisions.length) {
+      section(tone === 'friendly' ? 'What we decided:' : 'Decisions:', m.decisions.map((d) => `• ${d.text}`));
+    }
+    if (open.length) {
+      section(tone === 'direct' ? 'Actions (owner — due):' : 'Action items:', open.map((a) => {
+        const bits = [a.owner || 'Unassigned'];
+        if (a.due) bits.push(`due ${fmtShort(a.due)}${isOverdue(a) ? ' — OVERDUE' : ''}`);
+        if (a.status === 'doing') bits.push('in progress');
+        return `• ${a.title} (${bits.join(', ')})`;
+      }));
+    }
+    if (done.length) {
+      section('Already done:', done.map((a) => `• ${a.title}${a.owner ? (tone === 'friendly' ? ` — thanks, ${a.owner}!` : ` — ${a.owner}`) : ''}`));
+    }
+    if (m.risks.length) {
+      section(tone === 'friendly' ? 'Things to keep an eye on:' : 'Risks / watch-outs:', m.risks.map((r) => `• ${r.text}`));
+    }
+    if (m.questions.length) {
+      section(tone === 'direct' ? 'Open questions — reply with answers:' : 'Open questions (replies appreciated):', m.questions.map((q) => `• ${q.text}`));
+    }
+    if (!hasBody) L.push('(No decisions, actions, risks, or questions captured yet — add them in the kit and this draft fills itself in.)', '');
+
+    const closer = {
+      friendly: 'If I got anything wrong or missed something, just shout. Thanks again!',
+      professional: 'Please review and reply with any corrections or additions. I will circulate an updated version if anything changes.',
+      direct: 'Reply with corrections by end of day tomorrow; otherwise this recap stands.'
+    }[tone];
+    const signoff = { friendly: 'Cheers,', professional: 'Best regards,', direct: '—' }[tone];
+    L.push(closer, '', signoff, clean(m.sender) || '[Your name]');
+    return L.join('\n');
+  }
+
+  /* --- Markdown recap (main export artifact) --- */
+
+  function recapMarkdown(m) {
+    const L = [
+      `# Meeting recap — ${clean(m.title) || 'Untitled meeting'}`, '',
+      '> Draft-only recap generated locally by Meeting Follow-up Kit. Review before sending or sharing — nothing is sent automatically.', '',
+      `- **Date:** ${m.date || 'Not set'}`,
+      `- **Attendees:** ${clean(m.attendees) || 'Not listed'}`,
+      `- **Purpose:** ${clean(m.goal) || 'Not captured'}`, '',
+      '## Decisions'
     ];
-    return {
-      sourceApp: name,
-      title,
-      description: `${name} produced a local-first business workflow output. This bridge repurposes it into a draft content packet with proof notes, caveats, chapters, and short posts. Human review is required before publishing.`,
-      chapters,
-      shortPosts: [
-        `Built/useful output from ${name}: now it has a draft content packet with title, description, chapters, proof notes, and caveats.`,
-        `The important boundary: this is content drafting only. Review before anything public, customer-facing, or promotional.`,
-        proofWords ? `Proof cues detected in the source: ${proofWords}. Keep those in the public story instead of hype.` : `Add verification proof before publishing this story.`
-      ],
-      checklist: ['Confirm claims match the source output', 'Add proof and screenshots only if secret-safe', 'Keep caveats visible', 'Human approval before public posting', 'No customer data or secrets in exported content'],
-      flags: publicWords ? [`${publicWords} public/customer/action words detected; approval review required.`] : ['No obvious public-action terms detected; still review manually.'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
+    L.push(...(m.decisions.length ? m.decisions.map((d) => `- ${d.text}`) : ['- None recorded.']));
+    L.push('', '## Action items');
+    if (m.actions.length) {
+      L.push('| Action | Owner | Due | Status |', '| --- | --- | --- | --- |');
+      sortedActions(m).forEach((a) =>
+        L.push(`| ${a.title} | ${a.owner || '—'} | ${a.due || '—'}${isOverdue(a) ? ' (overdue)' : ''} | ${STATUS_LABELS[a.status]} |`));
+    } else {
+      L.push('- None recorded.');
+    }
+    L.push('', '## Risks & watch-outs');
+    L.push(...(m.risks.length ? m.risks.map((r) => `- ${r.text}`) : ['- None recorded.']));
+    L.push('', '## Open questions');
+    L.push(...(m.questions.length ? m.questions.map((q) => `- ${q.text}`) : ['- None recorded.']));
+    L.push('', `## Draft follow-up email (${m.tone} tone)`, '', '```', emailDraft(m), '```');
+    if (m.notes.trim()) L.push('', '## Source notes', '', m.notes.trim());
+    L.push('', '---', `Generated ${new Date().toLocaleString()} · Local draft for human review.`);
+    return L.join('\n');
   }
-  function markdown(packet){
-    return ['# Content Repurposer bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Does not post, upload, send, call APIs, or publish. Human approval required before public use.','',`## Source`,packet.sourceApp,'',`## YouTube title`,packet.title,'',`## Description`,packet.description,'',`## Chapters`,...packet.chapters.map(c => `- ${c[0]} — ${c[1]}: ${c[2]}`),'',`## Short posts`,...packet.shortPosts.map((v,i)=>`### Post ${i+1}\n${v}`),'',`## Review checklist`,...packet.checklist.map(v => `- [ ] ${v}`),'',`## Flags`,...packet.flags.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Title', '1 draft'],
-      ['Chapters', String(packet.chapters.length)],
-      ['Posts', String(packet.shortPosts.length)],
-      ['Proof gate', 'Required'],
-      ['Public action', 'Human review']
-    ].map(([label, value]) => `<article><span>${escContent(label)}</span><strong>${escContent(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-content-repurposer-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 19 Home Service Route Planner bridge: draft-only service route sheet.
-(() => {
-  const section = document.getElementById('home-service-route-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('homeServiceRouteCards');
-  const textEl = document.getElementById('homeServiceRouteText');
-  const copyBtn = document.getElementById('copyHomeServiceRoute');
-  const downloadBtn = document.getElementById('downloadHomeServiceRoute');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escRoute = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'homeServiceRouteText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
+  function actionsCsv(m) {
+    const cell = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`;
+    const rows = [['Action', 'Owner', 'Due', 'Status', 'Overdue']];
+    sortedActions(m).forEach((a) => rows.push([a.title, a.owner, a.due, STATUS_LABELS[a.status], isOverdue(a) ? 'yes' : 'no']));
+    return rows.map((r) => r.map(cell).join(',')).join('\n');
   }
-  function chunks(text){ const parts = clean(text).split(/(?<=[.!?])\s+|\n+/).filter(Boolean); return parts.length ? parts : ['Review generated output', 'Confirm next action', 'Owner approval checkpoint']; }
-  function buildRoute(){
-    const name = appName();
-    const output = currentOutput();
-    const parts = chunks(output).slice(0, 5);
-    const base = 8 * 60;
-    const stops = parts.map((part, index) => {
-      const priority = /urgent|risk|overdue|stale|critical|high|emergency/i.test(part) ? 5 : (/review|approve|owner|proof/i.test(part) ? 4 : 3);
-      const arrive = base + index * 105;
-      return { order:index+1, customer:`${name} stop ${index+1}`, area:['North route','East route','South route','West route','Overflow'][index] || 'Route TBD', priority, windowStart:`${String(Math.floor(arrive/60)).padStart(2,'0')}:${String(arrive%60).padStart(2,'0')}`, duration: priority >= 5 ? 90 : 60, work:part };
+
+  const fileSlug = (title) =>
+    (clean(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'meeting');
+
+  /* ============================= Demo data ============================== */
+
+  function demoMeetings() {
+    const item = (text) => ({ id: uid(), text });
+    const act = (title, owner, due, status) => ({ id: uid(), title, owner, due, status });
+    const m1 = {
+      ...blankMeeting(),
+      title: 'Website relaunch — weekly sync',
+      date: todayISO(),
+      attendees: 'Priya Shah, Marcus Lee, Dana Ortiz, Sam Becker',
+      sender: 'Priya Shah',
+      goal: 'Lock the launch date, confirm content owners, and surface anything that could slip the timeline.',
+      tone: 'friendly',
+      notes: [
+        'Agreed to lock the relaunch date to the 28th.',
+        'Marcus will finish the pricing page copy by Friday.',
+        'Dana raised a concern that the checkout redesign is still blocked on legal review.',
+        'Decided to keep the old blog URLs and 301-redirect everything else.',
+        'Who owns updating the customer help articles after launch?',
+        'Sam needs to confirm the staging environment can handle the load test.',
+        'Risk: the photography vendor has not confirmed delivery for the hero images.',
+        'Should we soft-launch to 10% of traffic first?'
+      ].join('\n'),
+      decisions: [item('Launch date locked to the 28th'), item('Keep old blog URLs; 301-redirect everything else')],
+      risks: [item('Checkout redesign still blocked on legal review'), item('Photography vendor has not confirmed hero image delivery')],
+      questions: [item('Who owns updating the help articles after launch?'), item('Do we soft-launch to 10% of traffic first?')],
+      actions: [
+        act('Finish pricing page copy', 'Marcus Lee', isoPlus(4), 'open'),
+        act('Run staging load test', 'Sam Becker', isoPlus(2), 'doing'),
+        act('Chase legal review on checkout redesign', 'Dana Ortiz', isoPlus(-1), 'open'),
+        act('Confirm photography delivery date', 'Priya Shah', isoPlus(1), 'open'),
+        act('Draft the 301-redirect map', 'Marcus Lee', isoPlus(-2), 'done')
+      ]
+    };
+    const m2 = {
+      ...blankMeeting(),
+      title: 'Q3 budget review',
+      date: isoPlus(-7),
+      attendees: 'Priya Shah, Alex Kim',
+      sender: 'Priya Shah',
+      goal: 'Agree on spending priorities for the rest of the quarter.',
+      tone: 'professional',
+      notes: 'Decided to freeze new tooling spend until Q4. Alex will share the revised budget sheet.',
+      decisions: [item('Freeze new tooling spend until Q4')],
+      questions: [item('Does the conference budget survive the freeze?')],
+      actions: [act('Share revised budget sheet', 'Alex Kim', isoPlus(-3), 'done')],
+      createdAt: Date.now() - 7 * 864e5,
+      updatedAt: Date.now() - 7 * 864e5
+    };
+    return [m1, m2];
+  }
+
+  /* =============================== Toast ================================ */
+
+  let toastTimer = null;
+  let pendingUndo = null;
+
+  function showToast(msg, undoFn) {
+    $('toastMsg').textContent = msg;
+    pendingUndo = undoFn || null;
+    $('toastUndo').hidden = !undoFn;
+    $('toast').classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, undoFn ? 7000 : 2600);
+  }
+
+  function hideToast() {
+    $('toast').classList.remove('show');
+    pendingUndo = null;
+  }
+
+  /* ============================== Rendering ============================== */
+
+  let suggestions = [];
+  let editingActionId = null;
+
+  function applyTheme() {
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    const theme = state.theme || (prefersLight ? 'light' : 'dark');
+    document.documentElement.dataset.theme = theme;
+    $('themeBtn').textContent = theme === 'dark' ? '☀ Light' : '☾ Dark';
+    $('themeBtn').setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+  }
+
+  function renderStats() {
+    const met = meetingMetrics(activeMeeting());
+    $('statDecisions').textContent = String(met.decisions);
+    $('statActions').textContent = String(met.openActions);
+    $('statOverdue').textContent = String(met.overdue);
+    $('statOverdueWrap').dataset.zero = met.overdue === 0 ? 'true' : 'false';
+    $('statQuestions').textContent = String(met.questions);
+  }
+
+  function renderHistory() {
+    const list = $('meetingList');
+    if (!state.meetings.length) {
+      list.innerHTML = '<li class="empty-note">No meetings yet — click + New or load the demo.</li>';
+      return;
+    }
+    const sorted = [...state.meetings].sort((a, b) => b.date.localeCompare(a.date) || (b.updatedAt - a.updatedAt));
+    list.innerHTML = sorted.map((m) => {
+      const met = meetingMetrics(m);
+      const name = clean(m.title) || 'Untitled meeting';
+      const overdue = met.overdue ? ` <span class="overdue-tag">${met.overdue} overdue</span>` : '';
+      return `<li class="meeting-item${m.id === state.activeMeetingId ? ' active' : ''}" data-id="${esc(m.id)}">
+        <button type="button" class="meeting-select" data-role="select">
+          <span class="meeting-title">${esc(name)}</span>
+          <span class="meeting-meta">${esc(`${fmtShort(m.date) || 'No date'} · ${met.openActions} open`)}${overdue}</span>
+        </button>
+        <button type="button" class="icon-btn" data-role="delete" aria-label="Delete meeting ${esc(name)}">✕</button>
+      </li>`;
+    }).join('');
+  }
+
+  function syncFormFields(m) {
+    $('mTitle').value = m.title;
+    $('mDate').value = m.date;
+    $('mAttendees').value = m.attendees;
+    $('mSender').value = m.sender;
+    $('mGoal').value = m.goal;
+    $('mNotes').value = m.notes;
+    $('mTitle').classList.remove('invalid');
+  }
+
+  function renderItemList(elId, items, kind) {
+    $(elId).innerHTML = items.length
+      ? items.map((i) => `<li data-id="${esc(i.id)}"><span>${esc(i.text)}</span>
+          <button type="button" class="icon-btn" data-role="remove" aria-label="Remove ${esc(KIND_LABELS[kind].toLowerCase())}: ${esc(i.text)}">✕</button></li>`).join('')
+      : `<li class="empty-note">No ${KIND_LABELS[kind].toLowerCase()}s captured yet.</li>`;
+  }
+
+  function renderCapture(m) {
+    renderItemList('decisionList', m.decisions, 'decision');
+    renderItemList('riskList', m.risks, 'risk');
+    renderItemList('questionList', m.questions, 'question');
+  }
+
+  function renderActions(m) {
+    const el = $('actionList');
+    if (!m.actions.length) {
+      el.innerHTML = '<li class="empty-note">No action items yet. Add one above, or scan your notes for suggestions.</li>';
+      return;
+    }
+    el.innerHTML = sortedActions(m).map((a) => {
+      const meta = [a.owner || 'Unassigned', a.due ? `due ${fmtShort(a.due)}` : 'no due date'].join(' · ');
+      return `<li class="action-row status-${esc(a.status)}" data-id="${esc(a.id)}">
+        <div class="action-main">
+          <span class="action-title">${esc(a.title)}</span>
+          <span class="action-meta">${esc(meta)} ${isOverdue(a) ? '<span class="overdue-tag">overdue</span>' : ''}</span>
+        </div>
+        <div class="action-controls">
+          <label class="sr-only" for="status-${esc(a.id)}">Status for ${esc(a.title)}</label>
+          <select id="status-${esc(a.id)}" data-role="status">
+            ${STATUSES.map((s) => `<option value="${s}"${s === a.status ? ' selected' : ''}>${STATUS_LABELS[s]}</option>`).join('')}
+          </select>
+          <button type="button" class="btn btn-sm" data-role="edit">Edit</button>
+          <button type="button" class="icon-btn" data-role="delete" aria-label="Delete action: ${esc(a.title)}">✕</button>
+        </div>
+      </li>`;
+    }).join('');
+  }
+
+  function renderSuggestions() {
+    $('suggestWrap').hidden = !suggestions.length;
+    $('suggestCount').textContent = String(suggestions.length);
+    $('suggestionList').innerHTML = suggestions.map((s) =>
+      `<li class="suggestion" data-id="${esc(s.id)}">
+        <span class="badge badge-${esc(s.kind)}">${esc(KIND_LABELS[s.kind])}</span>
+        <span class="sug-text">${esc(s.text)}</span>
+        <button type="button" class="btn-primary btn-sm" data-role="accept">Add</button>
+        <button type="button" class="btn-ghost btn-sm" data-role="dismiss">Dismiss</button>
+      </li>`).join('');
+  }
+
+  function renderTone(m) {
+    $('toneGroup').querySelectorAll('[role="radio"]').forEach((btn) => {
+      btn.setAttribute('aria-checked', btn.dataset.tone === m.tone ? 'true' : 'false');
     });
-    const totalDrive = Math.max(0, stops.length - 1) * 22;
-    const totalWork = stops.reduce((sum, stop) => sum + stop.duration, 0);
-    const flags = [];
-    if(/send|publish|customer|client|dispatch|public|crm|payment/gi.test(output)) flags.push('Customer/public/dispatch action words detected; confirm manually before use.');
-    if(stops.length > 4) flags.push('Route has more than four derived stops; dispatcher should tighten scope.');
-    if(!/proof|verified|review|approve|check/gi.test(output)) flags.push('Add verification/proof checks before committing this route.');
-    return { sourceApp:name, depot:'Draft depot / confirm before dispatch', technician:'Unassigned tech', driveBufferMinutes:22, stops, totals:{drive:totalDrive, work:totalWork, total:totalDrive + totalWork + 30}, flags: flags.length ? flags : ['No blocking route flags detected. Confirm traffic/windows manually.'], sourceSnippet:output, generatedAt:new Date().toISOString() };
   }
-  function markdown(packet){
-    return ['# Home Service Route Planner bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Confirm traffic, customer windows, technician constraints, and approvals before dispatch.','',`Source app: ${packet.sourceApp}`,`Depot: ${packet.depot}`,`Technician: ${packet.technician}`,'','## Route summary',`- Stops: ${packet.stops.length}`,`- Drive buffer: ${packet.totals.drive} minutes`,`- Work time: ${packet.totals.work} minutes`,`- Total with admin buffer: ${packet.totals.total} minutes`,'','## Stop order',...packet.stops.map(stop => `### ${stop.order}. ${stop.customer}\n- Area: ${stop.area}\n- Window: ${stop.windowStart}\n- Priority: ${stop.priority >= 5 ? 'Emergency' : stop.priority >= 4 ? 'High' : 'Normal'}\n- Duration: ${stop.duration} minutes\n- Work: ${stop.work}`),'','## Review flags',...packet.flags.map(v => `- ${v}`),'','## Source snippet',packet.sourceSnippet].join('\n');
+
+  function renderRecap(m) {
+    const rows = sortedActions(m).map((a) =>
+      `<tr class="${isOverdue(a) ? 'overdue' : ''}"><td>${esc(a.title)}</td><td>${esc(a.owner || '—')}</td>
+        <td>${a.due ? esc(fmtShort(a.due)) : '—'}${isOverdue(a) ? ' <span class="overdue-tag">overdue</span>' : ''}</td>
+        <td>${STATUS_LABELS[a.status]}</td></tr>`).join('');
+    const listOrNone = (items) => (items.length
+      ? `<ul>${items.map((i) => `<li>${esc(i.text)}</li>`).join('')}</ul>`
+      : '<p class="dim">None recorded.</p>');
+    $('recapDoc').innerHTML = `
+      <header>
+        <h2>${esc(clean(m.title) || 'Untitled meeting')}</h2>
+        <p class="recap-meta">${esc(fmtLong(m.date) || 'No date')}${clean(m.attendees) ? ` · ${esc(clean(m.attendees))}` : ''}</p>
+        ${clean(m.goal) ? `<p class="recap-goal">${esc(clean(m.goal))}</p>` : ''}
+      </header>
+      <h3>Decisions</h3>${listOrNone(m.decisions)}
+      <h3>Action items</h3>
+      ${m.actions.length
+        ? `<div class="recap-table-wrap"><table class="recap-table">
+            <thead><tr><th>Action</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>
+            <tbody>${rows}</tbody></table></div>`
+        : '<p class="dim">None recorded.</p>'}
+      <h3>Risks &amp; watch-outs</h3>${listOrNone(m.risks)}
+      <h3>Open questions</h3>${listOrNone(m.questions)}
+      <p class="recap-footer">Draft recap generated locally by Meeting Follow-up Kit — review before sharing. Nothing is sent automatically.</p>`;
   }
-  function render(){
-    const packet = buildRoute();
-    cardsEl.innerHTML = [
-      ['Stops', String(packet.stops.length)],
-      ['Drive buffer', `${packet.totals.drive}m`],
-      ['Work', `${packet.totals.work}m`],
-      ['Flags', String(packet.flags.length)],
-      ['Boundary', 'Draft-only']
-    ].map(([label, value]) => `<article><span>${escRoute(label)}</span><strong>${escRoute(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
+
+  function resetActionEditor() {
+    editingActionId = null;
+    $('actTitle').value = '';
+    $('actOwner').value = '';
+    $('actDue').value = '';
+    $('actStatus').value = 'open';
+    $('actTitle').classList.remove('invalid');
+    $('actTitleErr').hidden = true;
+    $('actSaveBtn').textContent = 'Add action';
+    $('actCancelBtn').hidden = true;
   }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
+
+  function renderDerived() {
+    const m = activeMeeting();
+    renderStats();
+    renderHistory();
+    if (m) {
+      $('emailOut').value = emailDraft(m);
+      renderRecap(m);
+    }
+    save();
+  }
+
+  function renderAll(syncForm) {
+    applyTheme();
+    const m = activeMeeting();
+    $('workspace').hidden = !m;
+    $('emptyState').hidden = Boolean(m);
+    if (m) {
+      if (syncForm) { syncFormFields(m); resetActionEditor(); }
+      renderCapture(m);
+      renderActions(m);
+      renderSuggestions();
+      renderTone(m);
+    }
+    renderDerived();
+  }
+
+  /* =========================== Mutations & undo ========================== */
+
+  const touch = (m) => { m.updatedAt = Date.now(); };
+
+  function selectMeeting(id) {
+    if (state.activeMeetingId === id) return;
+    state.activeMeetingId = id;
+    suggestions = [];
+    renderAll(true);
+  }
+
+  function newMeeting() {
+    const m = blankMeeting();
+    state.meetings.unshift(m);
+    state.activeMeetingId = m.id;
+    suggestions = [];
+    renderAll(true);
+    $('mTitle').focus();
+    showToast('New meeting created');
+  }
+
+  function deleteMeeting(id) {
+    const idx = state.meetings.findIndex((m) => m.id === id);
+    if (idx < 0) return;
+    const [removed] = state.meetings.splice(idx, 1);
+    if (state.activeMeetingId === id) {
+      state.activeMeetingId = state.meetings[0] ? state.meetings[0].id : null;
+      suggestions = [];
+    }
+    renderAll(true);
+    showToast(`Deleted "${clean(removed.title) || 'Untitled meeting'}"`, () => {
+      state.meetings.splice(Math.min(idx, state.meetings.length), 0, removed);
+      state.activeMeetingId = removed.id;
+      renderAll(true);
+    });
+  }
+
+  function addCaptureItem(kind, inputId) {
+    const m = activeMeeting();
+    if (!m) return;
+    const input = $(inputId);
+    const text = clean(input.value);
+    if (!text) { input.classList.add('invalid'); input.focus(); return; }
+    input.classList.remove('invalid');
+    m[KIND_TARGET[kind]].push({ id: uid(), text });
+    touch(m);
+    input.value = '';
+    input.focus();
+    renderCapture(m);
+    renderDerived();
+  }
+
+  function removeCaptureItem(kind, itemId) {
+    const m = activeMeeting();
+    if (!m) return;
+    const list = m[KIND_TARGET[kind]];
+    const idx = list.findIndex((i) => i.id === itemId);
+    if (idx < 0) return;
+    const [removed] = list.splice(idx, 1);
+    touch(m);
+    renderCapture(m);
+    renderDerived();
+    showToast(`${KIND_LABELS[kind]} removed`, () => {
+      const mm = state.meetings.find((x) => x.id === m.id);
+      if (!mm) return;
+      mm[KIND_TARGET[kind]].splice(Math.min(idx, mm[KIND_TARGET[kind]].length), 0, removed);
+      renderAll(false);
+    });
+  }
+
+  function saveActionFromEditor() {
+    const m = activeMeeting();
+    if (!m) return;
+    const title = clean($('actTitle').value);
+    if (!title) {
+      $('actTitle').classList.add('invalid');
+      $('actTitleErr').hidden = false;
+      $('actTitle').focus();
+      return;
+    }
+    const payload = {
+      title,
+      owner: clean($('actOwner').value),
+      due: $('actDue').value || '',
+      status: STATUSES.includes($('actStatus').value) ? $('actStatus').value : 'open'
+    };
+    if (editingActionId) {
+      const a = m.actions.find((x) => x.id === editingActionId);
+      if (a) Object.assign(a, payload);
+      showToast('Action updated');
+    } else {
+      m.actions.push({ id: uid(), ...payload });
+      showToast('Action added');
+    }
+    touch(m);
+    resetActionEditor();
+    renderActions(m);
+    renderDerived();
+  }
+
+  function editAction(id) {
+    const m = activeMeeting();
+    const a = m && m.actions.find((x) => x.id === id);
+    if (!a) return;
+    editingActionId = id;
+    $('actTitle').value = a.title;
+    $('actOwner').value = a.owner;
+    $('actDue').value = a.due;
+    $('actStatus').value = a.status;
+    $('actTitle').classList.remove('invalid');
+    $('actTitleErr').hidden = true;
+    $('actSaveBtn').textContent = 'Save changes';
+    $('actCancelBtn').hidden = false;
+    $('actTitle').focus();
+  }
+
+  function deleteAction(id) {
+    const m = activeMeeting();
+    if (!m) return;
+    const idx = m.actions.findIndex((a) => a.id === id);
+    if (idx < 0) return;
+    const [removed] = m.actions.splice(idx, 1);
+    if (editingActionId === id) resetActionEditor();
+    touch(m);
+    renderActions(m);
+    renderDerived();
+    showToast(`Action deleted: "${removed.title}"`, () => {
+      const mm = state.meetings.find((x) => x.id === m.id);
+      if (!mm) return;
+      mm.actions.splice(Math.min(idx, mm.actions.length), 0, removed);
+      renderAll(false);
+    });
+  }
+
+  function acceptSuggestion(id) {
+    const m = activeMeeting();
+    const s = suggestions.find((x) => x.id === id);
+    if (!m || !s) return;
+    if (s.kind === 'action') {
+      m.actions.push({ id: uid(), title: s.text, owner: extractOwner(s.text), due: '', status: 'open' });
+      renderActions(m);
+    } else {
+      m[KIND_TARGET[s.kind]].push({ id: uid(), text: s.text });
+      renderCapture(m);
+    }
+    touch(m);
+    suggestions = suggestions.filter((x) => x.id !== id);
+    renderSuggestions();
+    renderDerived();
+    showToast(`Added as ${KIND_LABELS[s.kind].toLowerCase()}`);
+  }
+
+  /* ========================== Clipboard & files ========================== */
+
+  function copyText(text, msg) {
+    const done = () => showToast(msg || 'Copied to clipboard');
+    const fallback = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        done();
+      } catch { showToast('Copy failed — select the text manually'); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+  }
+
+  function downloadFile(name, text, type) {
+    const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-route-planner-bridge.json`;
+    a.download = name;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 20 Intake Form Builder bridge: draft-only intake form spec.
-(() => {
-  const section = document.getElementById('intake-form-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('intakeFormCards');
-  const textEl = document.getElementById('intakeFormText');
-  const copyBtn = document.getElementById('copyIntakeForm');
-  const downloadBtn = document.getElementById('downloadIntakeForm');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escForm = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'intakeFormText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1700);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1700);
+  function copyRecap() {
+    const m = activeMeeting();
+    if (!m) { showToast('Nothing to copy yet — create a meeting first'); return; }
+    if (!clean(m.title)) $('mTitle').classList.add('invalid');
+    copyText(recapMarkdown(m), 'Markdown recap copied — review before sharing');
   }
-  function inferQuestions(output){
-    const base = [
-      ['Contact name and best callback', 'short-text', 'Contact', true, 'Name, phone, and best time to respond.'],
-      ['Service location or account context', 'short-text', 'Contact', true, 'Enough context to route the request; do not ask for unnecessary IDs.'],
-      ['What should we help with?', 'long-text', 'Job details', true, 'Let the requester explain the need in plain words.']
-    ];
-    if(/urgent|risk|critical|emergency|stale|overdue/i.test(output)) base.push(['How urgent is this request?', 'select', 'Urgency', true, 'Emergency | Today | This week | Planning ahead']);
-    if(/proof|screenshot|photo|evidence|result/i.test(output)) base.push(['What proof or files are available?', 'long-text', 'Proof / files', false, 'Describe evidence; do not upload sensitive material here.']);
-    if(/price|quote|invoice|cash|revenue|roi|cost/i.test(output)) base.push(['What value, quote, or budget context matters?', 'short-text', 'Commercial context', false, 'Keep estimates draft-only until reviewed.']);
-    if(/meeting|call|follow|schedule|route|dispatch|appointment/i.test(output)) base.push(['Preferred timing or next appointment window', 'checkboxes', 'Scheduling', false, 'Morning | Midday | Afternoon | Flexible']);
-    base.push(['Consent to be contacted about this request', 'select', 'Consent', true, 'Yes, contact me about this request | No, do not contact me']);
-    return base.map((row,index) => ({order:index+1,label:row[0],type:row[1],section:row[2],required:row[3],helper:row[4]}));
-  }
-  function buildSpec(){
-    const sourceApp = appName();
-    const output = currentOutput();
-    const questions = inferQuestions(output);
-    const flags = [];
-    if(/password|secret|token|api key|credit card|ssn|social security/i.test(output)) flags.push('Sensitive-data wording detected. Remove secret/payment/SSN/password questions before use.');
-    if(/send|publish|customer|crm|webhook|public|dispatch/i.test(output)) flags.push('Public/customer/action wording detected. Keep this as a draft spec until approved.');
-    if(!/review|approve|proof|check|confirm/i.test(output)) flags.push('Add explicit human review/proof confirmation before publishing the form.');
-    return { sourceApp, formName:`${sourceApp} intake draft`, channel:'Draft local form spec', questions, flags:flags.length ? flags : ['No blocking draft flags detected. Privacy review still required.'], privacyRule:'Do not collect secrets, payment cards, SSNs, medical data, or unnecessary IDs.', sourceSnippet:output, generatedAt:new Date().toISOString() };
-  }
-  function markdown(spec){
-    return ['# Intake Form Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only form spec. Do not publish or collect customer submissions until privacy/proof review is complete.','',`Source app: ${spec.sourceApp}`,`Form name: ${spec.formName}`,'','## Questions',...spec.questions.map(q => `### ${q.order}. ${q.label}\n- Type: ${q.type}\n- Section: ${q.section}\n- Required: ${q.required ? 'yes' : 'no'}\n- Helper/choices: ${q.helper}`),'','## Privacy rule',spec.privacyRule,'','## Review flags',...spec.flags.map(v => `- ${v}`),'','## Source snippet',spec.sourceSnippet].join('\n');
-  }
-  function render(){
-    const spec = buildSpec();
-    const required = spec.questions.filter(q => q.required).length;
-    cardsEl.innerHTML = [
-      ['Questions', String(spec.questions.length)],
-      ['Required', String(required)],
-      ['Flags', String(spec.flags.length)],
-      ['Channel', 'Draft spec'],
-      ['Boundary', 'No publish']
-    ].map(([label, value]) => `<article><span>${escForm(label)}</span><strong>${escForm(value)}</strong></article>`).join('');
-    textEl.value = markdown(spec);
-    return spec;
-  }
-  function download(spec){
-    const blob = new Blob([JSON.stringify({ ...spec, markdown: markdown(spec) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${spec.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-intake-form-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
+  /* ============================ Help modal ============================== */
+
+  let lastFocus = null;
+  function openHelp() {
+    lastFocus = document.activeElement;
+    if (!$('helpModal').open) $('helpModal').showModal();
+  }
+  function closeHelp() {
+    if ($('helpModal').open) $('helpModal').close();
+  }
+
+  /* ============================ Event wiring ============================= */
+
+  // Header
+  $('themeBtn').addEventListener('click', () => {
+    const current = document.documentElement.dataset.theme || 'dark';
+    state.theme = current === 'dark' ? 'light' : 'dark';
+    applyTheme();
+    save();
+    showToast(`${state.theme === 'light' ? 'Light' : 'Dark'} theme saved`);
+  });
+
+  function loadDemo() {
+    const snapshot = JSON.stringify(state);
+    const demos = demoMeetings();
+    state.meetings = demos;
+    state.activeMeetingId = demos[0].id;
+    suggestions = [];
+    renderAll(true);
+    showToast('Demo meetings loaded', () => {
+      state = normalize(JSON.parse(snapshot));
+      suggestions = [];
+      renderAll(true);
+    });
+  }
+  $('demoBtn').addEventListener('click', loadDemo);
+  $('emptyDemoBtn').addEventListener('click', loadDemo);
+
+  $('resetBtn').addEventListener('click', () => {
+    if (!window.confirm('Clear all meetings from this browser? This cannot be undone.')) return;
+    state = { ...defaultState(), theme: state.theme, seenGuide: true };
+    suggestions = [];
+    resetActionEditor();
+    renderAll(true);
+    showToast('All data cleared');
+  });
+
+  $('helpBtn').addEventListener('click', openHelp);
+  $('helpCloseBtn').addEventListener('click', closeHelp);
+  $('helpOkBtn').addEventListener('click', closeHelp);
+  $('helpModal').addEventListener('close', () => {
+    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  });
+  $('helpModal').addEventListener('click', (e) => {
+    if (e.target === $('helpModal')) closeHelp();
+  });
+
+  // History
+  $('newMeetingBtn').addEventListener('click', newMeeting);
+  $('emptyNewBtn').addEventListener('click', newMeeting);
+  $('meetingList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-role]');
+    const li = e.target.closest('li[data-id]');
+    if (!btn || !li) return;
+    if (btn.dataset.role === 'select') selectMeeting(li.dataset.id);
+    if (btn.dataset.role === 'delete') deleteMeeting(li.dataset.id);
+  });
+
+  // Meeting detail fields
+  const FIELD_MAP = { mTitle: 'title', mDate: 'date', mAttendees: 'attendees', mSender: 'sender', mGoal: 'goal', mNotes: 'notes' };
+  Object.entries(FIELD_MAP).forEach(([id, key]) => {
+    $(id).addEventListener('input', () => {
+      const m = activeMeeting();
+      if (!m) return;
+      m[key] = $(id).value;
+      touch(m);
+      if (id === 'mTitle') $(id).classList.remove('invalid');
+      renderDerived();
+    });
+  });
+
+  // Notes scanning
+  $('scanBtn').addEventListener('click', () => {
+    const m = activeMeeting();
+    if (!m) return;
+    if (!m.notes.trim()) {
+      showToast('Paste some notes first — one thought per line works best');
+      $('mNotes').focus();
+      return;
+    }
+    suggestions = suggestFromNotes(m);
+    renderSuggestions();
+    showToast(suggestions.length
+      ? `${suggestions.length} suggestion${suggestions.length === 1 ? '' : 's'} found`
+      : 'No new suggestions found — try one thought per line');
+  });
+
+  $('suggestionList').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-role]');
+    const li = e.target.closest('li[data-id]');
+    if (!btn || !li) return;
+    if (btn.dataset.role === 'accept') acceptSuggestion(li.dataset.id);
+    if (btn.dataset.role === 'dismiss') {
+      suggestions = suggestions.filter((x) => x.id !== li.dataset.id);
+      renderSuggestions();
+    }
+  });
+
+  // Structured capture (quick-add + remove, per kind)
+  [['decision', 'decisionInput', 'addDecisionBtn', 'decisionList'],
+   ['risk', 'riskInput', 'addRiskBtn', 'riskList'],
+   ['question', 'questionInput', 'addQuestionBtn', 'questionList']
+  ].forEach(([kind, inputId, btnId, listId]) => {
+    $(btnId).addEventListener('click', () => addCaptureItem(kind, inputId));
+    $(inputId).addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); addCaptureItem(kind, inputId); }
+    });
+    $(listId).addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-role="remove"]');
+      const li = e.target.closest('li[data-id]');
+      if (btn && li) removeCaptureItem(kind, li.dataset.id);
+    });
+  });
+
+  // Actions
+  $('actSaveBtn').addEventListener('click', saveActionFromEditor);
+  $('actCancelBtn').addEventListener('click', resetActionEditor);
+  $('actTitle').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); saveActionFromEditor(); }
+  });
+  $('actTitle').addEventListener('input', () => {
+    if (clean($('actTitle').value)) {
+      $('actTitle').classList.remove('invalid');
+      $('actTitleErr').hidden = true;
+    }
+  });
+  $('actionList').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-role]');
+    const li = e.target.closest('li[data-id]');
+    if (!btn || !li) return;
+    if (btn.dataset.role === 'edit') editAction(li.dataset.id);
+    if (btn.dataset.role === 'delete') deleteAction(li.dataset.id);
+  });
+  $('actionList').addEventListener('change', (e) => {
+    const sel = e.target.closest('select[data-role="status"]');
+    const li = e.target.closest('li[data-id]');
+    if (!sel || !li) return;
+    const m = activeMeeting();
+    const a = m && m.actions.find((x) => x.id === li.dataset.id);
+    if (!a) return;
+    a.status = STATUSES.includes(sel.value) ? sel.value : 'open';
+    touch(m);
+    renderActions(m);
+    renderDerived();
+  });
+
+  // Tone
+  $('toneGroup').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-tone]');
+    const m = activeMeeting();
+    if (!btn || !m) return;
+    m.tone = TONES.includes(btn.dataset.tone) ? btn.dataset.tone : 'professional';
+    touch(m);
+    renderTone(m);
+    renderDerived();
+  });
+
+  // Export & handoff
+  $('copyEmailBtn').addEventListener('click', () => {
+    const m = activeMeeting();
+    if (m) copyText(emailDraft(m), 'Email draft copied — review before sending');
+  });
+  $('copyMdBtn').addEventListener('click', copyRecap);
+  $('downloadJsonBtn').addEventListener('click', () => {
+    downloadFile('meeting-follow-up-kit.json', JSON.stringify({
+      ...state,
+      exportedAt: new Date().toISOString(),
+      note: 'Draft-only local export from Meeting Follow-up Kit. Human review required before any send, calendar, or CRM action.'
+    }, null, 2), 'application/json');
+    showToast('JSON downloaded');
+  });
+  $('downloadCsvBtn').addEventListener('click', () => {
+    const m = activeMeeting();
+    if (!m) { showToast('Create a meeting first'); return; }
+    if (!m.actions.length) { showToast('No action items to export yet'); return; }
+    downloadFile(`${fileSlug(m.title)}-actions.csv`, actionsCsv(m), 'text/csv');
+    showToast('Actions CSV downloaded');
+  });
+  $('printBtn').addEventListener('click', () => {
+    if (!activeMeeting()) { showToast('Create a meeting first'); return; }
+    window.print();
+  });
+  $('importBtn').addEventListener('click', () => $('importFile').click());
+  $('importFile').addEventListener('change', () => {
+    const file = $('importFile').files && $('importFile').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const next = normalize(JSON.parse(String(reader.result)));
+        if (!next.meetings.length) { showToast('Import failed — no meetings found in that file'); return; }
+        next.theme = next.theme || state.theme;
+        next.seenGuide = true;
+        state = next;
+        suggestions = [];
+        resetActionEditor();
+        renderAll(true);
+        showToast(`Imported ${next.meetings.length} meeting${next.meetings.length === 1 ? '' : 's'}`);
+      } catch { showToast('Import failed — that file is not valid JSON'); }
+    };
+    reader.readAsText(file);
+    $('importFile').value = '';
+  });
+
+  // Toast undo
+  $('toastUndo').addEventListener('click', () => {
+    const fn = pendingUndo;
+    hideToast();
+    if (fn) { fn(); showToast('Restored'); }
+  });
+
+  // Keyboard shortcuts
+  const isTyping = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      copyRecap();
+      return;
+    }
+    if (e.key === '?' && !isTyping(e.target) && !$('helpModal').open) {
+      e.preventDefault();
+      openHelp();
+    }
+  });
+
+  /* ================================ Init ================================= */
+
+  renderAll(true);
+  if (!state.seenGuide) {
+    state.seenGuide = true;
+    save();
+    openHelp();
+  }
+})();
