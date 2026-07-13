@@ -1,0 +1,69 @@
+name: Contributor hygiene
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+
+jobs:
+  contributor-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check commit identities
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            RANGE="origin/${{ github.base_ref }}...HEAD"
+          else
+            BEFORE="${{ github.event.before }}"
+            AFTER="${{ github.sha }}"
+            if [[ "$BEFORE" =~ ^0+$ ]]; then
+              RANGE="$AFTER~20..$AFTER"
+            else
+              RANGE="$BEFORE..$AFTER"
+            fi
+          fi
+
+          allowed_file="$(mktemp)"
+          cat > "$allowed_file" <<'EOF'
+          Brian Hackett <brian.hackett423@gmail.com>
+          Hermes Agent (Local) <hermes-local@adeul.local>
+          Hermes Agent (VPS) <hermes-vps@adeul.local>
+          Claude Code <noreply@anthropic.com>
+          GitHub <noreply@github.com>
+          github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+          cloudflare-workers-and-pages[bot] <73139402+cloudflare-workers-and-pages[bot]@users.noreply.github.com>
+          dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
+          EOF
+          sed -i 's/^ *//' "$allowed_file"
+
+          identities="$(mktemp)"
+          git log --format='%aN <%aE>%n%cN <%cE>' "$RANGE" | sort -u > "$identities" || true
+
+          bad="$(mktemp)"
+          while IFS= read -r ident; do
+            [[ -z "$ident" ]] && continue
+            canon="$(git check-mailmap "$ident" || printf '%s' "$ident")"
+            if ! grep -Fxq "$canon" "$allowed_file"; then
+              printf '%s -> %s
+' "$ident" "$canon" >> "$bad"
+            fi
+          done < "$identities"
+
+          if [[ -s "$bad" ]]; then
+            echo "Unknown contributor identities. Add them to .mailmap or fix git config:"
+            cat "$bad"
+            exit 1
+          fi
+
+          echo "Contributor identities are clean for $RANGE."
