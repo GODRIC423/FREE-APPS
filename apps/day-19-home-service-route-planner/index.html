@@ -1,130 +1,175 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Home Service Route Planner</title>
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('fable-remake:day-19-home-service-route-planner:v1');
+        var saved = raw ? JSON.parse(raw) : null;
+        var theme = saved && (saved.theme === 'light' || saved.theme === 'dark') ? saved.theme
+          : (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = theme;
+      } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+    })();
+  </script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="route-planner-shell">
-    <header class="map-hero" aria-label="Home Service Route Planner header">
-      <section class="hero-copy">
-        <p class="kicker">Day 19 · Dispatch map</p>
-        <h1>Build a practical service route before the vans roll.</h1>
-        <p class="lede">A local-first route desk for home-service jobs: priority, appointment windows, drive buffers, technician load, route order, and exportable dispatch sheets.</p>
-        <div class="hero-actions">
-          <button id="loadDemo" type="button">Load demo day</button>
-          <button id="planRoute" type="button">Plan route</button>
-          <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-        </div>
-      </section>
-      <aside class="map-card" aria-hidden="true">
-        <svg viewBox="0 0 320 260" role="img">
-          <path class="street" d="M20 210 C70 160, 96 178, 125 116 S210 74, 286 36" />
-          <path class="street street-two" d="M42 58 C88 92, 110 92, 145 130 S214 190, 294 164" />
-          <circle class="pin depot" cx="42" cy="210" r="14" />
-          <circle class="pin" cx="124" cy="120" r="11" />
-          <circle class="pin urgent" cx="202" cy="78" r="12" />
-          <circle class="pin" cx="280" cy="38" r="10" />
-          <circle class="pin" cx="230" cy="184" r="10" />
-        </svg>
-        <div class="map-legend"><span>Depot</span><span>Priority</span><span>Route</span></div>
-      </aside>
-    </header>
-
-    <section class="safety-strip" aria-label="Safety boundary">
-      <strong>Draft-only route plan:</strong> this app uses rough drive-time assumptions and local browser storage. Confirm traffic, technician constraints, and customer windows before dispatching.
-    </section>
-
-    <section class="control-grid" aria-label="Route controls">
-      <article class="metric-card"><span>Total route</span><strong id="metricDuration">0h</strong><small>jobs + buffers</small></article>
-      <article class="metric-card"><span>Drive buffer</span><strong id="metricDrive">0m</strong><small>assumed</small></article>
-      <article class="metric-card"><span>Stops</span><strong id="metricStops">0</strong><small>planned</small></article>
-      <article class="metric-card"><span>Risk flags</span><strong id="metricFlags">0</strong><small>review</small></article>
-    </section>
-
-    <section class="planner-grid">
-      <section class="panel dispatch-settings" aria-label="Dispatch settings">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Route desk</p><h2>Set the day assumptions.</h2></div></div>
-        <label>Route date<input id="routeDate" type="date" /></label>
-        <label>Depot / start point<input id="depot" maxlength="90" placeholder="Shop / technician home base" /></label>
-        <label>Technician<input id="technician" maxlength="80" placeholder="Alex · Van 2" /></label>
-        <div class="split">
-          <label>Start time<input id="startTime" type="time" /></label>
-          <label>Max field hours<input id="maxHours" type="number" min="1" max="14" step="0.5" /></label>
-        </div>
-        <div class="split">
-          <label>Default drive between stops<input id="driveMinutes" type="number" min="0" max="180" step="5" /></label>
-          <label>Lunch / admin buffer<input id="adminBuffer" type="number" min="0" max="180" step="5" /></label>
-        </div>
-        <label>Planner note<textarea id="plannerNote" placeholder="Anything the dispatcher should remember before committing this route."></textarea></label>
-      </section>
-
-      <section class="panel job-entry" aria-label="Add route stop">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Stop card</p><h2>Add or update a service job.</h2></div></div>
-        <label>Customer / site<input id="jobCustomer" maxlength="90" placeholder="Morgan Residence" /></label>
-        <label>Address / area<input id="jobAddress" maxlength="120" placeholder="North Loop" /></label>
-        <label>Work summary<textarea id="jobSummary" placeholder="No heat callback, check prior repair, bring igniter kit."></textarea></label>
-        <div class="split three">
-          <label>Priority<select id="jobPriority"><option value="5">Emergency</option><option value="4">High</option><option value="3" selected>Normal</option><option value="2">Low</option></select></label>
-          <label>Window start<input id="jobWindowStart" type="time" /></label>
-          <label>Duration min<input id="jobDuration" type="number" min="15" max="360" step="15" /></label>
-        </div>
-        <div class="button-row">
-          <button id="addJob" type="button">Add stop</button>
-          <button id="resetJobs" type="button" class="ghost">Reset demo</button>
-        </div>
-      </section>
-    </section>
-
-    <section class="route-board" aria-label="Route board">
-      <section class="panel map-panel">
-        <div class="panel-title"><span>03</span><div><p class="kicker">Map board</p><h2>Priority-weighted stop order.</h2></div></div>
-        <div id="mapBoard" class="map-board" aria-live="polite"></div>
-      </section>
-      <section class="panel timeline-panel">
-        <div class="panel-title"><span>04</span><div><p class="kicker">Dispatch timeline</p><h2>Readable day sheet.</h2></div></div>
-        <div id="timeline" class="timeline" aria-live="polite"></div>
-      </section>
-    </section>
-
-    <section class="output-grid">
-      <section class="panel output-panel" aria-label="Generated route plan">
-        <div class="panel-title"><span>05</span><div><p class="kicker">Export packet</p><h2>Copy or download the dispatch sheet.</h2></div></div>
-        <textarea id="routeOutput" readonly aria-label="Generated route plan"></textarea>
-      </section>
-      <aside class="panel roster-panel" aria-label="Stop roster">
-        <div class="panel-title"><span>06</span><div><p class="kicker">Stop roster</p><h2>Edit the active jobs.</h2></div></div>
-        <div id="jobRoster" class="job-roster" aria-live="polite"></div>
-        <div class="export-actions">
-          <button id="copyRoute" type="button">Copy route sheet</button>
-          <button id="downloadMarkdown" type="button">Download MD</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-          <button id="downloadIcs" type="button">Download ICS</button>
-        </div>
-      </aside>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">RP</span>
+      <div class="brand-text">
+        <p class="brand-name">Home Service Route Planner</p>
+        <p class="brand-tag">Plan the service day before the vans roll — offline, draft-only.</p>
       </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
+    </div>
+    <nav class="header-actions" aria-label="App controls">
+      <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
+      <button id="demoBtn" type="button" class="btn">Load demo</button>
+      <button id="helpBtn" type="button" class="btn">How to use</button>
+      <button id="themeToggle" type="button" class="btn" aria-pressed="false">Theme</button>
+    </nav>
+  </header>
+
+  <main class="shell">
+    <h1 class="visually-hidden">Home Service Route Planner</h1>
+
+    <section class="stat-strip" aria-label="Day summary" aria-live="polite">
+      <article class="stat"><strong id="statStops">0</strong><span>stops planned</span></article>
+      <article class="stat"><strong id="statField">0h</strong><span>busiest tech day</span></article>
+      <article class="stat"><strong id="statBuffers">0m</strong><span>drive + wait</span></article>
+      <article class="stat"><strong id="statWarnings">0</strong><span>warnings</span></article>
     </section>
+
+    <div class="layout">
+      <div class="col-side">
+        <section class="panel" aria-labelledby="dayHeading">
+          <h2 id="dayHeading">Day settings</h2>
+          <div class="field-grid two">
+            <label>Route date <input id="dayDate" type="date" /></label>
+            <label>Day start <input id="dayStart" type="time" /></label>
+          </div>
+          <label>Depot / start point <input id="dayDepot" type="text" maxlength="90" placeholder="Main shop — 14 Foundry Rd" /></label>
+          <div class="field-grid three">
+            <label>Cap per tech (h) <input id="dayMaxHours" type="number" min="1" max="14" step="0.5" /></label>
+            <label>Drive buffer (min) <input id="dayDrive" type="number" min="0" max="180" step="5" /></label>
+            <label>Admin buffer (min) <input id="dayAdmin" type="number" min="0" max="240" step="5" /></label>
+          </div>
+          <label>Dispatcher note <textarea id="dayNote" rows="3" maxlength="600" placeholder="Gate codes, callbacks to make, parts to load…"></textarea></label>
+        </section>
+
+        <section class="panel" aria-labelledby="techHeading">
+          <div class="panel-head">
+            <h2 id="techHeading">Technicians</h2>
+            <button id="addTechBtn" type="button" class="btn btn-small">+ Add tech</button>
+          </div>
+          <div id="techList" class="tech-list"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="stopFormHeading">
+          <h2 id="stopFormHeading">Add a stop</h2>
+          <form id="stopForm" novalidate>
+            <label>Customer / site <span class="req" aria-hidden="true">*</span>
+              <input id="stopCustomer" type="text" maxlength="90" placeholder="Morgan Residence" required />
+              <span class="field-error" id="stopCustomerError" hidden>Customer name is required.</span>
+            </label>
+            <label>Address / area <input id="stopArea" type="text" maxlength="120" placeholder="North Loop" /></label>
+            <label>Work summary <textarea id="stopSummary" rows="2" maxlength="400" placeholder="No-heat callback. Bring igniter kit; confirm prior repair."></textarea></label>
+            <div class="field-grid three">
+              <label>Priority
+                <select id="stopPriority">
+                  <option value="5">Emergency</option>
+                  <option value="4">High</option>
+                  <option value="3" selected>Normal</option>
+                  <option value="2">Low</option>
+                </select>
+              </label>
+              <label>Technician <select id="stopTech"></select></label>
+              <label>On-site (min) <input id="stopDuration" type="number" min="5" max="480" step="5" value="60" /></label>
+            </div>
+            <div class="field-grid three">
+              <label>Window opens <input id="stopWinStart" type="time" /></label>
+              <label>Window closes <input id="stopWinEnd" type="time" /></label>
+              <label>Drive override (min) <input id="stopDrive" type="number" min="0" max="180" step="5" placeholder="default" /></label>
+            </div>
+            <div class="button-row">
+              <button id="stopSubmitBtn" type="submit" class="btn btn-primary">Add stop</button>
+              <button id="stopCancelBtn" type="button" class="btn btn-ghost" hidden>Cancel edit</button>
+            </div>
+          </form>
+        </section>
+      </div>
+
+      <div class="col-main">
+        <section class="panel board-panel" aria-labelledby="boardHeading">
+          <div class="panel-head">
+            <h2 id="boardHeading">Route board</h2>
+            <button id="sortBtn" type="button" class="btn btn-small" title="Sort each technician's stops by window, then priority">Sort by window</button>
+          </div>
+          <div id="routeBoard" class="route-board"></div>
+        </section>
+
+        <section class="panel" id="dispatchPanel" aria-labelledby="dispatchHeading">
+          <div class="panel-head no-print">
+            <h2 id="dispatchHeading">Dispatch sheet</h2>
+          </div>
+          <div id="dispatchSheet" class="dispatch-sheet"></div>
+          <div class="export-actions no-print" aria-label="Export and handoff">
+            <h3>Export &amp; handoff</h3>
+            <p class="hint">Everything below is a draft for human review — confirm traffic, access, and customer windows before dispatch.</p>
+            <div class="button-row wrap">
+              <button id="copyMdBtn" type="button" class="btn btn-primary">Copy Markdown</button>
+              <button id="printBtn" type="button" class="btn">Print sheet</button>
+              <button id="downloadCsvBtn" type="button" class="btn">Download CSV</button>
+              <button id="downloadJsonBtn" type="button" class="btn">Download JSON</button>
+              <button id="importBtn" type="button" class="btn">Import JSON</button>
+              <input id="importFile" type="file" accept="application/json,.json" class="visually-hidden" aria-label="Import JSON file" />
+              <button id="resetBtn" type="button" class="btn btn-danger">Reset</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <footer class="app-footer">
+      <p>Local-first · No accounts · No tracking — data stays in this browser.</p>
+      <a href="../../index.html">&larr; All apps</a>
+    </footer>
   </main>
+
+  <div id="helpModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-head">
+        <h2 id="helpTitle">How to use the Route Planner</h2>
+        <button id="helpClose" type="button" class="btn btn-ghost" aria-label="Close help">&times;</button>
+      </div>
+      <ol class="help-steps">
+        <li><strong>Set the day.</strong> Pick the route date, day start, depot, per-tech hour cap, and the default drive and admin buffers. Every schedule is computed from these.</li>
+        <li><strong>Add technicians.</strong> Each tech gets their own route, start time, and capacity meter. Use "+ Add tech" for a second van.</li>
+        <li><strong>Add stop cards.</strong> Customer, area, work summary, priority, appointment window, on-site minutes, and an optional per-stop drive override.</li>
+        <li><strong>Order the route.</strong> Use the &uarr;/&darr; arrows on each card for manual ordering, or "Sort by window" to sort every tech's route by window then priority.</li>
+        <li><strong>Watch the warnings.</strong> The planner computes arrival and departure times, flags stops that arrive after their window closes, emergencies buried mid-route, and techs over the day cap.</li>
+        <li><strong>Read the capacity meters.</strong> Each tech shows planned field time against the day cap — green is comfortable, amber is tight, red is over.</li>
+        <li><strong>Hand it off.</strong> The dispatch sheet renders one section per tech. Copy it as Markdown, print it (one page per tech), or download CSV/JSON.</li>
+      </ol>
+      <h3>Keyboard shortcuts</h3>
+      <table class="shortcut-table">
+        <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+          <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the dispatch sheet as Markdown</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">Draft-only boundary: this planner uses your buffer assumptions, not live traffic. A human confirms every route before dispatch.</p>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
   <script src="./app.js"></script>
 </body>
 </html>
