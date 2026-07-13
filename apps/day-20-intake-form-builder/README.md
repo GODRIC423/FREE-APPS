@@ -1,12 +1,12 @@
 # Intake Form Builder
 
-Day 20 of the 30 App Daily Ritual.
+Design a service intake form — fields, sections, required flags — with a live preview, a privacy/PII audit, and an exportable spec. Local-first, draft-only: nothing is published and no customer data is ever collected.
 
-This public copy is a **static, local-first browser app**. It contains only:
-
-- `index.html`
-- `styles.css`
-- `app.js`
+- **Build fields in place:** add, edit, duplicate, delete (with undo), and reorder by drag or buttons; 11 field types across 7 sections.
+- **Live preview:** the requester's view, grouped by section, with realistic mock inputs.
+- **Privacy audit:** flags sensitive asks (SSNs, card/bank numbers, health data, credentials, protected characteristics), missing consent, required overload, file-upload metadata risk, and data-minimization issues.
+- **Health score with reasons:** 0–100 with every deduction and bonus itemized.
+- **Export & handoff:** copy Markdown, download Markdown/JSON/CSV, print — plus JSON import for backup/restore.
 
 ## Run
 
@@ -18,8 +18,10 @@ python3 -m http.server 8000
 
 Then open the matching `/apps/day-20-intake-form-builder/` path in your browser.
 
+Full walkthrough: see [GUIDE.md](./GUIDE.md).
+
 ## Security boundary
 
-- No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- Static, local-first browser app: only `index.html`, `styles.css`, `app.js`. No CDNs, no fonts, no fetch/XHR, no analytics.
+- No API keys, tokens, backends, accounts, webhooks, CRM, or payment access. State lives in `localStorage` only.
+- All outputs are draft artifacts for human review before any customer or public use.

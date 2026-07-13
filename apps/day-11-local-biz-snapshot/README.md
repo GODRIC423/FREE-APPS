@@ -1,12 +1,14 @@
 # Local Biz Snapshot
 
-Day 11 of the 30 App Daily Ritual.
+Build prospect dossiers on local businesses — profile, evidence-based lead-leak likelihoods, a recommended first wedge, and one human next step. Everything is manually entered; nothing is scraped.
 
-This public copy is a **static, local-first browser app**. It contains only:
+## Highlights
 
-- `index.html`
-- `styles.css`
-- `app.js`
+- Multi-prospect pipeline with an at-a-glance fit score per business
+- Leak-likelihood scoring driven by observable signals, each with reasons and evidence notes
+- Auto wedge recommendation that targets your strongest-evidence leak (with manual override)
+- Compare view that ranks all prospects by fit score
+- Export as Markdown dossier, JSON, comparison CSV, or a clean printed document
 
 ## Run
 
@@ -16,10 +18,14 @@ Open `index.html` directly, or serve the folder locally:
 python3 -m http.server 8000
 ```
 
-Then open the matching `/apps/day-11-local-biz-snapshot/` path in your browser.
+Then open `/apps/day-11-local-biz-snapshot/` in your browser.
+
+See [GUIDE.md](./GUIDE.md) for a full step-by-step walkthrough.
 
 ## Security boundary
 
+- Static, local-first browser app: only `index.html`, `styles.css`, `app.js`. No build step, no external resources.
 - No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access.
+- Data persists only in your browser's `localStorage`.
+- All outputs are draft/local artifacts and must be human-reviewed before any customer-facing or public use.

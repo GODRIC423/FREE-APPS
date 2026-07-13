@@ -1,107 +1,178 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Intake Form Builder</title>
+  <script>
+    try {
+      var s = JSON.parse(localStorage.getItem('fable-remake:day-20-intake-form-builder:v1') || 'null');
+      var t = s && (s.theme === 'light' || s.theme === 'dark')
+        ? s.theme
+        : (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.dataset.theme = t;
+    } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+  </script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="builder-shell">
-    <header class="blueprint-hero" aria-label="Intake Form Builder header">
-      <section class="hero-copy">
-        <p class="kicker">Day 20 · Blueprint desk</p>
-        <h1>Draft a service intake form without turning it into a monster.</h1>
-        <p class="lede">A local-first form blueprint tool for shaping the exact questions, required fields, privacy warnings, and export packet before anything goes public.</p>
-        <div class="hero-actions">
-          <button id="loadDemo" type="button">Load demo form</button>
-          <button id="buildForm" type="button">Build blueprint</button>
-          <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-        </div>
-      </section>
-      <aside class="blueprint-card" aria-hidden="true">
-        <div class="grid-paper">
-          <span class="field-block wide"></span>
-          <span class="field-block"></span>
-          <span class="field-block"></span>
-          <span class="field-block full"></span>
-          <span class="field-block short"></span>
-        </div>
-        <div class="draft-stamp">DRAFT · LOCAL</div>
-      </aside>
-    </header>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">IF</span>
+      <div class="brand-text">
+        <h1>Intake Form Builder</h1>
+        <p class="tagline">Design a service intake form with a built-in privacy audit</p>
+      </div>
+    </div>
+    <nav class="header-actions" aria-label="App actions">
+      <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
+      <button id="loadDemoBtn" type="button" class="btn">Load demo</button>
+      <button id="helpBtn" type="button" class="btn">How to use</button>
+      <button id="themeBtn" type="button" class="btn btn-icon" aria-label="Toggle dark or light theme" aria-pressed="false">&#9789;</button>
+    </nav>
+  </header>
 
-    <section class="safety-strip" aria-label="Safety boundary">
-      <strong>Draft-only form design:</strong> this app does not publish forms, submit customer data, call webhooks, or connect to CRMs. Export the spec only after a human privacy/proof review.
+  <main class="shell">
+    <p class="safety-strip"><strong>Draft-only design desk:</strong> this app never publishes forms, collects customer data, calls webhooks, or touches a CRM. Everything stays in this browser until a human reviews and exports the spec.</p>
+
+    <section class="stat-strip" aria-label="Live form metrics">
+      <div class="stat"><strong id="statFields">0</strong><span>fields</span></div>
+      <div class="stat"><strong id="statRequired">0</strong><span>required</span></div>
+      <div class="stat"><strong id="statFlags">0</strong><span>privacy flags</span></div>
+      <div class="stat"><strong id="statHealth">0</strong><span>health score</span></div>
     </section>
 
-    <section class="metrics" aria-label="Form metrics">
-      <article><span>Fields</span><strong id="metricFields">0</strong><small>questions</small></article>
-      <article><span>Required</span><strong id="metricRequired">0</strong><small>must answer</small></article>
-      <article><span>Privacy flags</span><strong id="metricFlags">0</strong><small>review</small></article>
-      <article><span>Health</span><strong id="metricHealth">0%</strong><small>draft score</small></article>
-    </section>
+    <div class="layout">
+      <div class="col col-left">
+        <section class="panel" id="settingsPanel" aria-label="Form settings">
+          <div class="panel-head">
+            <h2>1 &middot; Form settings</h2>
+            <p class="panel-sub">Define the job this form has to do.</p>
+          </div>
+          <div class="form-grid">
+            <label class="fld">Form name
+              <input id="setFormName" type="text" maxlength="90" autocomplete="off" placeholder="Emergency HVAC intake" />
+            </label>
+            <label class="fld">Business / team
+              <input id="setBusinessName" type="text" maxlength="90" autocomplete="off" placeholder="Backhaul Heating" />
+            </label>
+            <label class="fld span2">Intake goal
+              <textarea id="setFormGoal" rows="2" maxlength="400" placeholder="Collect enough information to route urgent no-heat calls without promising availability or pricing."></textarea>
+            </label>
+            <label class="fld">Channel
+              <select id="setChannel"></select>
+            </label>
+            <label class="fld">Response promise
+              <select id="setResponsePromise"></select>
+            </label>
+            <label class="fld span2">Internal privacy rule
+              <textarea id="setPrivacyNote" rows="2" maxlength="400" placeholder="Never ask for passwords, card numbers, SSNs, medical data, or IDs we do not need."></textarea>
+            </label>
+          </div>
+        </section>
 
-    <section class="workspace-grid">
-      <section class="panel context-panel" aria-label="Service context">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Service context</p><h2>Define the form's job.</h2></div></div>
-        <label>Form name<input id="formName" maxlength="90" placeholder="Emergency HVAC intake" /></label>
-        <label>Business / team<input id="businessName" maxlength="90" placeholder="Backhaul Heating" /></label>
-        <label>Intake goal<textarea id="formGoal" placeholder="Collect enough information to route urgent no-heat calls without promising availability."></textarea></label>
-        <div class="split">
-          <label>Channel<select id="channel"><option>Phone screen</option><option>Website form</option><option>Text follow-up</option><option>In-office checklist</option></select></label>
-          <label>Response promise<select id="responsePromise"><option>No promise yet</option><option>Same business day</option><option>Within 2 hours</option><option>Next available slot</option></select></label>
-        </div>
-        <label>Privacy note<textarea id="privacyNote" placeholder="Do not ask for passwords, card numbers, medical data, or unnecessary IDs."></textarea></label>
-      </section>
+        <section class="panel" id="builderPanel" aria-label="Field builder">
+          <div class="panel-head row">
+            <div>
+              <h2>2 &middot; Fields</h2>
+              <p class="panel-sub">Drag to reorder. Edit any field in place.</p>
+            </div>
+            <button id="addFieldBtn" type="button" class="btn btn-primary">+ Add field</button>
+          </div>
+          <div id="fieldList" class="field-list" aria-live="polite"></div>
+        </section>
+      </div>
 
-      <section class="panel toolbox-panel" aria-label="Question toolbox">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Question card</p><h2>Add a field to the blueprint.</h2></div></div>
-        <label>Question label<input id="fieldLabel" maxlength="120" placeholder="What problem should we solve?" /></label>
-        <div class="split three">
-          <label>Type<select id="fieldType"><option value="short-text">Short text</option><option value="long-text">Long text</option><option value="select">Single choice</option><option value="checkboxes">Checklist</option><option value="date">Date</option><option value="phone">Phone</option><option value="email">Email</option><option value="address">Address</option><option value="number">Number</option></select></label>
-          <label>Required<select id="fieldRequired"><option value="yes">Required</option><option value="no">Optional</option></select></label>
-          <label>Section<select id="fieldSection"><option>Contact</option><option>Job details</option><option>Urgency</option><option>Scheduling</option><option>Proof / files</option><option>Consent</option></select></label>
-        </div>
-        <label>Choices / helper text<textarea id="fieldHelp" placeholder="For choice fields: Emergency | This week | Planning. For text fields: tell the user what a good answer includes."></textarea></label>
-        <div class="button-row">
-          <button id="addField" type="button">Add field</button>
-          <button id="addStarterSet" class="ghost" type="button">Add starter set</button>
-          <button id="clearFields" class="ghost" type="button">Clear fields</button>
-        </div>
-      </section>
-    </section>
+      <div class="col col-right">
+        <section class="panel" id="previewPanel" aria-label="Live form preview">
+          <div class="panel-head">
+            <h2>3 &middot; Live preview</h2>
+            <p class="panel-sub">Grouped by section &mdash; what the requester will see.</p>
+          </div>
+          <div class="print-title" aria-hidden="true">
+            <p>Intake form spec &mdash; draft for human review &middot; generated locally, no data collected.</p>
+          </div>
+          <div id="previewBody" class="preview-body" aria-live="polite"></div>
+        </section>
 
-    <section class="builder-board" aria-label="Builder board">
-      <section class="panel canvas-panel">
-        <div class="panel-title"><span>03</span><div><p class="kicker">Blueprint canvas</p><h2>Drag-free ordered field list.</h2></div></div>
-        <div id="fieldCanvas" class="field-canvas" aria-live="polite"></div>
-      </section>
-      <section class="panel preview-panel">
-        <div class="panel-title"><span>04</span><div><p class="kicker">Live preview</p><h2>What the customer/admin sees.</h2></div></div>
-        <div id="formPreview" class="form-preview" aria-live="polite"></div>
-      </section>
-    </section>
+        <section class="panel" id="auditPanel" aria-label="Privacy audit and health score">
+          <div class="panel-head">
+            <h2>4 &middot; Privacy audit &amp; health</h2>
+            <p class="panel-sub">Flags recompute live as you edit.</p>
+          </div>
+          <div class="print-title" aria-hidden="true">
+            <p>Privacy audit &amp; health score</p>
+          </div>
+          <div class="health-block">
+            <div class="health-top">
+              <strong id="healthScore" class="health-score">0</strong>
+              <div class="health-copy">
+                <span id="healthBand" class="health-band">&mdash;</span>
+                <div class="health-track" role="img" aria-label="Health score bar"><span id="healthBar" class="health-fill"></span></div>
+              </div>
+            </div>
+            <ul id="healthReasons" class="health-reasons"></ul>
+          </div>
+          <div id="auditList" class="audit-list"></div>
+        </section>
+      </div>
 
-    <section class="output-grid">
-      <section class="panel output-panel" aria-label="Generated form blueprint">
-        <div class="panel-title"><span>05</span><div><p class="kicker">Export packet</p><h2>Copy or download the spec.</h2></div></div>
-        <textarea id="blueprintOutput" readonly aria-label="Generated form blueprint"></textarea>
-      </section>
-      <aside class="panel audit-panel" aria-label="Form audit">
-        <div class="panel-title"><span>06</span><div><p class="kicker">Review desk</p><h2>Privacy and quality checks.</h2></div></div>
-        <div id="auditList" class="audit-list" aria-live="polite"></div>
-        <div class="export-actions">
-          <button id="copyBlueprint" type="button">Copy spec</button>
-          <button id="downloadMarkdown" type="button">Download MD</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-          <button id="downloadShare" type="button">Download share note</button>
+      <section class="panel export-panel" id="exportPanel" aria-label="Export and handoff">
+        <div class="panel-head row">
+          <div>
+            <h2>5 &middot; Export &amp; handoff</h2>
+            <p class="panel-sub">Every export is a draft for human review &mdash; nothing is published from here.</p>
+          </div>
+          <div class="btn-row">
+            <button id="copyMdBtn" type="button" class="btn btn-primary">Copy Markdown</button>
+            <button id="dlMdBtn" type="button" class="btn">Download .md</button>
+            <button id="dlJsonBtn" type="button" class="btn">Download JSON</button>
+            <button id="dlCsvBtn" type="button" class="btn">Download CSV</button>
+            <button id="printBtn" type="button" class="btn">Print</button>
+            <button id="importBtn" type="button" class="btn btn-ghost">Import JSON</button>
+            <button id="resetBtn" type="button" class="btn btn-danger">Reset</button>
+            <input id="importFile" type="file" accept="application/json,.json" hidden aria-hidden="true" tabindex="-1" />
+          </div>
         </div>
-      </aside>
-    </section>
+        <pre id="specPre" class="spec-pre" tabindex="0" aria-label="Markdown spec preview"></pre>
+      </section>
+    </div>
   </main>
+
+  <footer class="site-footer">
+    <p>Local-first &middot; No accounts &middot; No tracking &mdash; data stays in this browser.</p>
+    <a href="../../index.html">&larr; All apps</a>
+  </footer>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="helpModal" class="modal-backdrop" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <div class="modal-head">
+        <h2 id="helpTitle">How to use Intake Form Builder</h2>
+        <button id="helpCloseBtn" type="button" class="btn btn-icon" aria-label="Close help">&times;</button>
+      </div>
+      <ol class="help-steps">
+        <li><strong>Set the context.</strong> Name the form, the team behind it, and write the intake goal &mdash; one sentence about what the form must learn to route the job.</li>
+        <li><strong>Add fields.</strong> Click <em>+ Add field</em>: an editor opens in place. Pick a type (text, choice, phone, file&hellip;), a section, and whether it is required. For choice fields, list options separated by <code>|</code>.</li>
+        <li><strong>Edit in place.</strong> Click <em>Edit</em> on any card to change it right there. Duplicate a card to reuse its shape.</li>
+        <li><strong>Reorder.</strong> Drag a card by its handle, or use the &uarr;/&darr; buttons. Order carries into the preview and every export.</li>
+        <li><strong>Watch the live preview.</strong> Fields are grouped by section exactly as a requester would see them, with realistic mock inputs.</li>
+        <li><strong>Read the privacy audit.</strong> Blockers (sensitive asks like SSNs, card numbers, health data), warnings (missing consent, required overload), and notes recompute live. The health score explains every point gained or lost.</li>
+        <li><strong>Fix, then export.</strong> Resolve flags by editing fields, then copy the Markdown spec or download JSON/CSV. Deleting a field shows an <em>Undo</em> toast for 7 seconds.</li>
+      </ol>
+      <h3>Keyboard shortcuts</h3>
+      <table class="shortcuts">
+        <tbody>
+          <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close dialogs / cancel field edit</td></tr>
+          <tr><td><kbd>Ctrl</kbd>/<kbd>&#8984;</kbd> + <kbd>S</kbd></td><td>Copy the Markdown spec</td></tr>
+        </tbody>
+      </table>
+      <p class="modal-note">Everything is stored in this browser only. Exports are drafts for human review &mdash; nothing goes live from here.</p>
+    </div>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>
