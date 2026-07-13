@@ -1,183 +1,215 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SOP Builder</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOP Builder — repeatable operating procedures</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="factory-shell">
-    <header class="factory-hero" aria-label="SOP Builder header">
-      <div class="factory-mark" aria-hidden="true"><span>SOP</span><i></i><b></b></div>
-      <section class="hero-copy">
-        <p class="kicker">Day 14 · SOP Builder</p>
-        <h1>Turn repeated work into a clean operating line.</h1>
-        <p class="lede">A local-first assembly-line workspace for task triggers, steps, quality checks, handoff notes, and owner-ready SOP exports. It keeps everything draft-only in this browser: no cloud sync, no accounts, no customer actions.</p>
-      </section>
-      <nav class="hero-actions" aria-label="App controls">
-        <button id="loadDemo" type="button">Load demo</button>
-        <button id="addStep" type="button">Add step</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </nav>
-    </header>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">SB</span>
+      <div class="brand-text">
+        <strong>SOP Builder</strong>
+        <span>Trigger, owner, steps, checks, exceptions — written once, run the same every time</span>
+      </div>
+    </div>
+    <nav class="header-actions" aria-label="App controls">
+      <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
+      <button id="btnDemo" type="button" class="btn">Load demo</button>
+      <button id="btnHelp" type="button" class="btn">How to use</button>
+      <button id="btnTheme" type="button" class="btn btn-ghost" aria-label="Toggle color theme"><span id="themeIcon" aria-hidden="true">&#9788;</span></button>
+    </nav>
+  </header>
 
-    <section class="line-metrics" aria-label="SOP metrics">
-      <article><span>Steps</span><strong id="metricSteps">0</strong></article>
-      <article><span>Checks</span><strong id="metricChecks">0</strong></article>
-      <article><span>Readiness</span><strong id="metricReady">0%</strong></article>
-      <article><span>Boundary</span><strong>Draft SOP</strong></article>
-    </section>
-
-    <section class="workshop-grid">
-      <section class="panel intake-panel" aria-label="Task intake">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Intake bay</p><h2>Define the repeated task</h2></div></div>
-        <div class="form-grid">
-          <label>Task name<input id="taskName" maxlength="100" /></label>
-          <label>Trigger<input id="trigger" maxlength="160" placeholder="When should this SOP start?" /></label>
-          <label>Owner<input id="owner" maxlength="90" /></label>
-          <label>Inputs needed<input id="inputs" maxlength="220" /></label>
-          <label>Done definition<textarea id="done" maxlength="500"></textarea></label>
-          <label>Risk / exception<textarea id="risk" maxlength="500"></textarea></label>
+  <main class="shell">
+    <div class="layout">
+      <aside class="panel library" aria-label="SOP library">
+        <div class="library-head">
+          <h2>SOP library</h2>
+          <button id="btnNewSop" type="button" class="btn-primary">+ New</button>
         </div>
-      </section>
-
-      <aside class="panel gate-panel" aria-label="Quality gates">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Inspection gates</p><h2>Guard the process</h2></div></div>
-        <label><input id="checkInputs" type="checkbox" /> Inputs are explicit before work begins</label>
-        <label><input id="checkDecision" type="checkbox" /> Decision owner is named</label>
-        <label><input id="checkFallback" type="checkbox" /> Fallback/exception path is written</label>
-        <label><input id="checkApproval" type="checkbox" /> Human approval before customer-facing action</label>
-        <div class="readiness-dial" id="readinessDial">0% draft</div>
+        <ul id="sopList" class="sop-list"></ul>
+        <div id="libraryEmpty" class="empty" hidden>
+          <p><strong>No SOPs yet.</strong></p>
+          <p class="dim">Create your first procedure, or load the demo library to see a finished one.</p>
+        </div>
       </aside>
-    </section>
 
-    <section class="conveyor-panel panel" aria-label="Step conveyor">
-      <div class="panel-title"><span>03</span><div><p class="kicker">Step conveyor</p><h2>Move each step from rough to repeatable.</h2></div></div>
-      <div id="stepLane" class="step-lane" aria-live="polite"></div>
-    </section>
+      <section class="workspace" aria-label="SOP editor">
+        <div id="editorEmpty" class="panel empty empty-big" hidden>
+          <h2>Document how the work actually gets done</h2>
+          <p class="dim">An SOP turns tribal knowledge into a repeatable procedure: what triggers it, who owns it,
+            the exact steps, the quality checks, and what to do when things go sideways.</p>
+          <div class="empty-actions">
+            <button id="btnEmptyNew" type="button" class="btn-primary">Create your first SOP</button>
+            <button id="btnEmptyDemo" type="button" class="btn">Load demo library</button>
+          </div>
+        </div>
 
-    <section class="output-grid">
-      <section class="panel packet-panel" aria-label="Generated SOP packet">
-        <div class="panel-title"><span>04</span><div><p class="kicker">Handoff packet</p><h2>Owner-ready SOP draft</h2></div></div>
-        <textarea id="exportText" readonly aria-label="Generated SOP export"></textarea>
-        <div class="export-actions">
-          <button id="copyMarkdown" type="button">Copy SOP</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
+        <div id="editor" hidden>
+          <section class="stat-strip" aria-label="Live SOP metrics" aria-live="polite">
+            <article><strong id="statSteps">0</strong><span>Steps</span></article>
+            <article><strong id="statTime">0 min</strong><span>Est. runtime</span></article>
+            <article><strong id="statChecks">0</strong><span>Quality checks</span></article>
+            <article><strong id="statScore">0%</strong><span>Completeness</span></article>
+          </section>
+
+          <section class="panel" aria-label="Procedure overview">
+            <div class="panel-head">
+              <h2>1 &middot; Overview</h2>
+              <p class="dim">What is this procedure, when does it start, and who owns it?</p>
+            </div>
+            <div class="form-grid">
+              <label>SOP title <span class="req">required</span>
+                <input id="fTitle" data-field="title" maxlength="120" placeholder="e.g. Missed lead &rarr; same-day callback">
+              </label>
+              <label>Owner <span class="req">required</span>
+                <input id="fOwner" data-field="owner" maxlength="80" placeholder="A role, not a person — e.g. Ops lead">
+              </label>
+              <label>Trigger <span class="req">required</span>
+                <input id="fTrigger" data-field="trigger" maxlength="200" placeholder="The event or schedule that starts this SOP">
+              </label>
+              <label>Frequency
+                <input id="fFrequency" data-field="frequency" maxlength="80" placeholder="e.g. Daily at 16:00, or per new lead">
+              </label>
+              <label class="span-2">Purpose
+                <textarea id="fPurpose" data-field="purpose" rows="2" maxlength="400" placeholder="Why this procedure exists and what good looks like."></textarea>
+              </label>
+              <label class="span-2">Inputs needed <span class="hint-inline">one per line</span>
+                <textarea id="fInputs" data-field="inputs" rows="3" maxlength="600" placeholder="Lead source and timestamp&#10;Customer context and prior notes&#10;Quote value, if one exists"></textarea>
+              </label>
+              <label class="span-2">Definition of done <span class="req">required</span>
+                <textarea id="fDone" data-field="done" rows="2" maxlength="400" placeholder="What must be true for a run of this SOP to count as complete?"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel" aria-label="Steps">
+            <div class="panel-head">
+              <h2>2 &middot; Steps</h2>
+              <p class="dim">Drag the &#10495; handle or use &uarr; &darr; to reorder. Give every step an owner, a tool, and a duration.</p>
+            </div>
+            <div id="stepList" class="step-list"></div>
+            <div id="stepsEmpty" class="empty" hidden>
+              <p><strong>No steps yet.</strong></p>
+              <p class="dim">Break the work into numbered stations — each one small enough to hand to someone else.</p>
+            </div>
+            <button id="btnAddStep" type="button" class="btn">+ Add step</button>
+          </section>
+
+          <div class="grid-2">
+            <section class="panel" aria-label="Quality checks">
+              <div class="panel-head">
+                <h2>3 &middot; Quality checks</h2>
+                <p class="dim">The inspection list before a run counts as done. Tick a box once you have verified it in a dry run.</p>
+              </div>
+              <ul id="checkList" class="check-list"></ul>
+              <div id="checksEmpty" class="empty" hidden>
+                <p><strong>No quality checks yet.</strong></p>
+                <p class="dim">Write at least three — the things that must be true before anyone calls this done.</p>
+              </div>
+              <button id="btnAddCheck" type="button" class="btn">+ Add check</button>
+            </section>
+
+            <section class="panel" aria-label="Exception paths">
+              <div class="panel-head">
+                <h2>4 &middot; Exception paths</h2>
+                <p class="dim">When X goes wrong, do Y — and who to escalate to. This is what makes an SOP safe to delegate.</p>
+              </div>
+              <div id="excList" class="exc-list"></div>
+              <div id="excEmpty" class="empty" hidden>
+                <p><strong>No exception paths yet.</strong></p>
+                <p class="dim">List the ways the happy path breaks: angry customer, missing input, system down.</p>
+              </div>
+              <button id="btnAddExc" type="button" class="btn">+ Add exception</button>
+            </section>
+          </div>
+
+          <div class="grid-2">
+            <section class="panel" aria-label="Completeness score">
+              <div class="panel-head">
+                <h2>5 &middot; Completeness</h2>
+                <p class="dim">A structural score — it measures whether the SOP is fully written, not whether it is correct.</p>
+              </div>
+              <div class="score-row">
+                <strong id="scoreBig">0%</strong>
+                <span id="scoreBadge" class="badge">Skeleton</span>
+              </div>
+              <div class="score-bar" role="presentation"><div id="scoreFill"></div></div>
+              <ul id="scoreBreakdown" class="score-breakdown"></ul>
+              <h3 class="sub-head">Fix next</h3>
+              <ul id="fixList" class="fix-list" aria-live="polite"></ul>
+            </section>
+
+            <section class="panel" aria-label="Export and handoff">
+              <div class="panel-head">
+                <h2>6 &middot; Export &amp; handoff</h2>
+                <p class="dim">Every export is a draft for human review — approve before anything customer-facing, financial, or destructive.</p>
+              </div>
+              <div class="btn-row">
+                <button id="btnCopyMd" type="button" class="btn-primary">Copy Markdown</button>
+                <button id="btnPrint" type="button" class="btn">Print SOP</button>
+                <button id="btnJson" type="button" class="btn">Download JSON</button>
+                <button id="btnCsv" type="button" class="btn">Steps CSV</button>
+                <button id="btnImport" type="button" class="btn">Import JSON</button>
+              </div>
+              <p class="dim small">Markdown and print cover this SOP's full document. JSON is the whole library and can be re-imported. CSV is this SOP's step table.</p>
+              <hr class="rule">
+              <div class="btn-row">
+                <button id="btnDuplicate" type="button" class="btn">Duplicate SOP</button>
+                <button id="btnDeleteSop" type="button" class="btn btn-danger">Delete SOP</button>
+                <button id="btnReset" type="button" class="btn btn-danger">Reset all data</button>
+              </div>
+            </section>
+          </div>
+
+          <section class="panel doc-panel" aria-label="SOP document preview">
+            <div class="panel-head doc-panel-head">
+              <h2>7 &middot; Document preview</h2>
+              <p class="dim">This is what prints — a clean operating procedure you can pin on the wall.</p>
+            </div>
+            <article id="sopDocument" class="sop-document"></article>
+          </section>
         </div>
       </section>
-      <aside class="panel scoreboard" aria-label="SOP scoreboard">
-        <p class="kicker">Line status</p>
-        <h2 id="scoreHeadline">Draft needs work</h2>
-        <p id="scoreSummary">Add task details, steps, checks, and a human approval boundary.</p>
-        <ol id="nextActions"></ol>
-      </aside>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    </div>
   </main>
+
+  <footer class="app-footer">
+    <span>Local-first &middot; No accounts &middot; No tracking — data stays in this browser</span>
+    <a href="../../index.html">&larr; All apps</a>
+  </footer>
+
+  <dialog id="helpModal" aria-labelledby="helpTitle">
+    <div class="modal-head">
+      <h2 id="helpTitle">How to use SOP Builder</h2>
+      <button id="btnCloseHelp" type="button" class="btn btn-ghost" aria-label="Close guide">&#10005;</button>
+    </div>
+    <ol class="help-steps">
+      <li><strong>Create an SOP.</strong> Click <em>+ New</em> in the library (left), or <em>Load demo</em> to explore three finished procedures first.</li>
+      <li><strong>Fill the overview.</strong> Title, owner (a role, not a person), the trigger that starts it, frequency, purpose, inputs, and a definition of done.</li>
+      <li><strong>Break the work into steps.</strong> Each step gets a title, the exact action, an owner, the tool used, and a duration in minutes. Drag the &#10495; handle or use &uarr; &darr; to reorder.</li>
+      <li><strong>Write quality checks.</strong> The short inspection list a runner ticks before calling the run done. Tick a box here once you have verified it in a dry run.</li>
+      <li><strong>Map exception paths.</strong> For each way the happy path breaks: what happened, what to do instead, and who to escalate to.</li>
+      <li><strong>Watch the completeness score.</strong> The stat strip and the <em>Fix next</em> list tell you exactly what is still missing.</li>
+      <li><strong>Export the document.</strong> Copy Markdown, print the clean SOP page, or download JSON (whole library, re-importable) and CSV (step table). Everything is a draft for human review.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="shortcut-table">
+      <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the current SOP as Markdown</td></tr>
+      </tbody>
+    </table>
+    <p class="dim small">Everything you write stays in this browser (localStorage). Exports are drafts for human review.</p>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden>
   <script src="./app.js"></script>
 </body>
 </html>

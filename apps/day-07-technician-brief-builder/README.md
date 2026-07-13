@@ -1,12 +1,12 @@
 # Technician Brief Builder
 
-Day 07 of the 30 App Daily Ritual.
+Turn messy office notes into a dispatch-ready, one-page job brief — customer context, reported issue, parts checklist, risk flags, and a no-promise boundary the tech can't miss.
 
-This public copy is a **static, local-first browser app**. It contains only:
-
-- `index.html`
-- `styles.css`
-- `app.js`
+- **Job-type templates** (HVAC, plumbing, electrical, appliance, maintenance, install, inspection) that seed first checks, hazards, boundaries, and suggested parts
+- **Parts & tools checklist builder** with quantities, suggested chips, and packed tracking
+- **Auto-detected risk flags** from your notes, plus manual flags with severity and mitigations
+- **Brief completeness meter** and a four-point dispatch sign-off gating "DISPATCH READY"
+- **Printable one-page brief**, Markdown copy, and JSON export/import — all local drafts
 
 ## Run
 
@@ -16,10 +16,12 @@ Open `index.html` directly, or serve the folder locally:
 python3 -m http.server 8000
 ```
 
-Then open the matching `/apps/day-07-technician-brief-builder/` path in your browser.
+Then open `/apps/day-07-technician-brief-builder/` in your browser.
+
+See [GUIDE.md](GUIDE.md) for a full step-by-step walkthrough.
 
 ## Security boundary
 
+- Static, local-first browser app: `index.html`, `styles.css`, `app.js` only. No backend, accounts, cookies, or network calls; data persists in `localStorage`.
 - No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- No CRM, webhook, payment, dispatch, or customer-contact access. Outputs are draft/local artifacts and must be human-reviewed before customer or public use.

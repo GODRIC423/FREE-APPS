@@ -1,481 +1,968 @@
-const STORAGE_KEY = 'sop-builder-v1';
-const demoState = {
-  theme: 'dark',
-  taskName: 'Turn a missed lead into a same-day owner review',
-  trigger: 'A missed call, stale quote, or form lead is found in a daily lead-leak check',
-  owner: 'Ops lead or owner delegate',
-  inputs: 'Lead source, timestamp, customer context, quote value, prior contact notes, approval status',
-  done: 'A human-reviewed next action is logged, the customer-facing draft is approved or rejected, and the owner can see what happened.',
-  risk: 'Never promise price, timing, availability, or AI certainty. Escalate if the record contains sensitive customer data or a complaint.',
-  checks: { inputs:true, decision:true, fallback:true, approval:true },
-  steps: [
-    { title:'Capture the trigger', detail:'Record where the lead appeared, when it arrived, and why it needs attention.', check:'No private tokens, account IDs, or unredacted customer secrets are copied into the SOP.', owner:'Office admin' },
-    { title:'Classify the next action', detail:'Choose call back, quote chase, review request, technician brief, or owner report follow-up.', check:'Decision matches the current customer context and job status.', owner:'Ops lead' },
-    { title:'Draft, review, then act', detail:'Generate an internal draft, route it through Approval Gate Desk, and only then perform the human-approved action outside this app.', check:'Customer-facing action has explicit human approval.', owner:'Owner delegate' }
-  ]
-};
-const blankStep = () => ({ title:'New station', detail:'Describe the repeatable action.', check:'What must be true before this step is complete?', owner:'Owner' });
-let state = loadState();
-const $ = id => document.getElementById(id);
-const inputs = ['taskName','trigger','owner','inputs','done','risk'];
-function clone(value){ return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
-function loadState(){ try { const raw = localStorage.getItem(STORAGE_KEY); if(raw){ const parsed = JSON.parse(raw); return normalize(parsed); } } catch {} return clone(demoState); }
-function normalize(value){ const next = { ...clone(demoState), ...value }; next.checks = { ...clone(demoState.checks), ...(value?.checks || {}) }; next.steps = Array.isArray(value?.steps) && value.steps.length ? value.steps : clone(demoState.steps); next.theme = next.theme === 'light' ? 'light' : 'dark'; return next; }
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-function applyTheme(){ document.documentElement.dataset.theme = state.theme === 'light' ? 'light' : 'dark'; $('themeToggle').textContent = state.theme === 'light' ? 'Dark' : 'Light'; $('themeToggle').setAttribute('aria-pressed', state.theme === 'light' ? 'true':'false'); }
-function readInputs(){ inputs.forEach(k => state[k] = $(k).value); state.checks = { inputs:$('checkInputs').checked, decision:$('checkDecision').checked, fallback:$('checkFallback').checked, approval:$('checkApproval').checked }; }
-function bindInputs(){ inputs.forEach(k => $(k).value = state[k] || ''); $('checkInputs').checked = !!state.checks.inputs; $('checkDecision').checked = !!state.checks.decision; $('checkFallback').checked = !!state.checks.fallback; $('checkApproval').checked = !!state.checks.approval; }
-function readiness(){ let score = 0; inputs.forEach(k => { if(String(state[k] || '').trim().length > (k === 'taskName' ? 6 : 18)) score += k === 'taskName' ? 10 : 8; }); score += Math.min(30, state.steps.filter(step => step.title && step.detail && step.check && step.owner).length * 10); score += Object.values(state.checks).filter(Boolean).length * 8; return Math.min(100, score); }
-function nextActions(){ const actions = []; if(!state.taskName?.trim()) actions.push('Name the repeated task.'); if(!state.trigger?.trim()) actions.push('Write the trigger that starts the SOP.'); if(!state.owner?.trim()) actions.push('Name the decision owner.'); if(state.steps.length < 3) actions.push('Add at least three repeatable steps.'); if(!state.checks.approval) actions.push('Mark human approval before customer-facing action.'); if(!state.risk?.trim()) actions.push('Add the exception/risk path.'); return actions.length ? actions.slice(0,5) : ['Export the SOP, run it once with demo data, then revise after the first real use.']; }
-function markdown(){ return ['# SOP Builder packet','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local SOP. Human approval is required before sends, CRM writes, public/customer-facing changes, pricing promises, or destructive actions.','',`## Task`,state.taskName || 'Untitled SOP',`Trigger: ${state.trigger || 'Missing'}`,`Owner: ${state.owner || 'Missing'}`,`Inputs: ${state.inputs || 'Missing'}`,`Done definition: ${state.done || 'Missing'}`,`Risk / exception: ${state.risk || 'Missing'}`,'',`## Readiness`,`${readiness()}%`,'',`## Steps`,...state.steps.map((s,i)=>['',`### ${i+1}. ${s.title || 'Untitled step'}`,`- Owner: ${s.owner || 'Missing'}`,`- Action: ${s.detail || 'Missing'}`,`- Quality check: ${s.check || 'Missing'}`].join('\n')),'',`## Quality gates`,`- Inputs explicit: ${state.checks.inputs ? 'yes':'no'}`,`- Decision owner named: ${state.checks.decision ? 'yes':'no'}`,`- Fallback written: ${state.checks.fallback ? 'yes':'no'}`,`- Human approval before customer-facing action: ${state.checks.approval ? 'yes':'no'}`,'',`## Next actions`,...nextActions().map(item => `- ${item}`)].join('\n'); }
-function csv(){ const rows = [['station','title','owner','action','quality_check']]; state.steps.forEach((s,i)=>rows.push([i+1,s.title,s.owner,s.detail,s.check])); return rows.map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); }
-function renderSteps(){ $('stepLane').innerHTML = state.steps.map((s,i)=>`<article class="step-card" data-index="${i}" data-station="${String(i+1).padStart(2,'0')}"><label>Station title<input data-field="title" value="${esc(s.title)}" /></label><label>Action<textarea data-field="detail">${esc(s.detail)}</textarea></label><label>Quality check<textarea data-field="check">${esc(s.check)}</textarea></label><label>Owner<input data-field="owner" value="${esc(s.owner)}" /></label><div class="step-actions"><button type="button" class="secondary" data-move="up">Up</button><button type="button" class="secondary" data-move="down">Down</button><button type="button" class="secondary" data-remove="true">Remove</button></div></article>`).join(''); document.querySelectorAll('.step-card').forEach(card => { const idx = Number(card.dataset.index); card.querySelectorAll('[data-field]').forEach(field => field.addEventListener('input', () => { state.steps[idx][field.dataset.field] = field.value; renderOutput(); saveState(); })); card.querySelector('[data-move="up"]')?.addEventListener('click', () => moveStep(idx, -1)); card.querySelector('[data-move="down"]')?.addEventListener('click', () => moveStep(idx, 1)); card.querySelector('[data-remove]')?.addEventListener('click', () => removeStep(idx)); }); }
-function renderOutput(){ const score = readiness(); $('metricSteps').textContent = state.steps.length; $('metricChecks').textContent = Object.values(state.checks).filter(Boolean).length + '/4'; $('metricReady').textContent = score + '%'; $('readinessDial').textContent = score + '% ready'; $('exportText').value = markdown(); $('scoreHeadline').textContent = score >= 82 ? 'Ready for a test run' : score >= 62 ? 'Usable draft' : 'Draft needs work'; $('scoreSummary').textContent = score >= 82 ? 'The SOP has enough structure for a human dry run.' : 'Tighten missing triggers, steps, checks, owners, or risk boundaries before using.'; $('nextActions').innerHTML = nextActions().map(item => `<li>${esc(item)}</li>`).join(''); }
-function renderAll(){ applyTheme(); bindInputs(); renderSteps(); renderOutput(); saveState(); }
-function sync(){ readInputs(); renderOutput(); saveState(); }
-function moveStep(idx, delta){ const next = idx + delta; if(next < 0 || next >= state.steps.length) return; [state.steps[idx], state.steps[next]] = [state.steps[next], state.steps[idx]]; renderAll(); toast('Step moved'); }
-function removeStep(idx){ if(state.steps.length <= 1){ toast('Keep at least one step'); return; } state.steps.splice(idx,1); renderAll(); toast('Step removed'); }
-function addStep(){ readInputs(); state.steps.push(blankStep()); renderAll(); toast('Step added'); }
-function download(name,text,type){ const blob = new Blob([text], {type}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); URL.revokeObjectURL(url); }
-function copy(text){ navigator.clipboard?.writeText(text).then(()=>toast('Copied')).catch(()=>{ $('exportText').focus(); $('exportText').select(); toast('Select/copy from export'); }); }
-function toast(msg){ const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(window.__toastTimer); window.__toastTimer = setTimeout(()=>el.classList.remove('show'),1700); }
-[...inputs].forEach(k => $(k).addEventListener('input', sync));
-['checkInputs','checkDecision','checkFallback','checkApproval'].forEach(k => $(k).addEventListener('change', sync));
-$('themeToggle').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; renderAll(); toast(`${state.theme === 'light' ? 'Light':'Dark'} mode saved`); });
-$('loadDemo').addEventListener('click', () => { state = clone(demoState); renderAll(); toast('Demo SOP loaded'); });
-$('addStep').addEventListener('click', addStep);
-$('copyMarkdown').addEventListener('click', () => copy($('exportText').value));
-$('downloadJson').addEventListener('click', () => download('sop-builder.json', JSON.stringify({ ...state, readiness: readiness(), markdown: markdown(), generatedAt:new Date().toISOString(), safety:'draft-only local SOP; human approval before customer-facing or destructive action' }, null, 2), 'application/json'));
-$('downloadCsv').addEventListener('click', () => download('sop-builder-steps.csv', csv(), 'text/csv'));
-renderAll();
-
-// Day 15 Daily Cash Board bridge: current-output-to-cash-action handoff.
+/* SOP Builder — local-first standard operating procedure editor.
+   Structure: constants → state helpers → domain logic → render → events → init. */
 (() => {
-  const section = document.getElementById('daily-cash-board-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('dailyCashBoardCards');
-  const textEl = document.getElementById('dailyCashBoardText');
-  const copyBtn = document.getElementById('copyDailyCashBoard');
-  const downloadBtn = document.getElementById('downloadDailyCashBoard');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCash = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'dailyCashBoardText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1000);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1000);
-  }
-  function valueCue(text){
-    const match = text.match(/\$\s?([0-9][0-9,]*(?:\.\d{1,2})?)/);
-    return match ? `$${match[1]}` : 'Value not set';
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const dueSignal = /today|daily|now|urgent|stale|follow|invoice|quote|call/i.test(output) ? 'Due today / review now' : 'Schedule the next review date';
-    return {
-      sourceApp: name,
-      cashSignal: valueCue(output),
-      offerCheckpoint: `If ${name} reveals a clear wedge, draft one narrow offer and route it for human approval.`,
-      followupCheckpoint: `If the output mentions a quote, lead, proof, review, or owner decision, create one follow-up task instead of letting it sit.`,
-      callCheckpoint: 'If discovery is needed, book or prepare one human-led call; do not send from this bridge.',
-      invoiceCheckpoint: 'If work is complete or approved, check invoice/collection status outside this app.',
-      nextAction: `${dueSignal}: copy this cash brief into Daily Cash Board and choose the single highest-cash next move.`,
-      risk: 'No customer-facing sends, CRM writes, invoices, payments, public changes, pricing promises, or destructive actions from this bridge.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Daily Cash Board bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local cash brief. Human approval is required before customer-facing, billing, CRM, payment, or public actions.','',`## Source`,packet.sourceApp,`Cash/value cue: ${packet.cashSignal}`,'',`## Cash checkpoints`,`- Offer: ${packet.offerCheckpoint}`,`- Follow-up: ${packet.followupCheckpoint}`,`- Booked call: ${packet.callCheckpoint}`,`- Invoice / collect: ${packet.invoiceCheckpoint}`,'',`## Next action`,packet.nextAction,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.risk].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Value cue', packet.cashSignal],
-      ['Offer', 'Draft only'],
-      ['Follow-up', 'One due action'],
-      ['Invoice', 'Check status'],
-      ['Boundary', 'Human approval']
-    ].map(([label, value]) => `<article><span>${escCash(label)}</span><strong>${escCash(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-daily-cash-board-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+  'use strict';
 
-// Day 16 Meeting Follow-up Kit bridge: current-output-to-recap handoff.
-(() => {
-  const section = document.getElementById('meeting-followup-kit-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('meetingFollowupCards');
-  const textEl = document.getElementById('meetingFollowupText');
-  const copyBtn = document.getElementById('copyMeetingFollowup');
-  const downloadBtn = document.getElementById('downloadMeetingFollowup');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escMeeting = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'meetingFollowupText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1200);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1200);
-  }
-  function firstSentence(text){ const match = clean(text).match(/[^.!?]+[.!?]/); return match ? match[0].trim() : clean(text).slice(0, 160); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const decisionCue = /(approve|approved|decision|choose|selected|ready|won|yes|no|price|pilot|scope)/i.test(output) ? 'Decision cue found' : 'Decision needs owner confirmation';
-    const riskCue = /(risk|block|guardrail|approval|secret|payment|invoice|customer|public|send|crm)/i.test(output) ? 'Risk/approval cue found' : 'No obvious risk cue';
-    return {
-      sourceApp: name,
-      recapHeadline: firstSentence(output) || `${name} output needs a meeting recap.`,
-      followupEmail: `Subject: Follow-up from ${name}\n\nHi all,\n\nQuick recap: ${firstSentence(output) || 'we reviewed the current app output.'}\n\nProposed next action: assign one owner, one due date, and one approval check before anything customer-facing happens.\n\nPlease confirm the decisions, risks, and open questions below before sending or acting.`,
-      ownerTasks: [`Name one owner for the next ${name} action`, 'Set a due date before the next review', 'Copy the guardrail into the handoff'],
-      decisions: [decisionCue, 'Confirm whether this output is ready for the next app/workflow'],
-      risks: [riskCue, 'No sends, CRM writes, invoices, payments, public changes, or customer contact from this bridge'],
-      questions: ['Who owns the next step?', 'What must be approved before real-world action?'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Meeting Follow-up Kit bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local recap. Human approval is required before sending email, calendar invites, CRM updates, customer messages, billing, or public changes.','',`## Source`,packet.sourceApp,'',`## Recap headline`,packet.recapHeadline,'',`## Draft follow-up email`,'```',packet.followupEmail,'```','',`## Tasks`,...packet.ownerTasks.map(v => `- ${v}`),'',`## Decisions`,...packet.decisions.map(v => `- ${v}`),'',`## Risks`,...packet.risks.map(v => `- ${v}`),'',`## Open questions`,...packet.questions.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Recap', 'Ready'],
-      ['Email', 'Draft only'],
-      ['Tasks', String(packet.ownerTasks.length)],
-      ['Risks', String(packet.risks.length)],
-      ['Boundary', 'Human review']
-    ].map(([label, value]) => `<article><span>${escMeeting(label)}</span><strong>${escMeeting(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-meeting-followup-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+  // ---------- constants & tiny helpers ----------
+  const STORAGE_KEY = 'fable-remake:day-14-sop-builder:v1';
+  const LEGACY_KEY = 'sop-builder-v1';
+  const UNDO_MS = 7000;
 
-// Day 17 Credential Handoff Checklist bridge: no-secret access custody handoff.
-(() => {
-  const section = document.getElementById('credential-handoff-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('credentialHandoffCards');
-  const textEl = document.getElementById('credentialHandoffText');
-  const copyBtn = document.getElementById('copyCredentialHandoff');
-  const downloadBtn = document.getElementById('downloadCredentialHandoff');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCred = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'credentialHandoffText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1400);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1400);
-  }
-  function findSystems(text){
-    const lower = text.toLowerCase();
-    const systems = [];
-    if(/email|inbox|follow-up|message|sms/.test(lower)) systems.push('Messaging/inbox access');
-    if(/calendar|booking|appointment|schedule/.test(lower)) systems.push('Booking/calendar access');
-    if(/crm|lead|customer|quote|invoice/.test(lower)) systems.push('CRM/customer record access');
-    if(/api|webhook|integration|automation/.test(lower)) systems.push('API/integration access');
-    if(/payment|billing|price|cash|invoice/.test(lower)) systems.push('Billing/payment portal access');
-    return systems.length ? [...new Set(systems)].slice(0,4) : ['App/operator access'];
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const systems = findSystems(output);
-    const riskWords = (output.match(/secret|token|key|password|customer|payment|send|crm|public|invoice|api/gi) || []).length;
-    return {
-      sourceApp: name,
-      systems,
-      primaryOwner: 'Assign primary owner',
-      backupOwner: 'Assign backup owner',
-      storageReference: 'Password-manager item label only — do not paste secret value',
-      requiredChecks: ['MFA confirmed', 'Least privilege confirmed', 'Storage reference verified', 'Revocation path documented', 'Rotation date set', 'No raw secret stored in this app/export'],
-      revocationPlan: systems.map(system => `${system}: document where to remove user/key and who can execute it.`),
-      riskFlags: riskWords ? [`${riskWords} sensitive/action words detected in source output; review access boundaries.`] : ['No obvious credential/action keywords detected; still review manually.'],
-      approvalBoundary: 'Human approval required before sharing, rotating, revoking, sending, CRM changes, billing actions, customer contact, or public changes.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Credential Handoff Checklist bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: metadata only. Do not paste raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment details. Use an encrypted/password-manager workflow for the actual secret handoff.','',`## Source`,packet.sourceApp,'',`## Systems/access surfaces`,...packet.systems.map(v => `- ${v}`),'',`## Owners`,`- Primary owner: ${packet.primaryOwner}`,`- Backup owner: ${packet.backupOwner}`,'',`## Storage reference`,packet.storageReference,'',`## Required checks`,...packet.requiredChecks.map(v => `- [ ] ${v}`),'',`## Revocation plan`,...packet.revocationPlan.map(v => `- ${v}`),'',`## Risk flags`,...packet.riskFlags.map(v => `- ${v}`),'',`## Approval boundary`,packet.approvalBoundary,'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Surfaces', String(packet.systems.length)],
-      ['Secret values', 'Never store'],
-      ['Checks', String(packet.requiredChecks.length)],
-      ['Revoke path', 'Required'],
-      ['Approval', 'Human gate']
-    ].map(([label, value]) => `<article><span>${escCred(label)}</span><strong>${escCred(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-credential-handoff-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+  const $ = (id) => document.getElementById(id);
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+  const clone = (v) => JSON.parse(JSON.stringify(v));
+  const filled = (v, min = 1) => String(v || '').trim().length >= min;
 
-// Day 18 Content Repurposer bridge: draft-only publishing packet.
-(() => {
-  const section = document.getElementById('content-repurposer-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('contentRepurposerCards');
-  const textEl = document.getElementById('contentRepurposerText');
-  const copyBtn = document.getElementById('copyContentRepurposer');
-  const downloadBtn = document.getElementById('downloadContentRepurposer');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escContent = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'contentRepurposerText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
+  // ---------- state ----------
+  let state = null;
+  let saveTimer = null;
+  let derivedTimer = null;
+  let toastTimer = null;
+  let dragSid = null;
+  let lastFocus = null;
+
+  function blankStep() {
+    return { id: uid(), title: '', detail: '', owner: '', tool: '', minutes: 0 };
   }
-  function splitSentences(text){ return clean(text).split(/(?<=[.!?])\s+/).filter(Boolean); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const sentences = splitSentences(output);
-    const proofWords = (output.match(/verified|smoke|browser|export|recording|phone|proof|score|ready|passed/gi) || []).length;
-    const publicWords = (output.match(/send|publish|post|customer|client|public|crm|payment|billing/gi) || []).length;
-    const title = `${name}: turn the output into a proof-ready draft`.slice(0, 92);
-    const chapters = [
-      ['00:00', 'What the app produced', sentences[0] || `${name} generated a useful local-first output.`],
-      ['00:35', 'Core workflow', sentences[1] || 'Walk through the main inputs, decisions, and generated packet.'],
-      ['01:15', 'Proof and caveats', sentences[2] || 'Show verification, limits, and human-review boundaries.'],
-      ['02:00', 'Next action', 'Copy/export the draft packet, then review before public use.']
-    ];
+  function blankCheck(text = '', done = false) {
+    return { id: uid(), text, done };
+  }
+  function blankException() {
+    return { id: uid(), condition: '', response: '', escalate: '' };
+  }
+  function blankSop(title = '') {
     return {
-      sourceApp: name,
+      id: uid(),
       title,
-      description: `${name} produced a local-first business workflow output. This bridge repurposes it into a draft content packet with proof notes, caveats, chapters, and short posts. Human review is required before publishing.`,
-      chapters,
-      shortPosts: [
-        `Built/useful output from ${name}: now it has a draft content packet with title, description, chapters, proof notes, and caveats.`,
-        `The important boundary: this is content drafting only. Review before anything public, customer-facing, or promotional.`,
-        proofWords ? `Proof cues detected in the source: ${proofWords}. Keep those in the public story instead of hype.` : `Add verification proof before publishing this story.`
+      owner: '',
+      trigger: '',
+      frequency: '',
+      purpose: '',
+      inputs: '',
+      done: '',
+      steps: [blankStep()],
+      checks: [
+        blankCheck('All required inputs were present before work began'),
+        blankCheck('The decision owner named in this SOP made the call'),
+        blankCheck('The exception paths were consulted for anything unusual'),
+        blankCheck('A human approved every customer-facing or financial action'),
       ],
-      checklist: ['Confirm claims match the source output', 'Add proof and screenshots only if secret-safe', 'Keep caveats visible', 'Human approval before public posting', 'No customer data or secrets in exported content'],
-      flags: publicWords ? [`${publicWords} public/customer/action words detected; approval review required.`] : ['No obvious public-action terms detected; still review manually.'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
+      exceptions: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
   }
-  function markdown(packet){
-    return ['# Content Repurposer bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Does not post, upload, send, call APIs, or publish. Human approval required before public use.','',`## Source`,packet.sourceApp,'',`## YouTube title`,packet.title,'',`## Description`,packet.description,'',`## Chapters`,...packet.chapters.map(c => `- ${c[0]} — ${c[1]}: ${c[2]}`),'',`## Short posts`,...packet.shortPosts.map((v,i)=>`### Post ${i+1}\n${v}`),'',`## Review checklist`,...packet.checklist.map(v => `- [ ] ${v}`),'',`## Flags`,...packet.flags.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Title', '1 draft'],
-      ['Chapters', String(packet.chapters.length)],
-      ['Posts', String(packet.shortPosts.length)],
-      ['Proof gate', 'Required'],
-      ['Public action', 'Human review']
-    ].map(([label, value]) => `<article><span>${escContent(label)}</span><strong>${escContent(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-content-repurposer-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 19 Home Service Route Planner bridge: draft-only service route sheet.
-(() => {
-  const section = document.getElementById('home-service-route-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('homeServiceRouteCards');
-  const textEl = document.getElementById('homeServiceRouteText');
-  const copyBtn = document.getElementById('copyHomeServiceRoute');
-  const downloadBtn = document.getElementById('downloadHomeServiceRoute');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escRoute = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'homeServiceRouteText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
+  function normalizeStep(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    return {
+      id: typeof s.id === 'string' && s.id ? s.id : uid(),
+      title: String(s.title ?? ''),
+      detail: String(s.detail ?? s.action ?? ''),
+      owner: String(s.owner ?? ''),
+      tool: String(s.tool ?? ''),
+      minutes: clamp(Math.round(Number(s.minutes) || 0), 0, 999),
+    };
   }
-  function chunks(text){ const parts = clean(text).split(/(?<=[.!?])\s+|\n+/).filter(Boolean); return parts.length ? parts : ['Review generated output', 'Confirm next action', 'Owner approval checkpoint']; }
-  function buildRoute(){
-    const name = appName();
-    const output = currentOutput();
-    const parts = chunks(output).slice(0, 5);
-    const base = 8 * 60;
-    const stops = parts.map((part, index) => {
-      const priority = /urgent|risk|overdue|stale|critical|high|emergency/i.test(part) ? 5 : (/review|approve|owner|proof/i.test(part) ? 4 : 3);
-      const arrive = base + index * 105;
-      return { order:index+1, customer:`${name} stop ${index+1}`, area:['North route','East route','South route','West route','Overflow'][index] || 'Route TBD', priority, windowStart:`${String(Math.floor(arrive/60)).padStart(2,'0')}:${String(arrive%60).padStart(2,'0')}`, duration: priority >= 5 ? 90 : 60, work:part };
+  function normalizeCheck(raw) {
+    if (typeof raw === 'string') return blankCheck(raw);
+    const c = raw && typeof raw === 'object' ? raw : {};
+    return {
+      id: typeof c.id === 'string' && c.id ? c.id : uid(),
+      text: String(c.text ?? ''),
+      done: !!c.done,
+    };
+  }
+  function normalizeException(raw) {
+    const x = raw && typeof raw === 'object' ? raw : {};
+    return {
+      id: typeof x.id === 'string' && x.id ? x.id : uid(),
+      condition: String(x.condition ?? ''),
+      response: String(x.response ?? ''),
+      escalate: String(x.escalate ?? x.escalateTo ?? ''),
+    };
+  }
+  function normalizeSop(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    return {
+      id: typeof s.id === 'string' && s.id ? s.id : uid(),
+      title: String(s.title ?? s.taskName ?? ''),
+      owner: String(s.owner ?? ''),
+      trigger: String(s.trigger ?? ''),
+      frequency: String(s.frequency ?? ''),
+      purpose: String(s.purpose ?? ''),
+      inputs: String(s.inputs ?? ''),
+      done: String(s.done ?? s.doneDefinition ?? ''),
+      steps: Array.isArray(s.steps) ? s.steps.map(normalizeStep) : [],
+      checks: Array.isArray(s.checks) ? s.checks.map(normalizeCheck) : [],
+      exceptions: Array.isArray(s.exceptions) ? s.exceptions.map(normalizeException) : [],
+      createdAt: Number(s.createdAt) || Date.now(),
+      updatedAt: Number(s.updatedAt) || Date.now(),
+    };
+  }
+  function normalize(raw) {
+    const prefersLight = typeof window.matchMedia === 'function'
+      && window.matchMedia('(prefers-color-scheme: light)').matches;
+    const base = { theme: prefersLight ? 'light' : 'dark', seenGuide: false, activeId: null, sops: [] };
+    if (!raw || typeof raw !== 'object') return base;
+    const st = { ...base };
+    if (raw.theme === 'light' || raw.theme === 'dark') st.theme = raw.theme;
+    st.seenGuide = !!raw.seenGuide;
+    st.sops = Array.isArray(raw.sops) ? raw.sops.map(normalizeSop) : [];
+    st.activeId = st.sops.some((s) => s.id === raw.activeId) ? raw.activeId : (st.sops[0]?.id ?? null);
+    return st;
+  }
+
+  // Convert the pre-remake single-SOP format into a one-item library.
+  function migrateLegacy() {
+    try {
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (!raw) return null;
+      const old = JSON.parse(raw);
+      if (!old || typeof old !== 'object') return null;
+      const sop = blankSop();
+      sop.title = String(old.taskName || 'Imported SOP');
+      sop.trigger = String(old.trigger || '');
+      sop.owner = String(old.owner || '');
+      sop.inputs = String(old.inputs || '');
+      sop.done = String(old.done || '');
+      sop.steps = Array.isArray(old.steps) && old.steps.length
+        ? old.steps.map(normalizeStep) : [blankStep()];
+      const stepChecks = (Array.isArray(old.steps) ? old.steps : [])
+        .map((s) => String(s?.check || '').trim()).filter(Boolean);
+      sop.checks = [...sop.checks, ...stepChecks.map((t) => blankCheck(t))];
+      if (String(old.risk || '').trim()) {
+        sop.exceptions = [{
+          id: uid(),
+          condition: 'Anything covered by the legacy risk note',
+          response: String(old.risk),
+          escalate: String(old.owner || ''),
+        }];
+      }
+      return { theme: old.theme === 'light' ? 'light' : 'dark', seenGuide: false, activeId: sop.id, sops: [sop] };
+    } catch { return null; }
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch { /* corrupt data falls through to defaults */ }
+    const legacy = migrateLegacy();
+    return legacy ? normalize(legacy) : normalize(null);
+  }
+  function save() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage full/blocked */ }
+  }
+  function scheduleSave() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 250);
+  }
+  function activeSop() {
+    return state.sops.find((s) => s.id === state.activeId) || null;
+  }
+  function touch() {
+    const sop = activeSop();
+    if (sop) sop.updatedAt = Date.now();
+    scheduleSave();
+  }
+
+  // ---------- domain logic (pure) ----------
+  function scoreSop(sop) {
+    const rows = [];
+    const add = (cat, earned, max, hint) => rows.push({ cat, earned, max, hint });
+
+    // Basics — 35 pts
+    add('Basics', filled(sop.title, 3) ? 5 : 0, 5, 'Give the SOP a clear title.');
+    add('Basics', filled(sop.owner) ? 6 : 0, 6, 'Name the role that owns this procedure.');
+    add('Basics', filled(sop.trigger, 8) ? 7 : 0, 7, 'Write the event or schedule that starts it.');
+    add('Basics', filled(sop.frequency) ? 3 : 0, 3, 'Say how often it runs.');
+    add('Basics', filled(sop.purpose, 12) ? 5 : 0, 5, 'Explain why this SOP exists.');
+    add('Basics', filled(sop.inputs, 5) ? 4 : 0, 4, 'List the inputs needed before starting.');
+    add('Basics', filled(sop.done, 12) ? 5 : 0, 5, 'Define what a finished run looks like.');
+
+    // Steps — 30 pts
+    const steps = sop.steps;
+    add('Steps', Math.min(steps.length, 3) * 4, 12, 'Break the work into at least three steps.');
+    const written = steps.filter((s) => filled(s.title, 3) && filled(s.detail, 10)).length;
+    add('Steps', steps.length ? Math.round((9 * written) / steps.length) : 0, 9,
+      'Describe what actually happens in every step.');
+    const metaRatio = steps.length
+      ? steps.reduce((sum, s) => sum + (filled(s.owner) ? 1 : 0) + (filled(s.tool) ? 1 : 0) + (s.minutes > 0 ? 1 : 0), 0) / (steps.length * 3)
+      : 0;
+    add('Steps', Math.round(9 * metaRatio), 9, 'Give each step an owner, a tool, and a duration.');
+
+    // Quality checks — 15 pts
+    const checkCount = sop.checks.filter((c) => filled(c.text, 5)).length;
+    add('Quality checks', Math.min(checkCount, 3) * 5, 15, 'Write at least three quality checks.');
+
+    // Exceptions — 20 pts
+    const excCount = sop.exceptions.filter((x) => filled(x.condition, 5) && filled(x.response, 5)).length;
+    add('Exceptions', Math.min(excCount, 2) * 10, 20,
+      'Document at least two exception paths (condition + response).');
+
+    const earned = rows.reduce((a, r) => a + r.earned, 0);
+    const max = rows.reduce((a, r) => a + r.max, 0);
+    return { score: Math.round((100 * earned) / max), rows };
+  }
+
+  function scoreBadge(score) {
+    if (score >= 90) return ['Run-ready draft', 'ok'];
+    if (score >= 70) return ['Nearly ready', 'good'];
+    if (score >= 40) return ['Working draft', 'warn'];
+    return ['Skeleton', 'bad'];
+  }
+
+  function totalMinutes(sop) {
+    return sop.steps.reduce((a, s) => a + (Number(s.minutes) || 0), 0);
+  }
+  function fmtMinutes(m) {
+    if (m < 60) return `${m} min`;
+    const h = Math.floor(m / 60);
+    const rest = m % 60;
+    return rest ? `${h}h ${rest}m` : `${h}h`;
+  }
+  function inputLines(sop) {
+    return String(sop.inputs || '').split('\n').map((v) => v.trim()).filter(Boolean);
+  }
+  function slugify(text) {
+    return String(text || 'sop').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'sop';
+  }
+
+  function sopMarkdown(sop) {
+    const { score } = scoreSop(sop);
+    const L = [];
+    L.push(`# ${sop.title || 'Untitled SOP'}`, '');
+    L.push(`> Draft SOP for human review — completeness ${score}%. Approve before any customer-facing, financial, or destructive action.`, '');
+    L.push('| Field | Value |', '| --- | --- |');
+    L.push(`| Owner | ${sop.owner || '—'} |`);
+    L.push(`| Trigger | ${sop.trigger || '—'} |`);
+    L.push(`| Frequency | ${sop.frequency || '—'} |`);
+    L.push(`| Est. runtime | ${fmtMinutes(totalMinutes(sop))} |`);
+    L.push(`| Last updated | ${new Date(sop.updatedAt).toLocaleDateString()} |`, '');
+    if (filled(sop.purpose)) L.push('## Purpose', '', sop.purpose.trim(), '');
+    const inp = inputLines(sop);
+    if (inp.length) {
+      L.push('## Inputs needed', '');
+      inp.forEach((i) => L.push(`- ${i}`));
+      L.push('');
+    }
+    L.push('## Steps', '');
+    if (!sop.steps.length) L.push('_No steps documented yet._', '');
+    sop.steps.forEach((s, i) => {
+      L.push(`### ${i + 1}. ${s.title || 'Untitled step'}`, '');
+      const meta = [
+        s.owner ? `Owner: ${s.owner}` : null,
+        s.tool ? `Tool: ${s.tool}` : null,
+        s.minutes ? `~${s.minutes} min` : null,
+      ].filter(Boolean).join(' · ');
+      if (meta) L.push(`*${meta}*`, '');
+      if (filled(s.detail)) L.push(s.detail.trim(), '');
     });
-    const totalDrive = Math.max(0, stops.length - 1) * 22;
-    const totalWork = stops.reduce((sum, stop) => sum + stop.duration, 0);
-    const flags = [];
-    if(/send|publish|customer|client|dispatch|public|crm|payment/gi.test(output)) flags.push('Customer/public/dispatch action words detected; confirm manually before use.');
-    if(stops.length > 4) flags.push('Route has more than four derived stops; dispatcher should tighten scope.');
-    if(!/proof|verified|review|approve|check/gi.test(output)) flags.push('Add verification/proof checks before committing this route.');
-    return { sourceApp:name, depot:'Draft depot / confirm before dispatch', technician:'Unassigned tech', driveBufferMinutes:22, stops, totals:{drive:totalDrive, work:totalWork, total:totalDrive + totalWork + 30}, flags: flags.length ? flags : ['No blocking route flags detected. Confirm traffic/windows manually.'], sourceSnippet:output, generatedAt:new Date().toISOString() };
+    L.push('## Quality checklist', '');
+    const checks = sop.checks.filter((c) => filled(c.text));
+    if (checks.length) checks.forEach((c) => L.push(`- [ ] ${c.text.trim()}`));
+    else L.push('_No quality checks yet._');
+    L.push('', '## Exception paths', '');
+    if (sop.exceptions.length) {
+      sop.exceptions.forEach((x) => {
+        const esc2 = x.escalate ? ` _(escalate to: ${x.escalate})_` : '';
+        L.push(`- **If** ${x.condition || '—'} **then** ${x.response || '—'}${esc2}`);
+      });
+    } else L.push('_No exception paths yet._');
+    L.push('', '## Definition of done', '', sop.done.trim() || '_Not defined._', '');
+    L.push('---', '', '_Generated locally by SOP Builder. Draft only — a human approves before anything real happens._');
+    return L.join('\n');
   }
-  function markdown(packet){
-    return ['# Home Service Route Planner bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Confirm traffic, customer windows, technician constraints, and approvals before dispatch.','',`Source app: ${packet.sourceApp}`,`Depot: ${packet.depot}`,`Technician: ${packet.technician}`,'','## Route summary',`- Stops: ${packet.stops.length}`,`- Drive buffer: ${packet.totals.drive} minutes`,`- Work time: ${packet.totals.work} minutes`,`- Total with admin buffer: ${packet.totals.total} minutes`,'','## Stop order',...packet.stops.map(stop => `### ${stop.order}. ${stop.customer}\n- Area: ${stop.area}\n- Window: ${stop.windowStart}\n- Priority: ${stop.priority >= 5 ? 'Emergency' : stop.priority >= 4 ? 'High' : 'Normal'}\n- Duration: ${stop.duration} minutes\n- Work: ${stop.work}`),'','## Review flags',...packet.flags.map(v => `- ${v}`),'','## Source snippet',packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildRoute();
-    cardsEl.innerHTML = [
-      ['Stops', String(packet.stops.length)],
-      ['Drive buffer', `${packet.totals.drive}m`],
-      ['Work', `${packet.totals.work}m`],
-      ['Flags', String(packet.flags.length)],
-      ['Boundary', 'Draft-only']
-    ].map(([label, value]) => `<article><span>${escRoute(label)}</span><strong>${escRoute(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-route-planner-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 20 Intake Form Builder bridge: draft-only intake form spec.
-(() => {
-  const section = document.getElementById('intake-form-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('intakeFormCards');
-  const textEl = document.getElementById('intakeFormText');
-  const copyBtn = document.getElementById('copyIntakeForm');
-  const downloadBtn = document.getElementById('downloadIntakeForm');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escForm = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'intakeFormText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1700);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1700);
+  function stepsCsv(sop) {
+    const rows = [['order', 'title', 'owner', 'tool', 'minutes', 'action']];
+    sop.steps.forEach((s, i) => rows.push([i + 1, s.title, s.owner, s.tool, s.minutes, s.detail]));
+    return rows.map((r) => r.map((c) => `"${String(c ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
   }
-  function inferQuestions(output){
-    const base = [
-      ['Contact name and best callback', 'short-text', 'Contact', true, 'Name, phone, and best time to respond.'],
-      ['Service location or account context', 'short-text', 'Contact', true, 'Enough context to route the request; do not ask for unnecessary IDs.'],
-      ['What should we help with?', 'long-text', 'Job details', true, 'Let the requester explain the need in plain words.']
+
+  // ---------- demo data ----------
+  function demoSops() {
+    const a = blankSop('Missed lead → same-day callback');
+    a.owner = 'Ops lead';
+    a.trigger = 'A missed call or web-form lead has had no response for 2+ business hours';
+    a.frequency = 'Daily lead sweep at 10:00 and 16:00';
+    a.purpose = 'Every missed lead gets a human response the same day, so paid marketing and word-of-mouth stop leaking revenue.';
+    a.inputs = 'Lead source and timestamp\nCustomer name and callback number\nPrior contact notes from the CRM\nQuote value, if one exists';
+    a.done = 'The customer got a call or an approved message, the outcome is logged in the CRM, and the owner can see the result in the daily summary.';
+    a.steps = [
+      { id: uid(), title: 'Pull the lead-leak list', detail: 'Run the saved "untouched leads" view and list every lead with no response in 2+ business hours.', owner: 'Office admin', tool: 'CRM report', minutes: 10 },
+      { id: uid(), title: 'Classify each lead', detail: 'Tag each lead as: call back now, quote chase, review request, or archive with a written reason.', owner: 'Ops lead', tool: 'CRM', minutes: 10 },
+      { id: uid(), title: 'Call the hot leads first', detail: 'Work the "call back now" list top-down. Two attempts, then leave a voicemail and mark for message follow-up.', owner: 'Office admin', tool: 'Phone', minutes: 25 },
+      { id: uid(), title: 'Draft follow-up messages', detail: 'Use the approved template. No pricing, timing, or availability promises in any draft.', owner: 'Office admin', tool: 'Email templates', minutes: 15 },
+      { id: uid(), title: 'Route drafts for approval', detail: 'The owner or a named delegate approves every customer-facing message before it is sent.', owner: 'Ops lead', tool: 'Shared inbox', minutes: 10 },
+      { id: uid(), title: 'Log outcomes and report', detail: 'Record every outcome in the CRM and post the daily summary in the ops channel.', owner: 'Office admin', tool: 'CRM', minutes: 10 },
     ];
-    if(/urgent|risk|critical|emergency|stale|overdue/i.test(output)) base.push(['How urgent is this request?', 'select', 'Urgency', true, 'Emergency | Today | This week | Planning ahead']);
-    if(/proof|screenshot|photo|evidence|result/i.test(output)) base.push(['What proof or files are available?', 'long-text', 'Proof / files', false, 'Describe evidence; do not upload sensitive material here.']);
-    if(/price|quote|invoice|cash|revenue|roi|cost/i.test(output)) base.push(['What value, quote, or budget context matters?', 'short-text', 'Commercial context', false, 'Keep estimates draft-only until reviewed.']);
-    if(/meeting|call|follow|schedule|route|dispatch|appointment/i.test(output)) base.push(['Preferred timing or next appointment window', 'checkboxes', 'Scheduling', false, 'Morning | Midday | Afternoon | Flexible']);
-    base.push(['Consent to be contacted about this request', 'select', 'Consent', true, 'Yes, contact me about this request | No, do not contact me']);
-    return base.map((row,index) => ({order:index+1,label:row[0],type:row[1],section:row[2],required:row[3],helper:row[4]}));
+    a.checks = [
+      blankCheck('Every lead on the list has an outcome logged — none skipped', true),
+      blankCheck('No message promised price, timing, or availability without approval', true),
+      blankCheck('Voicemails were left for every unreachable hot lead'),
+      blankCheck('The owner approved all customer-facing drafts before sending', true),
+    ];
+    a.exceptions = [
+      { id: uid(), condition: 'The customer is angry or mentions a complaint', response: 'Stop the script. Do not send templates. Take notes and hand the lead directly to the owner within the hour.', escalate: 'Business owner' },
+      { id: uid(), condition: 'The lead asks for a firm price on the spot', response: 'Book an estimate visit instead of quoting. Only the owner quotes prices.', escalate: 'Ops lead' },
+      { id: uid(), condition: 'The CRM is down or the lead list will not load', response: 'Fall back to the shared phone-log spreadsheet and reconcile in the CRM once it is back.', escalate: 'Office admin' },
+    ];
+
+    const b = blankSop('Weekly invoice run');
+    b.owner = 'Bookkeeper';
+    b.trigger = 'Every Friday at 09:00, after job completions are logged';
+    b.frequency = 'Weekly';
+    b.purpose = 'Completed work gets invoiced within a week, so cash stops lagging the schedule.';
+    b.inputs = 'Completed job list for the week\nSigned work orders or completion photos\nCurrent price list\nOpen credit notes';
+    b.done = 'Every completed job has a draft invoice reviewed and approved by the owner, and the aging report is updated.';
+    b.steps = [
+      { id: uid(), title: 'Pull completed jobs', detail: 'Export the week\'s completed jobs and reconcile against the technician schedule.', owner: 'Bookkeeper', tool: 'Job tracker', minutes: 15 },
+      { id: uid(), title: 'Draft invoices', detail: 'Create one draft invoice per job from the price list. Flag any job with a scope change.', owner: 'Bookkeeper', tool: 'Accounting app', minutes: 30 },
+      { id: uid(), title: 'Owner review', detail: 'The owner reviews every draft — especially flagged scope changes — before anything is sent.', owner: 'Business owner', tool: 'Accounting app', minutes: 15 },
+      { id: uid(), title: 'Send and log', detail: 'Send only the approved invoices, then update the aging report.', owner: 'Bookkeeper', tool: 'Accounting app', minutes: 10 },
+    ];
+    b.checks = [
+      blankCheck('Every completed job has exactly one invoice', true),
+      blankCheck('Scope changes were flagged and reviewed'),
+      blankCheck('No invoice was sent without owner approval', true),
+    ];
+    b.exceptions = [
+      { id: uid(), condition: 'A job is complete but has no signed work order', response: 'Hold the invoice and ask the technician for completion evidence the same day.', escalate: 'Business owner' },
+      { id: uid(), condition: 'A customer disputes a line item', response: 'Do not argue in writing. Log the dispute and schedule an owner call.', escalate: 'Business owner' },
+    ];
+
+    const c = blankSop('New employee first-day setup');
+    c.owner = 'Office admin';
+    c.trigger = 'A signed offer letter, one week before the start date';
+    c.frequency = 'Per hire';
+    c.purpose = 'New hires are productive on day one instead of waiting on access and equipment.';
+    c.inputs = 'Signed offer letter\nRole and team\nStandard equipment list for the role\nAccounts checklist';
+    c.done = 'The new hire can log in to every listed system, has their equipment, and has a first-week plan from their manager.';
+    c.steps = [
+      { id: uid(), title: 'Order equipment', detail: 'Order the laptop and peripherals from the role\'s standard kit list.', owner: 'Office admin', tool: 'Vendor portal', minutes: 20 },
+      { id: uid(), title: 'Create accounts', detail: 'Create least-privilege accounts from the role checklist. Never share credentials over email or chat.', owner: 'Office admin', tool: 'Admin consoles', minutes: 30 },
+      { id: uid(), title: 'Day-one walkthrough', detail: 'Office tour, introductions, and the first-week plan with the hiring manager.', owner: 'Hiring manager', tool: 'In person', minutes: 45 },
+    ];
+    c.checks = [
+      blankCheck('All accounts follow least privilege'),
+      blankCheck('No credentials were shared over email or chat', true),
+      blankCheck('The manager confirmed the first-week plan'),
+    ];
+    c.exceptions = [
+      { id: uid(), condition: 'Equipment will not arrive by the start date', response: 'Assign the spare laptop and note the swap date in the checklist.', escalate: 'Office admin' },
+    ];
+
+    return [a, b, c];
   }
-  function buildSpec(){
-    const sourceApp = appName();
-    const output = currentOutput();
-    const questions = inferQuestions(output);
-    const flags = [];
-    if(/password|secret|token|api key|credit card|ssn|social security/i.test(output)) flags.push('Sensitive-data wording detected. Remove secret/payment/SSN/password questions before use.');
-    if(/send|publish|customer|crm|webhook|public|dispatch/i.test(output)) flags.push('Public/customer/action wording detected. Keep this as a draft spec until approved.');
-    if(!/review|approve|proof|check|confirm/i.test(output)) flags.push('Add explicit human review/proof confirmation before publishing the form.');
-    return { sourceApp, formName:`${sourceApp} intake draft`, channel:'Draft local form spec', questions, flags:flags.length ? flags : ['No blocking draft flags detected. Privacy review still required.'], privacyRule:'Do not collect secrets, payment cards, SSNs, medical data, or unnecessary IDs.', sourceSnippet:output, generatedAt:new Date().toISOString() };
+
+  // ---------- render ----------
+  function applyTheme() {
+    document.documentElement.dataset.theme = state.theme;
+    $('btnTheme').setAttribute('aria-label',
+      state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+    $('themeIcon').textContent = state.theme === 'dark' ? '☀' : '☾';
   }
-  function markdown(spec){
-    return ['# Intake Form Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only form spec. Do not publish or collect customer submissions until privacy/proof review is complete.','',`Source app: ${spec.sourceApp}`,`Form name: ${spec.formName}`,'','## Questions',...spec.questions.map(q => `### ${q.order}. ${q.label}\n- Type: ${q.type}\n- Section: ${q.section}\n- Required: ${q.required ? 'yes' : 'no'}\n- Helper/choices: ${q.helper}`),'','## Privacy rule',spec.privacyRule,'','## Review flags',...spec.flags.map(v => `- ${v}`),'','## Source snippet',spec.sourceSnippet].join('\n');
+
+  function renderAll() {
+    applyTheme();
+    renderLibrary();
+    renderEditor();
   }
-  function render(){
-    const spec = buildSpec();
-    const required = spec.questions.filter(q => q.required).length;
-    cardsEl.innerHTML = [
-      ['Questions', String(spec.questions.length)],
-      ['Required', String(required)],
-      ['Flags', String(spec.flags.length)],
-      ['Channel', 'Draft spec'],
-      ['Boundary', 'No publish']
-    ].map(([label, value]) => `<article><span>${escForm(label)}</span><strong>${escForm(value)}</strong></article>`).join('');
-    textEl.value = markdown(spec);
-    return spec;
+
+  function renderLibrary() {
+    const list = $('sopList');
+    $('libraryEmpty').hidden = state.sops.length > 0;
+    list.innerHTML = state.sops.map((s) => {
+      const { score } = scoreSop(s);
+      const name = s.title || 'Untitled SOP';
+      return `<li>
+        <button type="button" class="sop-item ${s.id === state.activeId ? 'active' : ''}" data-open="${s.id}"
+          aria-current="${s.id === state.activeId ? 'true' : 'false'}">
+          <span class="sop-item-title">${esc(name)}</span>
+          <span class="sop-item-meta">${s.steps.length} step${s.steps.length === 1 ? '' : 's'} &middot; ${score}% complete</span>
+        </button>
+        <button type="button" class="icon-btn danger sop-del" data-del="${s.id}" aria-label="Delete ${esc(name)}">&#10005;</button>
+      </li>`;
+    }).join('');
   }
-  function download(spec){
-    const blob = new Blob([JSON.stringify({ ...spec, markdown: markdown(spec) }, null, 2)], {type:'application/json'});
+
+  function renderEditor() {
+    const sop = activeSop();
+    $('editorEmpty').hidden = !!sop;
+    $('editor').hidden = !sop;
+    if (!sop) return;
+    bindOverview(sop);
+    renderSteps(sop);
+    renderChecks(sop);
+    renderExceptions(sop);
+    renderDerived();
+  }
+
+  function bindOverview(sop) {
+    $('fTitle').value = sop.title;
+    $('fOwner').value = sop.owner;
+    $('fTrigger').value = sop.trigger;
+    $('fFrequency').value = sop.frequency;
+    $('fPurpose').value = sop.purpose;
+    $('fInputs').value = sop.inputs;
+    $('fDone').value = sop.done;
+  }
+
+  function renderSteps(sop) {
+    $('stepsEmpty').hidden = sop.steps.length > 0;
+    $('stepList').innerHTML = sop.steps.map((s, i) => `
+      <article class="step-card" data-sid="${s.id}">
+        <div class="step-top">
+          <span class="drag-handle" title="Drag to reorder" aria-hidden="true">&#10495;</span>
+          <span class="step-num" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
+          <input class="step-title" data-field="title" value="${esc(s.title)}" maxlength="120"
+            placeholder="Step title" aria-label="Step ${i + 1} title">
+          <div class="step-btns">
+            <button type="button" class="icon-btn" data-action="step-up" ${i === 0 ? 'disabled' : ''} aria-label="Move step ${i + 1} up">&uarr;</button>
+            <button type="button" class="icon-btn" data-action="step-down" ${i === sop.steps.length - 1 ? 'disabled' : ''} aria-label="Move step ${i + 1} down">&darr;</button>
+            <button type="button" class="icon-btn danger" data-action="step-del" aria-label="Delete step ${i + 1}">&#10005;</button>
+          </div>
+        </div>
+        <label class="lbl">Action
+          <textarea data-field="detail" rows="2" maxlength="600"
+            placeholder="What exactly happens, in plain words.">${esc(s.detail)}</textarea>
+        </label>
+        <div class="step-meta">
+          <label class="lbl">Owner
+            <input data-field="owner" value="${esc(s.owner)}" maxlength="80" placeholder="Role"></label>
+          <label class="lbl">Tool
+            <input data-field="tool" value="${esc(s.tool)}" maxlength="80" placeholder="CRM, phone…"></label>
+          <label class="lbl">Minutes
+            <input data-field="minutes" type="number" min="0" max="999" inputmode="numeric" value="${s.minutes || 0}"></label>
+        </div>
+      </article>`).join('');
+  }
+
+  function renderChecks(sop) {
+    $('checksEmpty').hidden = sop.checks.length > 0;
+    $('checkList').innerHTML = sop.checks.map((c, i) => `
+      <li class="check-row" data-cid="${c.id}">
+        <input type="checkbox" data-field="done" ${c.done ? 'checked' : ''} aria-label="Mark quality check ${i + 1} as verified in a dry run">
+        <input type="text" data-field="text" value="${esc(c.text)}" maxlength="200"
+          placeholder="What must be true before this run counts?" aria-label="Quality check ${i + 1}">
+        <button type="button" class="icon-btn danger" data-action="check-del" aria-label="Delete quality check ${i + 1}">&#10005;</button>
+      </li>`).join('');
+  }
+
+  function renderExceptions(sop) {
+    $('excEmpty').hidden = sop.exceptions.length > 0;
+    $('excList').innerHTML = sop.exceptions.map((x, i) => `
+      <article class="exc-card" data-eid="${x.id}">
+        <div class="exc-top">
+          <label class="lbl grow">If this happens
+            <input data-field="condition" value="${esc(x.condition)}" maxlength="200"
+              placeholder="e.g. The customer is angry or threatens to cancel"></label>
+          <button type="button" class="icon-btn danger" data-action="exc-del" aria-label="Delete exception ${i + 1}">&#10005;</button>
+        </div>
+        <label class="lbl">Do this instead
+          <textarea data-field="response" rows="2" maxlength="400"
+            placeholder="The safe path — what to do, what not to do.">${esc(x.response)}</textarea>
+        </label>
+        <label class="lbl">Escalate to
+          <input data-field="escalate" value="${esc(x.escalate)}" maxlength="80" placeholder="e.g. Business owner"></label>
+      </article>`).join('');
+  }
+
+  function renderDerived() {
+    const sop = activeSop();
+    if (!sop) return;
+    const { score, rows } = scoreSop(sop);
+
+    $('statSteps').textContent = sop.steps.length;
+    $('statTime').textContent = fmtMinutes(totalMinutes(sop));
+    $('statChecks').textContent = sop.checks.filter((c) => filled(c.text)).length;
+    $('statScore').textContent = `${score}%`;
+    $('scoreBig').textContent = `${score}%`;
+
+    const [label, tone] = scoreBadge(score);
+    const badge = $('scoreBadge');
+    badge.textContent = label;
+    badge.className = `badge badge-${tone}`;
+    $('scoreFill').style.width = `${score}%`;
+
+    const cats = {};
+    rows.forEach((r) => {
+      cats[r.cat] = cats[r.cat] || { earned: 0, max: 0 };
+      cats[r.cat].earned += r.earned;
+      cats[r.cat].max += r.max;
+    });
+    $('scoreBreakdown').innerHTML = Object.entries(cats).map(([cat, v]) =>
+      `<li><span>${esc(cat)}</span><span class="mono">${v.earned}/${v.max}</span></li>`).join('');
+
+    const fixes = rows.filter((r) => r.earned < r.max).slice(0, 4);
+    $('fixList').innerHTML = fixes.length
+      ? fixes.map((r) => `<li>${esc(r.hint)}</li>`).join('')
+      : '<li class="done-msg">Nothing left — run a dry run, then print or share the document.</li>';
+
+    markRequired(sop);
+    renderDocument(sop, score);
+    renderLibrary();
+  }
+
+  function markRequired(sop) {
+    [['fTitle', sop.title], ['fOwner', sop.owner], ['fTrigger', sop.trigger], ['fDone', sop.done]]
+      .forEach(([id, v]) => $(id).classList.toggle('missing', !filled(v)));
+  }
+
+  function stepMetaLine(s) {
+    const bits = [
+      s.owner && `Owner: ${esc(s.owner)}`,
+      s.tool && `Tool: ${esc(s.tool)}`,
+      s.minutes ? `~${s.minutes} min` : '',
+    ].filter(Boolean);
+    return bits.length ? `<span class="doc-step-meta">${bits.join(' &middot; ')}</span>` : '';
+  }
+
+  function renderDocument(sop, score) {
+    const inp = inputLines(sop);
+    const checks = sop.checks.filter((c) => filled(c.text));
+    $('sopDocument').innerHTML = `
+      <header class="doc-head">
+        <h1>${esc(sop.title || 'Untitled SOP')}</h1>
+        <p class="doc-sub">Standard operating procedure &middot; draft for human review &middot; completeness ${score}%</p>
+        <dl class="doc-meta">
+          <div><dt>Owner</dt><dd>${esc(sop.owner || '—')}</dd></div>
+          <div><dt>Trigger</dt><dd>${esc(sop.trigger || '—')}</dd></div>
+          <div><dt>Frequency</dt><dd>${esc(sop.frequency || '—')}</dd></div>
+          <div><dt>Est. runtime</dt><dd>${esc(fmtMinutes(totalMinutes(sop)))}</dd></div>
+        </dl>
+      </header>
+      ${filled(sop.purpose) ? `<section><h2>Purpose</h2><p>${esc(sop.purpose)}</p></section>` : ''}
+      ${inp.length ? `<section><h2>Inputs needed</h2><ul>${inp.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></section>` : ''}
+      <section><h2>Steps</h2>
+        ${sop.steps.length
+          ? `<ol class="doc-steps">${sop.steps.map((s) => `<li><strong>${esc(s.title || 'Untitled step')}</strong>${stepMetaLine(s)}${filled(s.detail) ? `<p>${esc(s.detail)}</p>` : ''}</li>`).join('')}</ol>`
+          : '<p class="doc-empty">No steps documented yet.</p>'}
+      </section>
+      <section><h2>Quality checklist</h2>
+        ${checks.length
+          ? `<ul class="doc-checks">${checks.map((c) => `<li><span class="tick" aria-hidden="true"></span>${esc(c.text)}</li>`).join('')}</ul>`
+          : '<p class="doc-empty">No quality checks yet.</p>'}
+      </section>
+      <section><h2>Exception paths</h2>
+        ${sop.exceptions.length
+          ? `<ul class="doc-excs">${sop.exceptions.map((x) => `<li><strong>If:</strong> ${esc(x.condition || '—')}<br><strong>Then:</strong> ${esc(x.response || '—')}${x.escalate ? `<br><strong>Escalate to:</strong> ${esc(x.escalate)}` : ''}</li>`).join('')}</ul>`
+          : '<p class="doc-empty">No exception paths yet.</p>'}
+      </section>
+      <section><h2>Definition of done</h2><p>${esc(sop.done || 'Not defined.')}</p></section>
+      <footer class="doc-foot">Draft SOP generated locally in SOP Builder &middot; a human approves before anything customer-facing, financial, or destructive.</footer>`;
+  }
+
+  function scheduleDerived() {
+    clearTimeout(derivedTimer);
+    derivedTimer = setTimeout(renderDerived, 150);
+  }
+
+  // ---------- toasts & undo ----------
+  function toast(msg, opts = {}) {
+    const el = $('toast');
+    clearTimeout(toastTimer);
+    el.textContent = '';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    el.appendChild(span);
+    if (opts.action) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'toast-action';
+      b.textContent = opts.action;
+      b.addEventListener('click', () => { hideToast(); opts.onAction?.(); });
+      el.appendChild(b);
+    }
+    el.classList.add('show');
+    toastTimer = setTimeout(hideToast, opts.action ? UNDO_MS : 2200);
+  }
+  function hideToast() { $('toast').classList.remove('show'); }
+
+  function mutateWithUndo(label, mutate) {
+    const snapshot = clone(state);
+    mutate();
+    touch();
+    save();
+    renderAll();
+    toast(label, {
+      action: 'Undo',
+      onAction: () => {
+        state = normalize(snapshot);
+        save();
+        renderAll();
+        toast('Restored');
+      },
+    });
+  }
+
+  // ---------- exports ----------
+  function download(name, text, type) {
+    const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${spec.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-intake-form-bridge.json`;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(url);
   }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+  function copyText(text, label) {
+    const done = () => toast(label || 'Copied to clipboard');
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else fallbackCopy(text, done);
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch { toast('Copy failed — use Download JSON instead'); }
+    ta.remove();
+  }
+  function copyActiveMarkdown() {
+    const sop = activeSop();
+    if (!sop) { toast('No SOP selected'); return; }
+    copyText(sopMarkdown(sop), 'SOP Markdown copied');
+  }
 
+  // ---------- modal ----------
+  function openHelp() {
+    const dlg = $('helpModal');
+    if (dlg.open) return;
+    lastFocus = document.activeElement;
+    dlg.showModal();
+  }
+
+  // ---------- actions ----------
+  function createSop() {
+    const sop = blankSop();
+    state.sops.push(sop);
+    state.activeId = sop.id;
+    save();
+    renderAll();
+    $('fTitle').focus();
+    toast('New SOP created');
+  }
+
+  function loadDemo() {
+    mutateWithUndo('Demo library loaded', () => {
+      state.sops = demoSops();
+      state.activeId = state.sops[0].id;
+    });
+  }
+
+  function duplicateSop() {
+    const sop = activeSop();
+    if (!sop) return;
+    const copy = normalizeSop(clone(sop));
+    copy.id = uid();
+    copy.title = `${sop.title || 'Untitled SOP'} (copy)`;
+    copy.createdAt = Date.now();
+    copy.updatedAt = Date.now();
+    copy.steps.forEach((s) => { s.id = uid(); });
+    copy.checks.forEach((c) => { c.id = uid(); c.done = false; });
+    copy.exceptions.forEach((x) => { x.id = uid(); });
+    state.sops.splice(state.sops.indexOf(sop) + 1, 0, copy);
+    state.activeId = copy.id;
+    save();
+    renderAll();
+    toast('SOP duplicated');
+  }
+
+  function deleteSop(id) {
+    const sop = state.sops.find((s) => s.id === id);
+    if (!sop) return;
+    mutateWithUndo(`Deleted "${sop.title || 'Untitled SOP'}"`, () => {
+      state.sops = state.sops.filter((s) => s.id !== id);
+      if (state.activeId === id) state.activeId = state.sops[0]?.id ?? null;
+    });
+  }
+
+  function moveStep(sop, sid, delta) {
+    const from = sop.steps.findIndex((s) => s.id === sid);
+    const to = from + delta;
+    if (from < 0 || to < 0 || to >= sop.steps.length) return;
+    const [moved] = sop.steps.splice(from, 1);
+    sop.steps.splice(to, 0, moved);
+    touch();
+    renderSteps(sop);
+    renderDerived();
+    $('stepList').querySelector(`[data-sid="${sid}"] [data-action="${delta < 0 ? 'step-up' : 'step-down'}"]`)?.focus();
+  }
+
+  function importLibrary(parsed) {
+    let incoming;
+    if (parsed && Array.isArray(parsed.sops)) incoming = normalize(parsed);
+    else if (parsed && Array.isArray(parsed.steps)) {
+      incoming = normalize({ sops: [parsed] }); // a single exported SOP
+    } else {
+      toast('Import failed — not a SOP Builder JSON file');
+      return;
+    }
+    if (!incoming.sops.length) { toast('Import failed — no SOPs found in file'); return; }
+    mutateWithUndo(`Imported ${incoming.sops.length} SOP${incoming.sops.length === 1 ? '' : 's'}`, () => {
+      state.sops = incoming.sops;
+      state.activeId = incoming.activeId;
+    });
+  }
+
+  // ---------- events ----------
+  function wireEvents() {
+    // Header
+    $('btnTheme').addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      save();
+      applyTheme();
+      toast(state.theme === 'light' ? 'Light theme on' : 'Dark theme on');
+    });
+    $('btnDemo').addEventListener('click', loadDemo);
+    $('btnEmptyDemo').addEventListener('click', loadDemo);
+    $('btnHelp').addEventListener('click', openHelp);
+    $('btnCloseHelp').addEventListener('click', () => $('helpModal').close());
+    $('helpModal').addEventListener('close', () => { lastFocus?.focus?.(); });
+
+    // Library
+    $('btnNewSop').addEventListener('click', createSop);
+    $('btnEmptyNew').addEventListener('click', createSop);
+    $('sopList').addEventListener('click', (e) => {
+      const del = e.target.closest('[data-del]');
+      if (del) { deleteSop(del.dataset.del); return; }
+      const open = e.target.closest('[data-open]');
+      if (open && open.dataset.open !== state.activeId) {
+        state.activeId = open.dataset.open;
+        scheduleSave();
+        renderAll();
+      }
+    });
+
+    // Editor text inputs (delegated)
+    $('editor').addEventListener('input', (e) => {
+      const sop = activeSop();
+      const t = e.target;
+      const field = t.dataset?.field;
+      if (!sop || !field) return;
+      const stepCard = t.closest('[data-sid]');
+      const checkRow = t.closest('[data-cid]');
+      const excCard = t.closest('[data-eid]');
+      if (stepCard) {
+        const step = sop.steps.find((s) => s.id === stepCard.dataset.sid);
+        if (!step) return;
+        if (field === 'minutes') step.minutes = clamp(Math.round(Number(t.value) || 0), 0, 999);
+        else step[field] = t.value;
+      } else if (checkRow) {
+        const c = sop.checks.find((x) => x.id === checkRow.dataset.cid);
+        if (!c) return;
+        if (field === 'done') c.done = t.checked;
+        else c.text = t.value;
+      } else if (excCard) {
+        const x = sop.exceptions.find((v) => v.id === excCard.dataset.eid);
+        if (!x) return;
+        x[field] = t.value;
+      } else {
+        sop[field] = t.value;
+      }
+      touch();
+      scheduleDerived();
+    });
+
+    // Normalize the minutes field display after editing settles
+    $('editor').addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.dataset?.field !== 'minutes') return;
+      const sop = activeSop();
+      const card = t.closest('[data-sid]');
+      const step = sop?.steps.find((s) => s.id === card?.dataset.sid);
+      if (step) t.value = step.minutes;
+    });
+
+    // Editor buttons (delegated)
+    $('editor').addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      const sop = activeSop();
+      if (!btn || !sop) return;
+      const action = btn.dataset.action;
+      const sid = btn.closest('[data-sid]')?.dataset.sid;
+      const cid = btn.closest('[data-cid]')?.dataset.cid;
+      const eid = btn.closest('[data-eid]')?.dataset.eid;
+      if (action === 'step-up') moveStep(sop, sid, -1);
+      else if (action === 'step-down') moveStep(sop, sid, 1);
+      else if (action === 'step-del') {
+        mutateWithUndo('Step deleted', () => { sop.steps = sop.steps.filter((s) => s.id !== sid); });
+      } else if (action === 'check-del') {
+        mutateWithUndo('Quality check deleted', () => { sop.checks = sop.checks.filter((c) => c.id !== cid); });
+      } else if (action === 'exc-del') {
+        mutateWithUndo('Exception deleted', () => { sop.exceptions = sop.exceptions.filter((x) => x.id !== eid); });
+      }
+    });
+
+    // Add buttons
+    $('btnAddStep').addEventListener('click', () => {
+      const sop = activeSop();
+      if (!sop) return;
+      const step = blankStep();
+      sop.steps.push(step);
+      touch();
+      renderSteps(sop);
+      renderDerived();
+      $('stepList').querySelector(`[data-sid="${step.id}"] .step-title`)?.focus();
+      toast('Step added');
+    });
+    $('btnAddCheck').addEventListener('click', () => {
+      const sop = activeSop();
+      if (!sop) return;
+      const c = blankCheck();
+      sop.checks.push(c);
+      touch();
+      renderChecks(sop);
+      renderDerived();
+      $('checkList').querySelector(`[data-cid="${c.id}"] input[type="text"]`)?.focus();
+      toast('Quality check added');
+    });
+    $('btnAddExc').addEventListener('click', () => {
+      const sop = activeSop();
+      if (!sop) return;
+      const x = blankException();
+      sop.exceptions.push(x);
+      touch();
+      renderExceptions(sop);
+      renderDerived();
+      $('excList').querySelector(`[data-eid="${x.id}"] input`)?.focus();
+      toast('Exception path added');
+    });
+
+    // Drag-to-reorder steps (handle-initiated)
+    const stepList = $('stepList');
+    stepList.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.drag-handle')) {
+        e.target.closest('.step-card')?.setAttribute('draggable', 'true');
+      }
+    });
+    stepList.addEventListener('dragstart', (e) => {
+      const card = e.target.closest('.step-card');
+      if (!card) return;
+      dragSid = card.dataset.sid;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', dragSid); } catch { /* older engines */ }
+    });
+    stepList.addEventListener('dragover', (e) => {
+      if (!dragSid) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const over = e.target.closest('.step-card');
+      [...stepList.querySelectorAll('.step-card')].forEach((c) =>
+        c.classList.toggle('drop-target', c === over && c.dataset.sid !== dragSid));
+    });
+    stepList.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const over = e.target.closest('.step-card');
+      const sop = activeSop();
+      if (sop && over && dragSid && over.dataset.sid !== dragSid) {
+        const from = sop.steps.findIndex((s) => s.id === dragSid);
+        const to = sop.steps.findIndex((s) => s.id === over.dataset.sid);
+        if (from >= 0 && to >= 0) {
+          const [moved] = sop.steps.splice(from, 1);
+          sop.steps.splice(to, 0, moved);
+          touch();
+          renderSteps(sop);
+          renderDerived();
+          toast('Step reordered');
+        }
+      }
+      endDrag();
+    });
+    stepList.addEventListener('dragend', endDrag);
+
+    // Export & handoff
+    $('btnCopyMd').addEventListener('click', copyActiveMarkdown);
+    $('btnPrint').addEventListener('click', () => window.print());
+    $('btnJson').addEventListener('click', () => {
+      download('sop-builder-library.json', JSON.stringify({
+        app: 'sop-builder',
+        exportedAt: new Date().toISOString(),
+        note: 'Draft SOP library — human approval required before real-world use.',
+        sops: state.sops,
+        activeId: state.activeId,
+      }, null, 2), 'application/json');
+      toast('Library JSON downloaded');
+    });
+    $('btnCsv').addEventListener('click', () => {
+      const sop = activeSop();
+      if (!sop) return;
+      download(`${slugify(sop.title)}-steps.csv`, stepsCsv(sop), 'text/csv');
+      toast('Steps CSV downloaded');
+    });
+    $('btnImport').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      e.target.value = '';
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try { importLibrary(JSON.parse(String(reader.result))); }
+        catch { toast('Import failed — invalid JSON'); }
+      };
+      reader.readAsText(file);
+    });
+    $('btnDuplicate').addEventListener('click', duplicateSop);
+    $('btnDeleteSop').addEventListener('click', () => {
+      if (state.activeId) deleteSop(state.activeId);
+    });
+    $('btnReset').addEventListener('click', () => {
+      if (!window.confirm('Reset all data? This deletes every SOP in this browser.')) return;
+      try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+      state = normalize(null);
+      state.seenGuide = true;
+      save();
+      renderAll();
+      toast('All data reset');
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName || '';
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        copyActiveMarkdown();
+        return;
+      }
+      if (e.key === '?' && !typing) {
+        e.preventDefault();
+        openHelp();
+      }
+      if (e.key === 'Escape' && $('helpModal').open) $('helpModal').close();
+    });
+  }
+
+  function endDrag() {
+    dragSid = null;
+    [...$('stepList').querySelectorAll('.step-card')].forEach((c) => {
+      c.classList.remove('dragging', 'drop-target');
+      c.removeAttribute('draggable');
+    });
+  }
+
+  // ---------- init ----------
+  function init() {
+    state = load();
+    wireEvents();
+    renderAll();
+    if (!state.seenGuide) {
+      state.seenGuide = true;
+      save();
+      openHelp();
+    }
+  }
+
+  init();
+})();
