@@ -1,276 +1,255 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Local Biz Snapshot</title>
+  <meta name="color-scheme" content="dark light" />
+  <title>Local Biz Snapshot — prospect dossiers</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="snapshot-fieldbook">
-    <header class="fieldbook-hero" aria-label="Local Biz Snapshot header">
-      <div class="route-badge" aria-hidden="true"><span></span><b>LB</b><i></i></div>
-      <div>
-        <p class="kicker">Day 11 · Local Biz Snapshot</p>
-        <h1>Turn a local business into a one-page wedge dossier.</h1>
-        <p class="lede">A local-first scouting notebook for capturing a prospect profile, likely lead leaks, proof signals, and the first safe wedge to offer. It drafts only — no scraping, outreach, CRM writes, or customer contact.</p>
-      </div>
-      <div class="hero-actions">
-        <button id="demoBtn" type="button">Load demo</button>
-        <button id="blankBtn" type="button">Blank slate</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </div>
-    </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-    <section class="map-strip" aria-label="Snapshot summary">
-      <article><span>Fit score</span><strong id="metricFit">-</strong></article>
-      <article><span>Leak hypotheses</span><strong id="metricLeaks">-</strong></article>
-      <article><span>First wedge</span><strong id="metricWedge">-</strong></article>
-      <article><span>Safety</span><strong>Draft only</strong></article>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">LB</span>
+      <div class="brand-text">
+        <p class="brand-name">Local Biz Snapshot</p>
+        <p class="brand-tag">Prospect dossiers: profile &middot; leaks &middot; wedge &middot; next step</p>
+      </div>
+    </div>
+    <nav class="header-nav" aria-label="App controls">
+      <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
+      <button id="helpBtn" class="btn" type="button">How to use</button>
+      <button id="themeToggle" class="btn" type="button" aria-pressed="false">Theme</button>
+    </nav>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="stat-strip" aria-label="Pipeline overview" aria-live="polite">
+      <article class="stat"><strong id="statProspects">0</strong><span>Prospects</span></article>
+      <article class="stat"><strong id="statTopFit">&ndash;</strong><span>Top fit score</span></article>
+      <article class="stat"><strong id="statHighLeaks">0</strong><span>Likely+ leaks (all)</span></article>
+      <article class="stat"><strong id="statReady">0</strong><span>Dossiers ready</span></article>
     </section>
 
-    <section class="dossier-grid">
-      <section class="field-card profile-card" aria-label="Prospect profile inputs">
-        <div class="panel-head"><span>01</span><div><p class="kicker">Profile folder</p><h2>Who is this business?</h2></div></div>
-        <div class="form-grid">
-          <label>Business name
-            <input id="businessName" maxlength="90" />
-          </label>
-          <label>Business type
-            <input id="businessType" maxlength="80" />
-          </label>
-          <label>Neighborhood / market
-            <input id="market" maxlength="100" />
-          </label>
-          <label>Website / public note
-            <input id="publicSignal" maxlength="150" />
-          </label>
-          <label>Visible trust signals
-            <textarea id="trustSignals" maxlength="700"></textarea>
-          </label>
-          <label>Observed friction or risk
-            <textarea id="frictionNotes" maxlength="700"></textarea>
-          </label>
+    <div class="toolbar">
+      <div class="tabs" aria-label="Views">
+        <button id="tabDossier" class="tab" type="button" aria-pressed="true">Dossier</button>
+        <button id="tabCompare" class="tab" type="button" aria-pressed="false">Compare</button>
+      </div>
+      <div class="toolbar-actions">
+        <button id="demoBtn" class="btn" type="button">Load demo</button>
+        <button id="resetBtn" class="btn btn-danger" type="button">Reset</button>
+      </div>
+    </div>
+
+    <div id="viewDossier">
+      <div class="workspace">
+        <aside class="panel list-panel" aria-label="Prospect list">
+          <div class="panel-head">
+            <h2>Prospects</h2>
+            <button id="newProspectBtn" class="btn-primary btn-sm" type="button">+ New</button>
+          </div>
+          <ul id="prospectList" class="prospect-list"></ul>
+          <div id="listEmpty" class="empty-state" hidden>
+            <p><strong>No prospects yet.</strong></p>
+            <p>Add the first local business you want to research, or load the demo to see a filled pipeline.</p>
+          </div>
+        </aside>
+
+        <section class="editor" aria-label="Dossier editor">
+          <div id="editorEmpty" class="panel empty-state big" hidden>
+            <h2>No prospect selected</h2>
+            <p>A dossier collects what you have personally observed about one local business: its profile, where leads likely leak, and the smallest useful first offer. Nothing is scraped &mdash; you are the researcher.</p>
+            <div class="empty-actions">
+              <button id="emptyNewBtn" class="btn-primary" type="button">Create a prospect</button>
+              <button id="emptyDemoBtn" class="btn" type="button">Load demo data</button>
+            </div>
+          </div>
+
+          <div id="editorBody" hidden>
+            <section class="panel" aria-labelledby="hProfile">
+              <div class="panel-head">
+                <span class="step-num" aria-hidden="true">1</span>
+                <div>
+                  <h2 id="hProfile">Profile</h2>
+                  <p class="hint">Only what you can see publicly or were told directly. Note where each fact came from.</p>
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="fName">Business name <span class="req" title="Required">*</span></label>
+                  <input id="fName" data-field="name" maxlength="90" autocomplete="off" />
+                  <p class="field-err" id="nameErr" hidden>Name this prospect so the list, compare view, and exports stay readable.</p>
+                </div>
+                <div class="field">
+                  <label for="fType">Business type</label>
+                  <input id="fType" data-field="type" maxlength="80" autocomplete="off" placeholder="e.g. Residential plumbing" />
+                </div>
+                <div class="field">
+                  <label for="fMarket">Market / area</label>
+                  <input id="fMarket" data-field="market" maxlength="100" autocomplete="off" placeholder="e.g. North Dallas suburbs" />
+                </div>
+                <div class="field">
+                  <label for="fContact">Contact person</label>
+                  <input id="fContact" data-field="contact" maxlength="90" autocomplete="off" placeholder="e.g. Dana (owner)" />
+                </div>
+                <div class="field">
+                  <label for="fStatus">Status</label>
+                  <select id="fStatus" data-field="status">
+                    <option value="researching">Researching</option>
+                    <option value="ready">Dossier ready</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="parked">Parked</option>
+                  </select>
+                </div>
+                <div class="field span2">
+                  <label for="fPresence">Public presence</label>
+                  <textarea id="fPresence" data-field="presence" maxlength="600" rows="2" placeholder="Website, listings, socials, ads you observed"></textarea>
+                </div>
+                <div class="field span2">
+                  <label for="fTrust">Trust signals</label>
+                  <textarea id="fTrust" data-field="trust" maxlength="600" rows="2" placeholder="Reviews, credentials, photos, guarantees"></textarea>
+                </div>
+                <div class="field span2">
+                  <label for="fFriction">Observed friction</label>
+                  <textarea id="fFriction" data-field="friction" maxlength="600" rows="2" placeholder="Anything that would slow a real customer down"></textarea>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="hLeaks">
+              <div class="panel-head">
+                <span class="step-num" aria-hidden="true">2</span>
+                <div>
+                  <h2 id="hLeaks">Lead-leak signals</h2>
+                  <p class="hint">Check only signals you actually observed. Each one raises that leak&rsquo;s likelihood and becomes a reason in the dossier.</p>
+                </div>
+              </div>
+              <div id="leakGrid" class="leak-grid"></div>
+            </section>
+
+            <section class="panel" aria-labelledby="hWedge">
+              <div class="panel-head">
+                <span class="step-num" aria-hidden="true">3</span>
+                <div>
+                  <h2 id="hWedge">Fit &amp; first wedge</h2>
+                  <p class="hint">Score the opportunity, then pick the smallest offer that proves value fast.</p>
+                </div>
+              </div>
+              <div class="slider-row">
+                <div class="field">
+                  <label for="revenueFit">Revenue upside <output id="revenueFitOut" for="revenueFit">5</output></label>
+                  <input id="revenueFit" data-field="revenueFit" type="range" min="1" max="10" step="1" value="5" />
+                </div>
+                <div class="field">
+                  <label for="proofFit">Proof visibility <output id="proofFitOut" for="proofFit">5</output></label>
+                  <input id="proofFit" data-field="proofFit" type="range" min="1" max="10" step="1" value="5" />
+                </div>
+                <div class="field">
+                  <label for="accessFit">Access ease <output id="accessFitOut" for="accessFit">5</output></label>
+                  <input id="accessFit" data-field="accessFit" type="range" min="1" max="10" step="1" value="5" />
+                </div>
+              </div>
+              <div id="fitReadout" class="fit-readout" aria-live="polite"></div>
+              <div id="wedgeRec" class="wedge-rec" aria-live="polite"></div>
+              <div class="form-grid">
+                <div class="field span2">
+                  <label for="wedgeSelect">Wedge choice</label>
+                  <select id="wedgeSelect" data-field="wedgeId"></select>
+                </div>
+                <div class="field span2">
+                  <label for="fWedgeReason">Why this wedge (your words)</label>
+                  <textarea id="fWedgeReason" data-field="wedgeReason" maxlength="600" rows="2" placeholder="What makes this the right first move for this business?"></textarea>
+                </div>
+                <div class="field span2">
+                  <label for="fNextStep">Human next step</label>
+                  <textarea id="fNextStep" data-field="nextStep" maxlength="600" rows="2" placeholder="One concrete, human-approved action, e.g. ask for one week of call logs"></textarea>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel preview-panel" aria-labelledby="hPreview">
+              <div class="panel-head">
+                <span class="step-num" aria-hidden="true">4</span>
+                <div>
+                  <h2 id="hPreview">Dossier preview</h2>
+                  <p class="hint">This is what exports and print produce. A draft for human review &mdash; verify before outreach.</p>
+                </div>
+              </div>
+              <div id="dossierPreview" class="dossier-preview" aria-live="polite"></div>
+            </section>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="viewCompare" hidden>
+      <section class="panel" aria-labelledby="hCompare">
+        <div class="panel-head">
+          <h2 id="hCompare">Prospect comparison</h2>
+          <button id="compareCopy" class="btn btn-sm" type="button">Copy table (Markdown)</button>
         </div>
+        <div id="compareWrap" class="table-wrap"></div>
       </section>
+    </div>
 
-      <section class="field-card leak-map" aria-label="Lead leak map">
-        <div class="panel-head"><span>02</span><div><p class="kicker">Leak map</p><h2>Where might leads disappear?</h2></div></div>
-        <div class="mini-map" aria-hidden="true">
-          <button class="pin phone" data-leak="Missed calls" type="button">☎</button>
-          <button class="pin form" data-leak="Form friction" type="button">⌁</button>
-          <button class="pin quote" data-leak="Slow quote follow-up" type="button">$</button>
-          <button class="pin review" data-leak="Weak proof" type="button">★</button>
-          <div class="street one"></div><div class="street two"></div><div class="street three"></div>
-        </div>
-        <div class="check-grid" id="leakChecks"></div>
-      </section>
-
-      <aside class="field-card wedge-card" aria-label="First wedge builder">
-        <div class="panel-head"><span>03</span><div><p class="kicker">Wedge card</p><h2>Choose the first safe offer</h2></div></div>
-        <label>First wedge
-          <select id="wedgeType">
-            <option>Missed-call recovery check</option>
-            <option>Quote follow-up cleanup</option>
-            <option>Review request tune-up</option>
-            <option>Owner daily report</option>
-            <option>Service intake triage</option>
-          </select>
-        </label>
-        <label>Why this wedge?
-          <textarea id="wedgeReason" maxlength="700"></textarea>
-        </label>
-        <label>Human next step
-          <textarea id="nextStep" maxlength="700"></textarea>
-        </label>
-        <div class="score-sliders">
-          <label>Revenue fit <output id="revenueFitOut">7</output>
-            <input id="revenueFit" type="range" min="1" max="10" />
-          </label>
-          <label>Proof visibility <output id="proofFitOut">6</output>
-            <input id="proofFit" type="range" min="1" max="10" />
-          </label>
-          <label>Access ease <output id="accessFitOut">5</output>
-            <input id="accessFit" type="range" min="1" max="10" />
-          </label>
-        </div>
-      </aside>
-    </section>
-
-    <section class="snapshot-stage" aria-label="Generated snapshot">
-      <div class="stage-map" aria-hidden="true">
-        <span class="compass">N</span>
-        <span class="ring r1"></span><span class="ring r2"></span><span class="ring r3"></span>
-      </div>
-      <div class="snapshot-paper">
-        <div class="paper-top"><p class="kicker">Snapshot</p><h2 id="snapshotTitle">-</h2><span id="snapshotStamp">Draft</span></div>
-        <div id="snapshotCards" class="snapshot-cards" aria-live="polite"></div>
-        <textarea id="exportText" readonly aria-label="Generated Local Biz Snapshot markdown"></textarea>
-      </div>
-    </section>
-
-    <section class="export-dock" aria-label="Export Local Biz Snapshot">
-      <button id="copyMarkdown" type="button">Copy snapshot</button>
-      <button id="downloadJson" type="button">Download JSON</button>
-      <button id="downloadCsv" type="button">Download CSV</button>
-    </section>
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START -->
-    <section id="script-rehearsal-room-bridge" class="script-rehearsal-room-bridge panel" aria-label="Script Rehearsal Room bridge">
-      <div class="script-rehearsal-head">
-        <span>SR</span>
+    <section class="panel export-panel" aria-labelledby="hExport">
+      <div class="panel-head">
         <div>
-          <p class="kicker">Day 12 enhancement</p>
-          <h2>Script Rehearsal Room bridge</h2>
-        </div>
-        <div class="script-rehearsal-actions">
-          <button id="copyScriptRehearsalBridge" type="button">Copy run sheet</button>
-          <button id="downloadScriptRehearsalBridge" type="button">Download JSON</button>
+          <h2 id="hExport">Export &amp; handoff</h2>
+          <p class="hint">All outputs are drafts for human review. This app never scrapes, sends, or writes to any external system.</p>
         </div>
       </div>
-      <p class="script-rehearsal-intro">Turn this app's current output into a call-practice run sheet: objective, opening line, discovery prompts, objection card, and human-review boundary.</p>
-      <div id="scriptRehearsalCards" class="script-rehearsal-cards" aria-live="polite"></div>
-      <textarea id="scriptRehearsalText" readonly aria-label="Generated Script Rehearsal Room bridge"></textarea>
-    </section>
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END -->
-
-  
-    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
-      <div class="panel-title">
-        <span>PV</span>
-        <div>
-          <p class="kicker">Day 13 enhancement</p>
-          <h2>Proof Vault bridge</h2>
-        </div>
-      </div>
-      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
-      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
-      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
-      <div class="proof-vault-actions">
-        <button id="copyProofVault" type="button">Copy proof card</button>
-        <button id="downloadProofVault" type="button">Download proof JSON</button>
-      </div>
-    </section>
-  
-    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
-      <div class="panel-title">
-        <span>SOP</span>
-        <div>
-          <p class="kicker">Day 14 enhancement</p>
-          <h2>SOP Builder bridge</h2>
-        </div>
-      </div>
-      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
-      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
-      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
-      <div class="sop-builder-actions">
-        <button id="copySopBuilder" type="button">Copy SOP draft</button>
-        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
-      </div>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      <div class="export-actions">
+        <button id="exportMd" class="btn-primary" type="button">Copy dossier (Markdown)</button>
+        <button id="exportJson" class="btn" type="button">Download JSON</button>
+        <button id="importBtn" class="btn" type="button">Import JSON</button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden />
+        <button id="exportCsv" class="btn" type="button">Download comparison CSV</button>
+        <button id="printBtn" class="btn" type="button">Print dossier</button>
       </div>
     </section>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <p>Local-first &middot; No accounts &middot; No tracking &mdash; data stays in this browser.</p>
+    <a href="../../index.html">&larr; All apps</a>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button id="toastUndo" class="btn-ghost btn-sm" type="button" hidden>Undo</button>
+  </div>
+
+  <dialog id="helpModal" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">How to use Local Biz Snapshot</h2>
+      <button id="helpClose" class="btn btn-sm" type="button">Close</button>
+    </div>
+    <ol class="help-steps">
+      <li><strong>Create a prospect.</strong> Click <em>+ New</em> (or press <kbd>N</kbd>) and name the local business you want to research.</li>
+      <li><strong>Fill the profile</strong> from what you can see publicly or were told directly &mdash; this app never scrapes; you are the researcher.</li>
+      <li><strong>Check leak signals</strong> you actually observed. Each checked signal raises that leak&rsquo;s likelihood; add an evidence note for anything specific (dates, quotes, screenshots you took).</li>
+      <li><strong>Set the three fit sliders</strong> &mdash; revenue upside, proof visibility, and access ease. The fit score combines your sliders with the leak evidence.</li>
+      <li><strong>Review the recommended wedge.</strong> It targets your strongest-evidence leak. Keep it on auto or override it, then write why and the single human next step.</li>
+      <li><strong>Repeat for more prospects</strong>, then open the <em>Compare</em> tab to rank them by fit score and spot the best first call.</li>
+      <li><strong>Export.</strong> Copy the dossier as Markdown (<kbd>Ctrl/Cmd</kbd>+<kbd>S</kbd>), download JSON or the comparison CSV, or print &mdash; all drafts for human review before any outreach.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="help-keys">
+      <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+        <tr><td><kbd>N</kbd></td><td>New prospect</td></tr>
+        <tr><td><kbd>Ctrl/Cmd</kbd>+<kbd>S</kbd></td><td>Copy active dossier as Markdown</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close this dialog</td></tr>
+      </tbody>
+    </table>
+    <p class="help-guardrail">Guardrail: everything here is an internal draft. Verify facts manually and get human approval before contacting a business or making claims.</p>
+  </dialog>
+
   <script src="./app.js"></script>
 </body>
 </html>
