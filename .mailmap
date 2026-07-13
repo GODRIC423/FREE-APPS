@@ -1,0 +1,33 @@
+# Repository contributor identity map.
+# Keep the contributor surface clean without rewriting history.
+# Canonical contributors for Brian's repos:
+#   - Brian Hackett: manual/human commits
+#   - Hermes Agent (Local): local Hermes/Godric automation
+#   - Hermes Agent (VPS): VPS Hermes automation
+#   - Claude Code: Claude Code authored work
+# Bots are kept explicit.
+
+Brian Hackett <brian.hackett423@gmail.com> Brian Hackett <brian.hackett423@gmail.com>
+Brian Hackett <brian.hackett423@gmail.com> Brian Hackett <carrierengagement@gmail.com>
+Brian Hackett <brian.hackett423@gmail.com> Adeul Intelligence <brian.hackett.423@gmail.com>
+Brian Hackett <brian.hackett423@gmail.com> Adeul Intelligence <281730036+GODRIC423@users.noreply.github.com>
+Brian Hackett <brian.hackett423@gmail.com> GODRIC423 <HiveCraftShop@gmail.com>
+Brian Hackett <brian.hackett423@gmail.com> Adeul <carrierengagement@gmail.com>
+Brian Hackett <brian.hackett423@gmail.com> Adeul Intelligence <Setups@adeulintelligence.com>
+Brian Hackett <brian.hackett423@gmail.com> Adeul Intelligence <adeul@AdeulIntelligence.com>
+
+Hermes Agent (Local) <hermes-local@adeul.local> Godric <godric@local>
+Hermes Agent (Local) <hermes-local@adeul.local> Godric <brian.hackett.423@gmail.com>
+Hermes Agent (Local) <hermes-local@adeul.local> Hermes Agent <hermes-agent@local>
+Hermes Agent (Local) <hermes-local@adeul.local> Hermes Agent <hermes-agent@users.noreply.github.com>
+
+Hermes Agent (VPS) <hermes-vps@adeul.local> root <root@srv1697762.hstgr.cloud>
+Hermes Agent (VPS) <hermes-vps@adeul.local> Hermes Agent (VPS) <hermes-vps@adeul.local>
+
+Claude Code <noreply@anthropic.com> Claude <noreply@anthropic.com>
+Claude Code <noreply@anthropic.com> Claude <Setups@adeulintelligence.com>
+
+GitHub <noreply@github.com> GitHub <noreply@github.com>
+cloudflare-workers-and-pages[bot] <73139402+cloudflare-workers-and-pages[bot]@users.noreply.github.com> cloudflare-workers-and-pages[bot] <73139402+cloudflare-workers-and-pages[bot]@users.noreply.github.com>
+github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com> github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com> dependabot[bot] <49699333+dependabot[bot]@users.noreply.github.com>
