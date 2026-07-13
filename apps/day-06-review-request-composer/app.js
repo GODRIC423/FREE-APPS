@@ -1,807 +1,896 @@
-const STORAGE_KEY = 'review-request-composer-v1';
-const todayIso = () => new Date().toISOString().slice(0, 10);
-function dateAdd(days){ const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().slice(0, 10); }
-const demoState = {
-  theme: 'dark',
-  selectedId: 'r1',
-  candidates: [
-    { id:'r1', customer:'Maya Patel', job:'Tankless water heater replacement', completedDate:dateAdd(-2), channel:'SMS draft', satisfaction:'Happy / thanked us', askStyle:'Warm and short', proof:'Install finished early, cleanup was called out by name, and hot-water issue is solved.', status:'ready' },
-    { id:'r2', customer:'Northside Dental', job:'After-hours HVAC repair', completedDate:dateAdd(-1), channel:'Email draft', satisfaction:'Problem solved', askStyle:'Grateful owner note', proof:'Office reopened on schedule and the manager thanked the technician for the clear updates.', status:'ready' },
-    { id:'r3', customer:'Avery Chen', job:'Maintenance plan signup', completedDate:dateAdd(-5), channel:'Invoice note', satisfaction:'Repeat customer', askStyle:'Ultra low-pressure', proof:'Second booked visit this quarter with no open complaint or callback issue.', status:'asked' },
-    { id:'r4', customer:'Cedar Lane HOA', job:'Panel upgrade quote clarification', completedDate:todayIso(), channel:'Phone follow-up', satisfaction:'Neutral / unsure', askStyle:'Technician handoff', proof:'Decision is still pending, so wait until the job is actually complete.', status:'wait' }
-  ]
-};
-let state = loadState();
-const $ = id => document.getElementById(id);
-function clone(v){ return typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)); }
-function loadState(){ try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? { ...clone(demoState), ...JSON.parse(raw) } : clone(demoState); } catch { return clone(demoState); } }
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function selected(){ return state.candidates.find(c => c.id === state.selectedId) || state.candidates[0]; }
-function daysSince(dateStr){ const a = new Date((dateStr || todayIso()) + 'T00:00:00'); const b = new Date(todayIso() + 'T00:00:00'); return Math.max(0, Math.round((b - a) / 86400000)); }
-function readiness(c){ if(c.status === 'asked') return 'asked'; if(c.status === 'wait') return 'wait'; if(c.satisfaction === 'Had an issue' || c.satisfaction === 'Neutral / unsure') return 'wait'; if(daysSince(c.completedDate) < 1) return 'wait'; return 'ready'; }
-function applyTheme(){ document.documentElement.dataset.theme = state.theme === 'light' ? 'light' : 'dark'; $('themeToggle').textContent = state.theme === 'light' ? 'Dark' : 'Light'; $('themeToggle').setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false'); }
-function metrics(){ return { ready: state.candidates.filter(c => readiness(c) === 'ready').length, proof: state.candidates.filter(c => /thank|solved|repeat|early|clear|happy/i.test(`${c.satisfaction} ${c.proof}`)).length, delay: state.candidates.filter(c => readiness(c) === 'wait').length }; }
-function renderMetrics(){ const m = metrics(); $('metricReady').textContent = m.ready; $('metricProof').textContent = m.proof; $('metricDelay').textContent = m.delay; }
-function renderCandidates(){ $('candidateList').innerHTML = state.candidates.map(c => `<button class="candidate-card ${c.id===state.selectedId?'active':''}" data-candidate="${esc(c.id)}" type="button"><strong>${esc(c.customer)}</strong><small>${esc(c.job)} · completed ${esc(c.completedDate)}</small><div class="tag-row"><span class="tag ${readiness(c)}">${esc(readiness(c))}</span><span class="tag">${esc(c.channel)}</span></div></button>`).join(''); document.querySelectorAll('[data-candidate]').forEach(btn => btn.addEventListener('click', () => { state.selectedId = btn.dataset.candidate; renderAll(); })); }
-function bindEditor(){ const c = selected(); if(!c) return; $('editorTitle').textContent = c.customer; ['customer','job','completedDate','channel','satisfaction','askStyle','proof'].forEach(k => { $(k).value = c[k] || ''; }); $('requestDraft').value = draftFor(c); $('readinessPill').textContent = readiness(c) === 'ready' ? 'Ready to ask' : readiness(c) === 'asked' ? 'Asked manually' : 'Wait / verify first'; }
-function draftFor(c){ const opener = c.askStyle === 'Grateful owner note' ? `Hi ${c.customer} — this is a quick note from the owner. Thank you for trusting us with ${c.job}.` : c.askStyle === 'Technician handoff' ? `Hi ${c.customer}, our technician noted that ${c.job} is wrapped up and wanted me to check in.` : c.askStyle === 'Ultra low-pressure' ? `Hi ${c.customer} — no pressure at all, but if the work felt worth recommending, a quick review would help our local team.` : `Hi ${c.customer}, thank you again for letting us handle ${c.job}.`;
-  const proof = c.proof ? ` I appreciated this detail: ${c.proof}` : '';
-  return `${opener}${proof}\n\nIf you feel we earned it, would you be willing to leave a short honest review? Even one sentence helps the next local customer know what to expect.\n\nEither way, thank you — and if anything does not feel right with the job, please reply here first so a human can fix it before any review request goes out.`; }
-function timingItems(c){ const status = readiness(c); return [
-  ['Job complete', daysSince(c.completedDate) >= 1 ? 'At least one day has passed since completion.' : 'Wait until the customer has had time to experience the result.'],
-  ['Mood check', /issue|Neutral/i.test(c.satisfaction) ? 'Do not ask yet. Resolve the uncertainty first.' : `${c.satisfaction} is a usable positive signal.`],
-  ['Specific proof', c.proof ? 'The request includes a concrete job detail.' : 'Add a specific detail so the request does not feel generic.'],
-  ['Final status', status === 'ready' ? 'Ready for human review and manual send.' : status === 'asked' ? 'Already asked manually; keep for ledger/export.' : 'Hold until owner or technician confirms it is earned.']
-]; }
-function renderTiming(){ const c = selected(); $('timingList').innerHTML = timingItems(c).map(([h,b]) => `<li><strong>${esc(h)}:</strong> ${esc(b)}</li>`).join(''); }
-function renderQueue(){ const rows = state.candidates.slice().sort((a,b)=> readiness(a).localeCompare(readiness(b)) || daysSince(b.completedDate)-daysSince(a.completedDate)); $('queueRows').innerHTML = rows.map(c => `<div class="queue-row"><strong>${esc(c.customer)}</strong><span>${esc(c.job)}</span><span>${esc(readiness(c))}</span><span>${esc(c.channel)}</span></div>`).join(''); }
-function markdown(){ const lines = ['# Review Request Composer packet','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft/export only; no customer contact happens inside this app.','','## Selected draft']; const c = selected(); lines.push(`- Customer: ${c.customer}`, `- Job: ${c.job}`, `- Completed: ${c.completedDate}`, `- Channel: ${c.channel}`, `- Readiness: ${readiness(c)}`, `- Proof detail: ${c.proof || 'Needs proof detail'}`, '', '```', draftFor(c), '```', '', '## Full request queue'); state.candidates.forEach(item => lines.push(`- ${readiness(item).toUpperCase()} — ${item.customer} — ${item.job} — ${item.channel} — ${item.completedDate}`)); return lines.join('\n'); }
-function csv(){ const rows = [['customer','job','completed_date','channel','satisfaction','ask_style','status','proof']].concat(state.candidates.map(c => [c.customer,c.job,c.completedDate,c.channel,c.satisfaction,c.askStyle,readiness(c),c.proof])); return rows.map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); }
-function renderExport(){ $('exportText').value = markdown(); }
-function updateSelected(){ const c = selected(); if(!c) return; ['customer','job','completedDate','channel','satisfaction','askStyle','proof'].forEach(k => c[k] = $(k).value); }
-function renderAll(){ applyTheme(); renderMetrics(); renderCandidates(); bindEditor(); renderTiming(); renderQueue(); renderExport(); saveState(); }
-function toast(msg){ const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.classList.remove('show'),1700); }
-function setStatus(status){ const c=selected(); if(!c) return; updateSelected(); c.status=status; renderAll(); toast(status === 'asked' ? 'Logged as manually asked' : `Marked ${status}`); }
-function download(name,text,type){ const blob=new Blob([text],{type}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url); }
-function copy(text){ navigator.clipboard?.writeText(text).then(()=>toast('Copied')).catch(()=>{ $('exportText').focus(); $('exportText').select(); toast('Select/copy from export'); }); }
-['customer','job','completedDate','channel','satisfaction','askStyle','proof'].forEach(id => $(id).addEventListener('input', () => { updateSelected(); bindEditor(); renderMetrics(); renderTiming(); renderQueue(); renderExport(); saveState(); }));
-$('themeToggle').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; renderAll(); toast(`${state.theme === 'light' ? 'Light':'Dark'} mode saved`); });
-$('demoBtn').addEventListener('click', () => { state = clone(demoState); renderAll(); toast('Demo loaded'); });
-$('newCandidateBtn').addEventListener('click', () => { const id = crypto.randomUUID(); state.candidates.unshift({ id, customer:'New happy customer', job:'Completed service job', completedDate:todayIso(), channel:'SMS draft', satisfaction:'Happy / thanked us', askStyle:'Warm and short', proof:'Add one specific proof detail before asking.', status:'wait' }); state.selectedId = id; renderAll(); toast('Candidate created'); });
-$('markReadyBtn').addEventListener('click', () => setStatus('ready'));
-$('markWaitBtn').addEventListener('click', () => setStatus('wait'));
-$('markAskedBtn').addEventListener('click', () => setStatus('asked'));
-$('copyMarkdown').addEventListener('click', () => copy($('exportText').value));
-$('downloadJson').addEventListener('click', () => download('review-request-composer.json', JSON.stringify({ ...state, generatedAt:new Date().toISOString(), safety:'draft-only local export' }, null, 2), 'application/json'));
-$('downloadCsv').addEventListener('click', () => download('review-request-composer.csv', csv(), 'text/csv'));
-renderAll();
-
-// DAY07_TECH_BRIEF_BRIDGE_START
+/* Review Request Composer — remake
+   Local-first, draft-only. Nothing is ever sent from this app. */
 (() => {
-  const root = document.getElementById('tech-brief-bridge');
-  if(!root) return;
-  const cards = document.getElementById('techBriefCards');
-  const text = document.getElementById('techBriefText');
-  const clean = v => String(v || '').trim();
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const title = document.title || 'Local app';
-    const customer = val('customer') || val('businessType') || val('businessName') || val('metricOpenValue') || 'Customer/site from current app';
-    const issue = val('issue') || val('win') || val('proofRequirement') || val('note') || val('requestDraft') || val('message') || 'Translate current app output into the job issue and field objective.';
-    const parts = val('parts') || val('actionList') || val('quoteLeakText') || val('approvalDeskText') || val('exportText') || 'Bring the checklist, screenshots, quote/report proof, and any likely parts before dispatch.';
-    const risk = val('hazards') || val('risk') || val('metricRisk') || 'Verify access, safety, customer mood, scope, timing, and price before making commitments.';
-    return { source:title, customer, issue:issue.slice(0,260), parts:parts.slice(0,260), risk:risk.slice(0,220), boundary:'Draft/export only. A human verifies the site, customer, safety, pricing, and schedule before dispatch or contact.' };
-  }
-  function packet(){ const c=context(); return ['# Technician Brief Builder bridge','',`Source app: ${c.source}`,`Customer/site: ${c.customer}`,`Reported issue / objective: ${c.issue}`,`Parts/checks to carry forward: ${c.parts}`,`Risk notes: ${c.risk}`,`No-promise boundary: ${c.boundary}`,'','Use this as a starter handoff inside Technician Brief Builder; do not send, schedule, quote, or update a customer from this bridge.'].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Customer/site',c.customer],['Issue/objective',c.issue],['Parts/checks',c.parts],['Risk boundary',c.risk]].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only technician brief handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='technician-brief-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyTechBriefBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadTechBriefBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY07_TECH_BRIEF_BRIDGE_END
+  'use strict';
 
-// DAY08_SERVICE_TRIAGE_BRIDGE_START
-(() => {
-  const root = document.getElementById('service-triage-bridge');
-  if(!root) return;
-  const cards = document.getElementById('serviceTriageCards');
-  const text = document.getElementById('serviceTriageText');
-  const clean = v => String(v || '').trim();
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const page = document.title || 'Local app';
-    const caller = val('caller') || val('customer') || val('businessType') || val('businessName') || val('metricOpenValue') || 'Caller/customer from current app';
-    const issue = val('callerSays') || val('issue') || val('win') || val('requestDraft') || val('message') || val('exportText') || 'Translate this app output into the caller-reported issue.';
-    const constraints = val('constraints') || val('risk') || val('metricRisk') || val('hazards') || 'Confirm access, timing, risk, owner approval needs, and no price/ETA promises.';
-    const urgentWords = /urgent|today|tonight|asap|smoke|leak|hazard|complaint|callback|stale|lost|risk/i.test(`${issue} ${constraints}`);
-    const route = urgentWords ? 'Dispatcher/owner review before booking' : 'Standard triage queue';
-    return { source:page, caller, issue:issue.slice(0,260), constraints:constraints.slice(0,220), urgency:urgentWords ? 'Review / possible same-day' : 'Normal', route, boundary:'Draft/export only. A human confirms category, ETA, price, availability, and customer contact before any action.' };
-  }
-  function packet(){ const c=context(); return ['# Service Triage Flow bridge','',`Source app: ${c.source}`,`Caller/customer: ${c.caller}`,`Caller-reported issue: ${c.issue}`,`Constraints/risk: ${c.constraints}`,`Urgency cue: ${c.urgency}`,`Route: ${c.route}`,`No-promise boundary: ${c.boundary}`,'','Next questions: confirm contact, exact site, when it started, active hazards, access details, photos/model numbers, and who must approve scheduling or pricing.'].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Caller',c.caller],['Urgency',c.urgency],['Route',c.route],['Boundary','Human approval before action']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only service triage handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='service-triage-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyServiceTriageBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadServiceTriageBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY08_SERVICE_TRIAGE_BRIDGE_END
+  // ---------------------------------------------------------------- constants
+  const LS_KEY = 'fable-remake:day-06-review-request-composer:v1';
 
-// DAY09_WARM_OUTREACH_BRIDGE_START
-(() => {
-  const root = document.getElementById('warm-outreach-bridge');
-  if(!root) return;
-  const cards = document.getElementById('warmOutreachCards');
-  const text = document.getElementById('warmOutreachText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const source = document.title || 'Local app';
-    const prospect = val('prospect') || val('businessType') || val('businessName') || val('caller') || val('customer') || val('metricRoute') || 'Target local business / owner';
-    const observed = val('observed') || val('callerSays') || val('issue') || val('win') || val('exportText') || 'This app surfaced a workflow gap worth a small human review.';
-    const proof = val('proof') || val('metricProof') || val('metricRecovered') || val('metricOpenValue') || 'Use a small proof window, existing notes, and owner-visible before/after evidence.';
-    const constraints = val('constraints') || val('risk') || val('metricRisk') || 'No guaranteed result, no fake familiarity, no customer action, no CRM write, and no send without approval.';
-    const ask = /urgent|same-day|critical|lost|stale|leak|risk/i.test(`${observed} ${constraints}`) ? 'Ask for a short review of the highest-friction handoff.' : 'Ask whether a one-page example would be useful.';
-    return { source, prospect:prospect.slice(0,120), observed:observed.slice(0,280), proof:proof.slice(0,220), constraints:constraints.slice(0,220), ask, boundary:'Draft/export only. A human reviews tone, claims, proof, timing, and recipient before any outreach is used.' };
-  }
-  function endSentence(s){ const t = String(s || '').trim(); return /[.!?]$/.test(t) ? t : `${t}.`; }
-  function packet(){ const c=context(); return ['# Warm Outreach Lab bridge','',`Source app: ${c.source}`,`Prospect/context: ${c.prospect}`,`What to mention: ${c.observed}`,`Proof cue: ${c.proof}`,`Constraint: ${c.constraints}`,`Soft ask: ${c.ask}`,`Safety boundary: ${c.boundary}`,'','Starter draft:',`Hi ${c.prospect} — quick note after noticing this: ${endSentence(c.observed)} ${c.proof} ${c.ask}`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Prospect',c.prospect],['Proof cue',c.proof],['Ask',c.ask],['Boundary','Human review before send']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only warm outreach handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='warm-outreach-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyWarmOutreachBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadWarmOutreachBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY09_WARM_OUTREACH_BRIDGE_END
+  const TONES = {
+    warm: 'Warm & short',
+    grateful: 'Grateful owner note',
+    tech: 'Technician handoff',
+    low: 'Ultra low-pressure',
+    pro: 'Professional (B2B)'
+  };
+  const CHANNELS = { sms: 'SMS', email: 'Email' };
+  const SATISFACTIONS = {
+    happy: 'Happy / thanked us',
+    solved: 'Problem solved',
+    repeat: 'Repeat customer',
+    neutral: 'Neutral / unsure',
+    issue: 'Had an issue'
+  };
+  const STATUSES = ['pending', 'asked', 'reviewed', 'skipped'];
+  const SMS_SOFT_LIMIT = 320;   // ~2 SMS segments
+  const EMAIL_SOFT_LIMIT = 950; // chars before an ask reads as a wall of text
 
-// DAY10_PILOT_PRICING_BRIDGE_START
-(() => {
-  const root = document.getElementById('pilot-pricing-bridge');
-  if(!root) return;
-  const cards = document.getElementById('pilotPricingCards');
-  const text = document.getElementById('pilotPricingText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const moneyNum = s => { const nums = String(s || '').match(/[0-9][0-9,]*/g); return nums ? Number(nums[0].replaceAll(',','')) : 0; };
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function dollars(n){ return Number(n || 0).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}); }
-  function context(){
-    const source = document.title || 'Local app';
-    const client = val('client') || val('prospect') || val('businessName') || val('businessType') || val('caller') || val('customer') || 'Prospect / owner';
-    const workflow = val('workflow') || val('observed') || val('issue') || val('callerSays') || val('metricRoute') || 'Current workflow output from this app';
-    const recoveredCue = moneyNum(val('metricRecovered') || val('metricOpenValue') || val('metricValue') || val('exportText')) || 4200;
-    const riskText = val('risk') || val('metricRisk') || val('constraints') || 'Scope and proof need human review before quoting.';
-    const low = Math.max(750, recoveredCue * 0.18);
-    const high = Math.max(low + 500, recoveredCue * 0.42);
-    const target = (low + high) / 2;
-    return { source, client:client.slice(0,120), workflow:workflow.slice(0,240), recoveredCue, low, target, high, riskText:riskText.slice(0,220), boundary:'Draft/export only. Human reviews assumptions, terms, proof window, claims, and client-facing language before sharing a price.' };
-  }
-  function packet(){ const c=context(); return ['# Pilot Pricing Calculator bridge','',`Source app: ${c.source}`,`Client/prospect: ${c.client}`,`Workflow priced: ${c.workflow}`,`Recovered value cue: ${dollars(c.recoveredCue)} per month / opportunity signal`, `Draft range: ${dollars(c.low)}–${dollars(c.high)}`,`Working quote: ${dollars(c.target)}`,`Risk/proof note: ${c.riskText}`,`Safety boundary: ${c.boundary}`,'','Owner-safe story:',`Price this as a short proof window. The range is tied to the current value cue and delivery risk, not a guaranteed result.`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Client',c.client],['Recovered cue',dollars(c.recoveredCue)],['Draft range',`${dollars(c.low)}–${dollars(c.high)}`],['Boundary','Human review before quote']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only pilot pricing handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pilot-pricing-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyPilotPricingBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadPilotPricingBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY10_PILOT_PRICING_BRIDGE_END
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START
-(() => {
-  const root = document.getElementById('local-biz-snapshot-bridge');
-  if(!root) return;
-  const cards = document.getElementById('localBizSnapshotCards');
-  const text = document.getElementById('localBizSnapshotText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const tokens = () => clean([document.title, val('exportText'), val('pilotPricingText'), val('metricValue'), val('metricRecovered'), val('metricRisk'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const business = val('businessName') || val('client') || val('prospect') || val('customer') || val('caller') || 'Prospect / local business';
-    const type = val('businessType') || val('workflow') || val('issue') || val('observed') || 'Service business workflow';
-    const blob = tokens().toLowerCase();
-    const leaks = [];
-    if(/call|missed|phone|triage/.test(blob)) leaks.push('Missed-call or intake leak');
-    if(/form|booking|schedule/.test(blob)) leaks.push('Booking/form friction');
-    if(/quote|price|pricing|proposal/.test(blob)) leaks.push('Quote follow-up gap');
-    if(/review|proof|owner report|case/.test(blob)) leaks.push('Proof/reporting gap');
-    if(!leaks.length) leaks.push('Manual follow-up leak to verify');
-    const wedge = leaks[0].includes('Quote') ? 'Quote follow-up cleanup' : leaks[0].includes('Proof') ? 'Owner proof snapshot' : leaks[0].includes('Booking') ? 'Service intake triage' : 'Missed-call recovery check';
-    const score = Math.min(96, Math.max(42, 48 + leaks.length * 11 + (clean(val('exportText')).length > 400 ? 12 : 0)));
-    return { source, business:business.slice(0,120), type:type.slice(0,180), leaks:[...new Set(leaks)].slice(0,4), wedge, score, nextStep:'Verify facts manually, ask for one small data sample, and get human approval before outreach or claims.', boundary:'Draft/export only. No scraping, enrichment, CRM writes, sends, or public/customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Local Biz Snapshot bridge','',`Source app: ${c.source}`,`Business/profile cue: ${c.business}`,`Workflow/type cue: ${c.type}`,`Fit score: ${c.score}/100`,`Likely leaks: ${c.leaks.join('; ')}`,`First wedge: ${c.wedge}`,`Human next step: ${c.nextStep}`,`Safety boundary: ${c.boundary}`,'','Plain-English snapshot:',`This looks like a ${c.wedge.toLowerCase()} candidate if the public/profile cues hold up. Keep it as an internal dossier until a human verifies the facts.`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Business cue',c.business],['Likely leak',c.leaks[0]],['First wedge',c.wedge],['Boundary','Human review first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only local business snapshot' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='local-biz-snapshot-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyLocalBizSnapshotBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadLocalBizSnapshotBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END
+  // ---------------------------------------------------------------- state
+  let state = load();
+  let saveTimer = null;
+  let toastTimer = null;
+  let lastDeleted = null;
+  let lastFocus = null;
 
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START
-(() => {
-  const root = document.getElementById('script-rehearsal-room-bridge');
-  if(!root) return;
-  const cards = document.getElementById('scriptRehearsalCards');
-  const text = document.getElementById('scriptRehearsalText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const blob = () => clean([document.title, val('exportText'), val('localBizSnapshotText'), val('pilotPricingText'), val('metricFit'), val('metricValue'), val('metricRecovered'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const raw = blob();
-    const lower = raw.toLowerCase();
-    const prospect = val('businessName') || val('prospect') || val('customer') || val('caller') || val('client') || 'Owner / prospect';
-    const objective = lower.includes('quote') ? 'ask where quote follow-up stalls and propose a tiny cleanup test' : lower.includes('review') ? 'learn what proof customers trust and rehearse a low-pressure ask' : lower.includes('pricing') ? 'validate whether the pilot scope and proof window feel fair' : lower.includes('triage') || lower.includes('call') ? 'understand intake friction and pick one safe next question' : 'find one practical workflow leak worth a small proof step';
-    const prompt = lower.includes('price') || lower.includes('pricing') ? 'What price range feels low-risk enough to test, and what proof would change your mind?' : lower.includes('review') ? 'Which customer result would you feel comfortable asking about manually?' : lower.includes('quote') ? 'Which open quote should get a human follow-up first, and why?' : 'Where does the current workflow slow down when the team is busy?';
-    const objection = lower.includes('cost') || lower.includes('price') || lower.includes('pricing') ? 'We do not have budget.' : lower.includes('busy') || lower.includes('triage') ? 'I am too busy right now.' : 'How do I know this works?';
-    const response = objection.includes('budget') ? 'Keep the answer tied to a short proof window and a small manual pilot before any build.' : objection.includes('busy') ? 'Ask for one ten-minute sample review instead of a full meeting.' : 'Point to measured proof and avoid any revenue promise until facts are verified.';
-    return { source, prospect:prospect.slice(0,120), objective, opening:`I want to keep this useful and low-pressure. The goal is to ${objective}, then decide whether one human-reviewed proof step is worth doing.`, prompt, objection, response, boundary:'Draft rehearsal only. Get human approval before calls, sends, recordings, CRM updates, claims, or customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Script Rehearsal Room bridge','',`Source app: ${c.source}`,`Prospect/customer cue: ${c.prospect}`,`Call objective: ${c.objective}`,'',`Opening line: ${c.opening}`,'','Discovery prompts:',`1. ${c.prompt}`,'2. What would count as proof that this is worth testing?','3. Who needs to approve the smallest next step?','',`Objection card: ${c.objection}`,`Practice response: ${c.response}`,'',`Safety boundary: ${c.boundary}`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Prospect cue',c.prospect],['Objective',c.objective],['Objection',c.objection],['Boundary','Human approval first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blobObj = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only script rehearsal' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blobObj); const a=document.createElement('a'); a.href=url; a.download='script-rehearsal-room-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyScriptRehearsalBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadScriptRehearsalBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END
-
-// Day 13 Proof Vault bridge: source-output-to-evidence handoff.
-(() => {
-  const section = document.getElementById('proof-vault-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('proofVaultCards');
-  const textEl = document.getElementById('proofVaultText');
-  const copyBtn = document.getElementById('copyProofVault');
-  const downloadBtn = document.getElementById('downloadProofVault');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escPv = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'proofVaultText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    const live = clean(document.querySelector('main')?.innerText || document.body.innerText || '');
-    return live.slice(0, 900);
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const headline = clean(document.querySelector('h1')?.textContent || name);
-    const resultCue = output.match(/\$[0-9,.kK]+|[0-9]+%|ready|approval|recover|score|proof/i)?.[0] || 'add measured result before external use';
+  function defaultState() {
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
     return {
-      sourceApp: name,
-      artifactType: 'Report snippet / screenshot candidate',
-      proofTitle: `${name} output evidence`,
-      location: 'Capture a local screenshot or export from this app before sharing.',
-      snippet: output,
-      result: `Evidence cue: ${resultCue}. Verify against real owner/customer data before using as proof.`,
-      caseStudyAngle: `${headline} can become a Proof Vault card if the screenshot/snippet is redacted, tied to a measured result, and approved by the owner.`,
-      redactionChecklist: ['Remove customer names and identifiers', 'Confirm no API keys, tokens, account IDs, phone numbers, or private URLs are visible', 'Mark owner approval before any external case-study use'],
-      safety: 'Draft-only local handoff. Do not publish, send, or claim results without redaction and explicit human approval.',
-      generatedAt: new Date().toISOString()
+      theme: prefersLight ? 'light' : 'dark',
+      seenGuide: false,
+      selectedId: null,
+      queueFilter: 'all',
+      business: { name: '', sender: '', platform: 'Google' },
+      customers: []
     };
   }
-  function markdown(packet){
-    return ['# Proof Vault evidence card','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Redact and obtain explicit approval before external use.','',`## Source app`,packet.sourceApp,'',`## Proof title`,packet.proofTitle,'',`## Artifact type`,packet.artifactType,'',`## Location`,packet.location,'',`## Evidence snippet`,packet.snippet,'',`## Result / signal`,packet.result,'',`## Case-study angle`,packet.caseStudyAngle,'',`## Redaction checklist`,...packet.redactionChecklist.map(item => `- [ ] ${item}`),'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Source', packet.sourceApp],
-      ['Artifact', packet.artifactType],
-      ['Result cue', packet.result],
-      ['Boundary', 'Redact + owner approval']
-    ].map(([label, value]) => `<article><span>${escPv(label)}</span><strong>${escPv(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify(packet, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-proof-vault-card.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 14 SOP Builder bridge: current-output-to-repeatable-procedure handoff.
-(() => {
-  const section = document.getElementById('sop-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('sopBuilderCards');
-  const textEl = document.getElementById('sopBuilderText');
-  const copyBtn = document.getElementById('copySopBuilder');
-  const downloadBtn = document.getElementById('downloadSopBuilder');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escSop = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'sopBuilderText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 900);
+  function isoDate(d) { return d.toISOString().slice(0, 10); }
+  function todayIso() { return isoDate(new Date()); }
+  function daysAgoIso(n) { const d = new Date(); d.setDate(d.getDate() - n); return isoDate(d); }
+  function daysSince(iso) {
+    if (!iso) return 0;
+    const a = new Date(iso + 'T00:00:00');
+    const b = new Date(todayIso() + 'T00:00:00');
+    if (Number.isNaN(a.getTime())) return 0;
+    return Math.max(0, Math.round((b - a) / 86400000));
   }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const title = clean(document.querySelector('h1')?.textContent || name);
-    const trigger = output.match(/when|after|if|before|daily|lead|quote|approval|proof|review/i)?.[0] || 'When this workflow output needs to be repeated';
-    const stepA = `Open ${name}, load or enter the working context, and confirm the task is still draft-only.`;
-    const stepB = `Use the current output to decide the next internal handoff: ${output.slice(0, 180) || 'document the workflow result'}.`;
-    const stepC = 'Run the quality checks, get human approval for customer-facing action, then log the decision outside this bridge.';
+  function uid() {
+    return (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  }
+
+  function normalizeCustomer(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const str = (v, max) => String(v ?? '').slice(0, max);
+    const dateOk = (v) => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : todayIso();
+    const oneOf = (v, keys, fallback) => keys.includes(v) ? v : fallback;
+    const ov = raw.overrides && typeof raw.overrides === 'object' ? raw.overrides : {};
     return {
-      sourceApp: name,
-      sopTitle: `${name} repeatable handoff SOP`,
-      trigger,
-      owner: 'Human operator / owner delegate',
-      inputs: 'Current app output, source notes, approval status, and any measured result cues.',
-      doneDefinition: 'The handoff is copied/exported, reviewed by a human, and either approved, revised, or parked.',
-      steps: [stepA, stepB, stepC],
-      qualityChecks: ['No secrets, tokens, account IDs, or private customer identifiers are visible', 'Claims are tied to visible evidence or marked as assumptions', 'Human approval is required before sends, CRM writes, quotes, public changes, or customer contact'],
-      exceptionPath: 'If context is unclear, sensitive, or high-risk, stop and ask the owner for review instead of acting.',
-      sourceSnippet: output,
-      safety: 'Draft-only SOP handoff. No customer-facing action, CRM write, send, quote, or destructive change from this bridge.',
-      generatedAt: new Date().toISOString(),
-      headline: title
+      id: str(raw.id, 60) || uid(),
+      name: str(raw.name ?? raw.customer, 80),
+      job: str(raw.job, 100),
+      completedDate: dateOk(raw.completedDate),
+      satisfaction: oneOf(raw.satisfaction, Object.keys(SATISFACTIONS), 'happy'),
+      tone: oneOf(raw.tone, Object.keys(TONES), 'warm'),
+      channel: oneOf(raw.channel, Object.keys(CHANNELS), 'sms'),
+      detail: str(raw.detail ?? raw.proof, 240),
+      status: oneOf(raw.status, STATUSES, 'pending'),
+      askedDate: /^\d{4}-\d{2}-\d{2}$/.test(String(raw.askedDate || '')) ? String(raw.askedDate) : null,
+      overrides: {
+        sms: typeof ov.sms === 'string' ? ov.sms.slice(0, 2000) : null,
+        email: typeof ov.email === 'string' ? ov.email.slice(0, 6000) : null
+      }
     };
   }
-  function markdown(packet){
-    return ['# SOP Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Human approval is required before customer-facing or destructive action.','',`## SOP`,packet.sopTitle,`Source app: ${packet.sourceApp}`,`Trigger: ${packet.trigger}`,`Owner: ${packet.owner}`,`Inputs: ${packet.inputs}`,`Done definition: ${packet.doneDefinition}`,'',`## Steps`,...packet.steps.map((step, idx) => `${idx + 1}. ${step}`),'',`## Quality checks`,...packet.qualityChecks.map(item => `- [ ] ${item}`),'',`## Exception path`,packet.exceptionPath,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Trigger', packet.trigger],
-      ['Owner', packet.owner],
-      ['Steps', `${packet.steps.length} starter stations`],
-      ['Boundary', 'Human approval before action']
-    ].map(([label, value]) => `<article><span>${escSop(label)}</span><strong>${escSop(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-sop-builder-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 15 Daily Cash Board bridge: current-output-to-cash-action handoff.
-(() => {
-  const section = document.getElementById('daily-cash-board-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('dailyCashBoardCards');
-  const textEl = document.getElementById('dailyCashBoardText');
-  const copyBtn = document.getElementById('copyDailyCashBoard');
-  const downloadBtn = document.getElementById('downloadDailyCashBoard');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCash = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'dailyCashBoardText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1000);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1000);
-  }
-  function valueCue(text){
-    const match = text.match(/\$\s?([0-9][0-9,]*(?:\.\d{1,2})?)/);
-    return match ? `$${match[1]}` : 'Value not set';
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const dueSignal = /today|daily|now|urgent|stale|follow|invoice|quote|call/i.test(output) ? 'Due today / review now' : 'Schedule the next review date';
-    return {
-      sourceApp: name,
-      cashSignal: valueCue(output),
-      offerCheckpoint: `If ${name} reveals a clear wedge, draft one narrow offer and route it for human approval.`,
-      followupCheckpoint: `If the output mentions a quote, lead, proof, review, or owner decision, create one follow-up task instead of letting it sit.`,
-      callCheckpoint: 'If discovery is needed, book or prepare one human-led call; do not send from this bridge.',
-      invoiceCheckpoint: 'If work is complete or approved, check invoice/collection status outside this app.',
-      nextAction: `${dueSignal}: copy this cash brief into Daily Cash Board and choose the single highest-cash next move.`,
-      risk: 'No customer-facing sends, CRM writes, invoices, payments, public changes, pricing promises, or destructive actions from this bridge.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
+  function normalize(raw) {
+    const base = defaultState();
+    if (!raw || typeof raw !== 'object') return base;
+    const out = { ...base };
+    if (raw.theme === 'light' || raw.theme === 'dark') out.theme = raw.theme;
+    out.seenGuide = !!raw.seenGuide;
+    out.queueFilter = ['all', 'pending', 'asked', 'done'].includes(raw.queueFilter) ? raw.queueFilter : 'all';
+    const biz = raw.business && typeof raw.business === 'object' ? raw.business : {};
+    out.business = {
+      name: String(biz.name ?? '').slice(0, 60),
+      sender: String(biz.sender ?? '').slice(0, 40),
+      platform: ['Google', 'Yelp', 'Facebook', 'Nextdoor', 'Other'].includes(biz.platform) ? biz.platform : 'Google'
     };
+    out.customers = Array.isArray(raw.customers)
+      ? raw.customers.map(normalizeCustomer).filter(Boolean).slice(0, 500)
+      : [];
+    out.selectedId = out.customers.some((c) => c.id === raw.selectedId)
+      ? raw.selectedId
+      : (out.customers[0] ? out.customers[0].id : null);
+    return out;
   }
-  function markdown(packet){
-    return ['# Daily Cash Board bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local cash brief. Human approval is required before customer-facing, billing, CRM, payment, or public actions.','',`## Source`,packet.sourceApp,`Cash/value cue: ${packet.cashSignal}`,'',`## Cash checkpoints`,`- Offer: ${packet.offerCheckpoint}`,`- Follow-up: ${packet.followupCheckpoint}`,`- Booked call: ${packet.callCheckpoint}`,`- Invoice / collect: ${packet.invoiceCheckpoint}`,'',`## Next action`,packet.nextAction,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.risk].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Value cue', packet.cashSignal],
-      ['Offer', 'Draft only'],
-      ['Follow-up', 'One due action'],
-      ['Invoice', 'Check status'],
-      ['Boundary', 'Human approval']
-    ].map(([label, value]) => `<article><span>${escCash(label)}</span><strong>${escCash(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-daily-cash-board-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 16 Meeting Follow-up Kit bridge: current-output-to-recap handoff.
-(() => {
-  const section = document.getElementById('meeting-followup-kit-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('meetingFollowupCards');
-  const textEl = document.getElementById('meetingFollowupText');
-  const copyBtn = document.getElementById('copyMeetingFollowup');
-  const downloadBtn = document.getElementById('downloadMeetingFollowup');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escMeeting = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'meetingFollowupText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1200);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1200);
+  function load() {
+    try { return normalize(JSON.parse(localStorage.getItem(LS_KEY))); }
+    catch { return normalize(null); }
   }
-  function firstSentence(text){ const match = clean(text).match(/[^.!?]+[.!?]/); return match ? match[0].trim() : clean(text).slice(0, 160); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const decisionCue = /(approve|approved|decision|choose|selected|ready|won|yes|no|price|pilot|scope)/i.test(output) ? 'Decision cue found' : 'Decision needs owner confirmation';
-    const riskCue = /(risk|block|guardrail|approval|secret|payment|invoice|customer|public|send|crm)/i.test(output) ? 'Risk/approval cue found' : 'No obvious risk cue';
-    return {
-      sourceApp: name,
-      recapHeadline: firstSentence(output) || `${name} output needs a meeting recap.`,
-      followupEmail: `Subject: Follow-up from ${name}\n\nHi all,\n\nQuick recap: ${firstSentence(output) || 'we reviewed the current app output.'}\n\nProposed next action: assign one owner, one due date, and one approval check before anything customer-facing happens.\n\nPlease confirm the decisions, risks, and open questions below before sending or acting.`,
-      ownerTasks: [`Name one owner for the next ${name} action`, 'Set a due date before the next review', 'Copy the guardrail into the handoff'],
-      decisions: [decisionCue, 'Confirm whether this output is ready for the next app/workflow'],
-      risks: [riskCue, 'No sends, CRM writes, invoices, payments, public changes, or customer contact from this bridge'],
-      questions: ['Who owns the next step?', 'What must be approved before real-world action?'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
+
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch { /* storage blocked */ }
+    }, 250);
+  }
+
+  function selected() { return state.customers.find((c) => c.id === state.selectedId) || null; }
+
+  // ---------------------------------------------------------------- domain: drafts
+  const BIZ_WORD = /\b(inc|llc|ltd|co|corp|company|group|hoa|dental|clinic|office|services|properties|associates)\b/i;
+  function firstName(name) {
+    const n = String(name || '').trim();
+    if (!n) return 'there';
+    if (BIZ_WORD.test(n)) return n;
+    return n.split(/\s+/)[0];
+  }
+
+  function platformLabel(biz) { return biz.platform === 'Other' ? '' : biz.platform; }
+  function endStop(s) { return /[.!?]$/.test(s) ? s : s + '.'; }
+
+  function smsDraft(c, biz) {
+    const n = firstName(c.name);
+    const job = c.job || 'the recent job';
+    const bizName = biz.name || 'us';
+    const sender = biz.sender;
+    const plat = platformLabel(biz);
+    const openers = {
+      warm: `Hi ${n}, thanks again for letting ${bizName} take care of ${job}.`,
+      grateful: `Hi ${n}, it's ${sender || 'the owner'} at ${bizName} — a personal thank-you for trusting us with ${job}.`,
+      tech: `Hi ${n}, this is ${sender || 'the office'} at ${bizName} — our tech said ${job} wrapped up well and wanted us to pass along thanks.`,
+      low: `Hi ${n} — no pressure at all, just a thank-you for choosing ${bizName} for ${job}.`,
+      pro: `Hello ${n}, thank you for working with ${bizName} on ${job}.`
     };
+    const ask = plat
+      ? `If it felt worth recommending, an honest ${plat} review would help neighbors find us. Either way, thanks — and if anything's off, just reply and we'll make it right.`
+      : `If it felt worth recommending, a short honest review would help others find us. Either way, thanks — and if anything's off, just reply and we'll make it right.`;
+    const detail = String(c.detail || '').trim();
+    const detailSentence = detail ? ` ${endStop(detail)}` : '';
+    const full = `${openers[c.tone] || openers.warm}${detailSentence} ${ask}`;
+    // Length-aware: drop the detail sentence if the message runs past the soft limit.
+    return (full.length > SMS_SOFT_LIMIT && detailSentence)
+      ? `${openers[c.tone] || openers.warm} ${ask}`
+      : full;
   }
-  function markdown(packet){
-    return ['# Meeting Follow-up Kit bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local recap. Human approval is required before sending email, calendar invites, CRM updates, customer messages, billing, or public changes.','',`## Source`,packet.sourceApp,'',`## Recap headline`,packet.recapHeadline,'',`## Draft follow-up email`,'```',packet.followupEmail,'```','',`## Tasks`,...packet.ownerTasks.map(v => `- ${v}`),'',`## Decisions`,...packet.decisions.map(v => `- ${v}`),'',`## Risks`,...packet.risks.map(v => `- ${v}`),'',`## Open questions`,...packet.questions.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Recap', 'Ready'],
-      ['Email', 'Draft only'],
-      ['Tasks', String(packet.ownerTasks.length)],
-      ['Risks', String(packet.risks.length)],
-      ['Boundary', 'Human review']
-    ].map(([label, value]) => `<article><span>${escMeeting(label)}</span><strong>${escMeeting(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-meeting-followup-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 17 Credential Handoff Checklist bridge: no-secret access custody handoff.
-(() => {
-  const section = document.getElementById('credential-handoff-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('credentialHandoffCards');
-  const textEl = document.getElementById('credentialHandoffText');
-  const copyBtn = document.getElementById('copyCredentialHandoff');
-  const downloadBtn = document.getElementById('downloadCredentialHandoff');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCred = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'credentialHandoffText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1400);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1400);
-  }
-  function findSystems(text){
-    const lower = text.toLowerCase();
-    const systems = [];
-    if(/email|inbox|follow-up|message|sms/.test(lower)) systems.push('Messaging/inbox access');
-    if(/calendar|booking|appointment|schedule/.test(lower)) systems.push('Booking/calendar access');
-    if(/crm|lead|customer|quote|invoice/.test(lower)) systems.push('CRM/customer record access');
-    if(/api|webhook|integration|automation/.test(lower)) systems.push('API/integration access');
-    if(/payment|billing|price|cash|invoice/.test(lower)) systems.push('Billing/payment portal access');
-    return systems.length ? [...new Set(systems)].slice(0,4) : ['App/operator access'];
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const systems = findSystems(output);
-    const riskWords = (output.match(/secret|token|key|password|customer|payment|send|crm|public|invoice|api/gi) || []).length;
-    return {
-      sourceApp: name,
-      systems,
-      primaryOwner: 'Assign primary owner',
-      backupOwner: 'Assign backup owner',
-      storageReference: 'Password-manager item label only — do not paste secret value',
-      requiredChecks: ['MFA confirmed', 'Least privilege confirmed', 'Storage reference verified', 'Revocation path documented', 'Rotation date set', 'No raw secret stored in this app/export'],
-      revocationPlan: systems.map(system => `${system}: document where to remove user/key and who can execute it.`),
-      riskFlags: riskWords ? [`${riskWords} sensitive/action words detected in source output; review access boundaries.`] : ['No obvious credential/action keywords detected; still review manually.'],
-      approvalBoundary: 'Human approval required before sharing, rotating, revoking, sending, CRM changes, billing actions, customer contact, or public changes.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
+  function emailDraft(c, biz) {
+    const n = firstName(c.name);
+    const job = c.job || 'the recent job';
+    const bizName = biz.name || 'our team';
+    const sender = biz.sender;
+    const plat = platformLabel(biz);
+    const subjects = {
+      warm: `Thank you from ${bizName}`,
+      grateful: `A personal thank-you from ${sender || 'the owner'}`,
+      tech: `Following up on your ${job}`,
+      low: `A small favor — zero obligation`,
+      pro: `Thank you for your business — one quick request`
     };
-  }
-  function markdown(packet){
-    return ['# Credential Handoff Checklist bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: metadata only. Do not paste raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment details. Use an encrypted/password-manager workflow for the actual secret handoff.','',`## Source`,packet.sourceApp,'',`## Systems/access surfaces`,...packet.systems.map(v => `- ${v}`),'',`## Owners`,`- Primary owner: ${packet.primaryOwner}`,`- Backup owner: ${packet.backupOwner}`,'',`## Storage reference`,packet.storageReference,'',`## Required checks`,...packet.requiredChecks.map(v => `- [ ] ${v}`),'',`## Revocation plan`,...packet.revocationPlan.map(v => `- ${v}`),'',`## Risk flags`,...packet.riskFlags.map(v => `- ${v}`),'',`## Approval boundary`,packet.approvalBoundary,'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Surfaces', String(packet.systems.length)],
-      ['Secret values', 'Never store'],
-      ['Checks', String(packet.requiredChecks.length)],
-      ['Revoke path', 'Required'],
-      ['Approval', 'Human gate']
-    ].map(([label, value]) => `<article><span>${escCred(label)}</span><strong>${escCred(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-credential-handoff-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 18 Content Repurposer bridge: draft-only publishing packet.
-(() => {
-  const section = document.getElementById('content-repurposer-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('contentRepurposerCards');
-  const textEl = document.getElementById('contentRepurposerText');
-  const copyBtn = document.getElementById('copyContentRepurposer');
-  const downloadBtn = document.getElementById('downloadContentRepurposer');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escContent = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'contentRepurposerText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function splitSentences(text){ return clean(text).split(/(?<=[.!?])\s+/).filter(Boolean); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const sentences = splitSentences(output);
-    const proofWords = (output.match(/verified|smoke|browser|export|recording|phone|proof|score|ready|passed/gi) || []).length;
-    const publicWords = (output.match(/send|publish|post|customer|client|public|crm|payment|billing/gi) || []).length;
-    const title = `${name}: turn the output into a proof-ready draft`.slice(0, 92);
-    const chapters = [
-      ['00:00', 'What the app produced', sentences[0] || `${name} generated a useful local-first output.`],
-      ['00:35', 'Core workflow', sentences[1] || 'Walk through the main inputs, decisions, and generated packet.'],
-      ['01:15', 'Proof and caveats', sentences[2] || 'Show verification, limits, and human-review boundaries.'],
-      ['02:00', 'Next action', 'Copy/export the draft packet, then review before public use.']
-    ];
-    return {
-      sourceApp: name,
-      title,
-      description: `${name} produced a local-first business workflow output. This bridge repurposes it into a draft content packet with proof notes, caveats, chapters, and short posts. Human review is required before publishing.`,
-      chapters,
-      shortPosts: [
-        `Built/useful output from ${name}: now it has a draft content packet with title, description, chapters, proof notes, and caveats.`,
-        `The important boundary: this is content drafting only. Review before anything public, customer-facing, or promotional.`,
-        proofWords ? `Proof cues detected in the source: ${proofWords}. Keep those in the public story instead of hype.` : `Add verification proof before publishing this story.`
-      ],
-      checklist: ['Confirm claims match the source output', 'Add proof and screenshots only if secret-safe', 'Keep caveats visible', 'Human approval before public posting', 'No customer data or secrets in exported content'],
-      flags: publicWords ? [`${publicWords} public/customer/action words detected; approval review required.`] : ['No obvious public-action terms detected; still review manually.'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
+    const openers = {
+      warm: `Thank you again for letting us take care of ${job} — we really appreciate it.`,
+      grateful: `This is ${sender || 'the owner'} writing personally. Thank you for trusting ${bizName} with ${job}; jobs like yours are why we do this work.`,
+      tech: `Our technician mentioned that ${job} wrapped up nicely and asked me to pass along their thanks.`,
+      low: `Just a short note to say thank you for choosing ${bizName} for ${job}. There is no obligation attached to this email.`,
+      pro: `Thank you for partnering with ${bizName} on ${job}. We appreciated the clear communication throughout.`
     };
+    const detail = String(c.detail || '').trim();
+    const detailPara = detail ? `One detail that stood out on our end: ${endStop(detail)}` : '';
+    const askPara = plat
+      ? `If you feel we earned it, would you be willing to share a short, honest review on ${plat}? Even a sentence or two helps the next customer know what to expect.`
+      : `If you feel we earned it, would you be willing to share a short, honest review wherever you found us? Even a sentence or two helps the next customer know what to expect.`;
+    const fixPara = `And if anything about the job doesn't feel right, please reply to this email first — we'd much rather fix it than have you settle for less than you paid for.`;
+    const signoff = `Thanks again,\n${sender || bizName}${sender && biz.name ? '\n' + biz.name : ''}`;
+    const body = [`Hi ${n},`, openers[c.tone] || openers.warm, detailPara, askPara, fixPara, signoff]
+      .filter(Boolean).join('\n\n');
+    return { subject: subjects[c.tone] || subjects.warm, body };
   }
-  function markdown(packet){
-    return ['# Content Repurposer bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Does not post, upload, send, call APIs, or publish. Human approval required before public use.','',`## Source`,packet.sourceApp,'',`## YouTube title`,packet.title,'',`## Description`,packet.description,'',`## Chapters`,...packet.chapters.map(c => `- ${c[0]} — ${c[1]}: ${c[2]}`),'',`## Short posts`,...packet.shortPosts.map((v,i)=>`### Post ${i+1}\n${v}`),'',`## Review checklist`,...packet.checklist.map(v => `- [ ] ${v}`),'',`## Flags`,...packet.flags.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Title', '1 draft'],
-      ['Chapters', String(packet.chapters.length)],
-      ['Posts', String(packet.shortPosts.length)],
-      ['Proof gate', 'Required'],
-      ['Public action', 'Human review']
-    ].map(([label, value]) => `<article><span>${escContent(label)}</span><strong>${escContent(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-content-repurposer-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 19 Home Service Route Planner bridge: draft-only service route sheet.
-(() => {
-  const section = document.getElementById('home-service-route-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('homeServiceRouteCards');
-  const textEl = document.getElementById('homeServiceRouteText');
-  const copyBtn = document.getElementById('copyHomeServiceRoute');
-  const downloadBtn = document.getElementById('downloadHomeServiceRoute');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escRoute = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'homeServiceRouteText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
+  function generatedDraft(c, channel) {
+    if (channel === 'email') {
+      const e = emailDraft(c, state.business);
+      return `Subject: ${e.subject}\n\n${e.body}`;
+    }
+    return smsDraft(c, state.business);
   }
-  function chunks(text){ const parts = clean(text).split(/(?<=[.!?])\s+|\n+/).filter(Boolean); return parts.length ? parts : ['Review generated output', 'Confirm next action', 'Owner approval checkpoint']; }
-  function buildRoute(){
-    const name = appName();
-    const output = currentOutput();
-    const parts = chunks(output).slice(0, 5);
-    const base = 8 * 60;
-    const stops = parts.map((part, index) => {
-      const priority = /urgent|risk|overdue|stale|critical|high|emergency/i.test(part) ? 5 : (/review|approve|owner|proof/i.test(part) ? 4 : 3);
-      const arrive = base + index * 105;
-      return { order:index+1, customer:`${name} stop ${index+1}`, area:['North route','East route','South route','West route','Overflow'][index] || 'Route TBD', priority, windowStart:`${String(Math.floor(arrive/60)).padStart(2,'0')}:${String(arrive%60).padStart(2,'0')}`, duration: priority >= 5 ? 90 : 60, work:part };
+
+  function effectiveDraft(c, channel) {
+    const ov = c.overrides ? c.overrides[channel] : null;
+    return (typeof ov === 'string') ? ov : generatedDraft(c, channel);
+  }
+
+  function smsSegments(len) { return len === 0 ? 0 : (len <= 160 ? 1 : Math.ceil(len / 153)); }
+
+  // ---------------------------------------------------------------- domain: lint
+  const LINT_RULES = [
+    {
+      level: 'block', name: 'Incentive offered',
+      test: (t) => /\b(discount|free|gift|coupon|voucher|\d+\s?% ?off|in exchange|reward|raffle|prize|credit toward)\b/i.test(t),
+      tip: 'Paying or rewarding for reviews violates Google/Yelp policy and can get listings penalized. Remove the offer.'
+    },
+    {
+      level: 'block', name: 'Star begging',
+      test: (t) => /\b(5|five)[\s-]?stars?\b/i.test(t),
+      tip: 'Never name a rating. Ask for an honest review and let the customer choose the stars.'
+    },
+    {
+      level: 'warn', name: 'Review gating',
+      test: (t) => /\bif you(?:'re| are| were)? (happy|satisfied|pleased)\b[^.!?]*\breview\b/i.test(t),
+      tip: 'Conditioning the ask on happiness reads as review gating. Keep the ask unconditional and honest.'
+    },
+    {
+      level: 'warn', name: 'Pressure language',
+      test: (t) => /\b(really need|need you to|you must|urgent|asap|right away|last chance|don't forget|make sure (you|to))\b/i.test(t),
+      tip: 'Urgency turns a favor into a demand. A review is optional — say so or imply it.'
+    },
+    {
+      level: 'warn', name: 'Guilt framing',
+      test: (t) => /\b(mean the world|keep the lights on|struggling|small business needs|beg(ging)?|help us survive)\b/i.test(t),
+      tip: 'Guilt gets pity clicks, not honest reviews. Keep the tone grateful, not needy.'
+    },
+    {
+      level: 'warn', name: 'Shouting',
+      test: (t) => /!{2,}/.test(t) || /\b[A-Z]{5,}\b/.test(t),
+      tip: 'Multiple exclamation marks or ALL-CAPS words read as pushy. One calm sentence works better.'
+    },
+    {
+      level: 'warn', name: 'Over-asking',
+      test: (t) => (t.match(/review/gi) || []).length > 2,
+      tip: 'The word "review" appears more than twice. One clear ask is enough.'
+    },
+    {
+      level: 'warn', name: 'Too long for SMS', channel: 'sms',
+      test: (t) => t.length > SMS_SOFT_LIMIT,
+      tip: `Over ${SMS_SOFT_LIMIT} characters (3+ SMS segments). Trim it — short texts get read.`
+    },
+    {
+      level: 'warn', name: 'Email runs long', channel: 'email',
+      test: (t) => t.length > EMAIL_SOFT_LIMIT,
+      tip: 'A review ask should be skimmable in ten seconds. Cut it down.'
+    },
+    {
+      level: 'warn', name: 'Generic message',
+      test: (t, c) => !String(c.detail || '').trim(),
+      tip: 'No specific job detail on file. Add one concrete detail so this does not feel like a mass blast.'
+    }
+  ];
+
+  function lintDraft(text, c, channel) {
+    const t = String(text || '');
+    return LINT_RULES
+      .filter((r) => !r.channel || r.channel === channel)
+      .filter((r) => r.test(t, c))
+      .map((r) => ({ level: r.level, name: r.name, tip: r.tip }));
+  }
+
+  // ---------------------------------------------------------------- domain: timing
+  function timingAdvice(c) {
+    const checks = [];
+    const d = daysSince(c.completedDate);
+    let verdict = 'ready';
+    const push = (level, title, msg) => {
+      checks.push({ level, title, msg });
+      if (level === 'fail') verdict = 'hold';
+      else if (level === 'warn' && verdict !== 'hold') verdict = 'wait';
+    };
+
+    if (d < 1) push('fail', 'Cooling-off window', 'Asking on the day of the job feels transactional. Wait until at least tomorrow so the result has sunk in.');
+    else if (d <= 7) push('pass', 'Prime window', `${d} day${d === 1 ? '' : 's'} since completion — the result is fresh and the goodwill is real. Ask now.`);
+    else if (d <= 14) push('warn', 'Window narrowing', `${d} days since completion. Still fine, but name the job specifically so they remember exactly what went well.`);
+    else push('fail', 'Gone stale', `${d} days since completion. Memory has faded; consider skipping, or send a softer "is everything still working?" note instead of an ask.`);
+
+    if (c.satisfaction === 'issue') push('fail', 'Open issue', 'They had a problem. Fix it first — an ask now invites a bad review and deserves one.');
+    else if (c.satisfaction === 'neutral') push('warn', 'Unclear mood', 'No positive signal yet. Check in about the job first; only ask once you hear something good.');
+    else push('pass', 'Earned it', `"${SATISFACTIONS[c.satisfaction]}" is a genuine positive signal — the ask is earned, not extracted.`);
+
+    if (String(c.detail || '').trim().length >= 12) push('pass', 'Specific proof', 'The draft carries a concrete job detail, so it reads personal instead of automated.');
+    else push('warn', 'Add a detail', 'One specific detail ("finished early", "left the crawlspace cleaner than we found it") separates a favor from spam.');
+
+    if (c.channel === 'sms') push('pass', 'SMS timing', 'Best sent weekdays 10am–5pm local. Avoid before 9am, after 8pm, and Sunday mornings.');
+    else push('pass', 'Email timing', 'Best sent Tuesday–Thursday mid-morning. Avoid the Monday inbox pile-up and weekends.');
+
+    if (c.status === 'asked') {
+      const ad = c.askedDate ? daysSince(c.askedDate) : 0;
+      if (ad < 7) push('warn', 'Already asked', `Asked ${ad} day${ad === 1 ? '' : 's'} ago. Give it a full week before even thinking about a follow-up.`);
+      else if (ad <= 30) push('warn', 'Follow-up window', `Asked ${ad} days ago with no review yet. One gentle follow-up is acceptable — and only one.`);
+      else push('fail', 'Let it go', `Asked ${ad} days ago. Repeated asks damage trust more than a missing review costs. Close this one out.`);
+    }
+
+    if (c.status === 'asked') verdict = 'asked';
+    else if (c.status === 'reviewed' || c.status === 'skipped') verdict = 'done';
+    return { verdict, checks, days: d };
+  }
+
+  function verdictLabel(c) {
+    if (c.status === 'reviewed') return { key: 'done', label: 'Reviewed' };
+    if (c.status === 'skipped') return { key: 'done', label: 'Skipped' };
+    if (c.status === 'asked') return { key: 'asked', label: 'Asked' };
+    const v = timingAdvice(c).verdict;
+    return v === 'ready' ? { key: 'ready', label: 'Ready' }
+      : v === 'wait' ? { key: 'wait', label: 'Not yet' }
+        : { key: 'hold', label: 'Hold' };
+  }
+
+  function computeStats() {
+    let ready = 0, hold = 0, asked = 0, reviewed = 0;
+    for (const c of state.customers) {
+      if (c.status === 'asked') asked++;
+      else if (c.status === 'reviewed') reviewed++;
+      else if (c.status === 'pending') {
+        if (timingAdvice(c).verdict === 'ready') ready++; else hold++;
+      }
+    }
+    return { ready, hold, asked, reviewed };
+  }
+
+  // ---------------------------------------------------------------- exports
+  const STATUS_RANK = { pending: 0, asked: 1, reviewed: 2, skipped: 3 };
+  function sortedCustomers() {
+    return state.customers.slice().sort((a, b) => {
+      const s = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+      if (s) return s;
+      return daysSince(b.completedDate) - daysSince(a.completedDate);
     });
-    const totalDrive = Math.max(0, stops.length - 1) * 22;
-    const totalWork = stops.reduce((sum, stop) => sum + stop.duration, 0);
-    const flags = [];
-    if(/send|publish|customer|client|dispatch|public|crm|payment/gi.test(output)) flags.push('Customer/public/dispatch action words detected; confirm manually before use.');
-    if(stops.length > 4) flags.push('Route has more than four derived stops; dispatcher should tighten scope.');
-    if(!/proof|verified|review|approve|check/gi.test(output)) flags.push('Add verification/proof checks before committing this route.');
-    return { sourceApp:name, depot:'Draft depot / confirm before dispatch', technician:'Unassigned tech', driveBufferMinutes:22, stops, totals:{drive:totalDrive, work:totalWork, total:totalDrive + totalWork + 30}, flags: flags.length ? flags : ['No blocking route flags detected. Confirm traffic/windows manually.'], sourceSnippet:output, generatedAt:new Date().toISOString() };
   }
-  function markdown(packet){
-    return ['# Home Service Route Planner bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Confirm traffic, customer windows, technician constraints, and approvals before dispatch.','',`Source app: ${packet.sourceApp}`,`Depot: ${packet.depot}`,`Technician: ${packet.technician}`,'','## Route summary',`- Stops: ${packet.stops.length}`,`- Drive buffer: ${packet.totals.drive} minutes`,`- Work time: ${packet.totals.work} minutes`,`- Total with admin buffer: ${packet.totals.total} minutes`,'','## Stop order',...packet.stops.map(stop => `### ${stop.order}. ${stop.customer}\n- Area: ${stop.area}\n- Window: ${stop.windowStart}\n- Priority: ${stop.priority >= 5 ? 'Emergency' : stop.priority >= 4 ? 'High' : 'Normal'}\n- Duration: ${stop.duration} minutes\n- Work: ${stop.work}`),'','## Review flags',...packet.flags.map(v => `- ${v}`),'','## Source snippet',packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildRoute();
-    cardsEl.innerHTML = [
-      ['Stops', String(packet.stops.length)],
-      ['Drive buffer', `${packet.totals.drive}m`],
-      ['Work', `${packet.totals.work}m`],
-      ['Flags', String(packet.flags.length)],
-      ['Boundary', 'Draft-only']
-    ].map(([label, value]) => `<article><span>${escRoute(label)}</span><strong>${escRoute(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-route-planner-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 20 Intake Form Builder bridge: draft-only intake form spec.
-(() => {
-  const section = document.getElementById('intake-form-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('intakeFormCards');
-  const textEl = document.getElementById('intakeFormText');
-  const copyBtn = document.getElementById('copyIntakeForm');
-  const downloadBtn = document.getElementById('downloadIntakeForm');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escForm = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'intakeFormText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1700);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1700);
-  }
-  function inferQuestions(output){
-    const base = [
-      ['Contact name and best callback', 'short-text', 'Contact', true, 'Name, phone, and best time to respond.'],
-      ['Service location or account context', 'short-text', 'Contact', true, 'Enough context to route the request; do not ask for unnecessary IDs.'],
-      ['What should we help with?', 'long-text', 'Job details', true, 'Let the requester explain the need in plain words.']
+  function mdPacket() {
+    const biz = state.business;
+    const lines = [
+      '# Review request packet' + (biz.name ? ` — ${biz.name}` : ''),
+      '',
+      `Generated: ${new Date().toLocaleString()}`,
+      `Platform: ${biz.platform}${biz.sender ? ` · Sender: ${biz.sender}` : ''}`,
+      'Boundary: drafts only. A human reviews, personalizes, and sends every message manually.',
+      ''
     ];
-    if(/urgent|risk|critical|emergency|stale|overdue/i.test(output)) base.push(['How urgent is this request?', 'select', 'Urgency', true, 'Emergency | Today | This week | Planning ahead']);
-    if(/proof|screenshot|photo|evidence|result/i.test(output)) base.push(['What proof or files are available?', 'long-text', 'Proof / files', false, 'Describe evidence; do not upload sensitive material here.']);
-    if(/price|quote|invoice|cash|revenue|roi|cost/i.test(output)) base.push(['What value, quote, or budget context matters?', 'short-text', 'Commercial context', false, 'Keep estimates draft-only until reviewed.']);
-    if(/meeting|call|follow|schedule|route|dispatch|appointment/i.test(output)) base.push(['Preferred timing or next appointment window', 'checkboxes', 'Scheduling', false, 'Morning | Midday | Afternoon | Flexible']);
-    base.push(['Consent to be contacted about this request', 'select', 'Consent', true, 'Yes, contact me about this request | No, do not contact me']);
-    return base.map((row,index) => ({order:index+1,label:row[0],type:row[1],section:row[2],required:row[3],helper:row[4]}));
+    const c = selected();
+    if (c) {
+      const t = timingAdvice(c);
+      const v = verdictLabel(c);
+      const sms = effectiveDraft(c, 'sms');
+      const seg = smsSegments(sms.length);
+      const findings = lintDraft(effectiveDraft(c, c.channel), c, c.channel);
+      lines.push(`## Selected ask — ${c.name || 'Unnamed customer'}`, '');
+      lines.push(`- Job: ${c.job || '—'}`);
+      lines.push(`- Completed: ${c.completedDate} (${t.days} day${t.days === 1 ? '' : 's'} ago)`);
+      lines.push(`- Satisfaction: ${SATISFACTIONS[c.satisfaction]}`);
+      lines.push(`- Tone: ${TONES[c.tone]} · Preferred channel: ${CHANNELS[c.channel]}`);
+      lines.push(`- Timing verdict: ${v.label}`);
+      lines.push(`- Pressure lint: ${findings.length ? findings.map((f) => `${f.level.toUpperCase()} ${f.name}`).join('; ') : 'clean'}`);
+      lines.push('', '### SMS variant', '', '```', sms, '```',
+        `(${sms.length} chars · ${seg} segment${seg === 1 ? '' : 's'})`, '');
+      lines.push('### Email variant', '', '```', effectiveDraft(c, 'email'), '```', '');
+      lines.push('### Timing advisor', '');
+      t.checks.forEach((ch) => lines.push(`- [${ch.level.toUpperCase()}] ${ch.title}: ${ch.msg}`));
+      lines.push('');
+    }
+    lines.push('## Pending-ask queue', '');
+    if (!state.customers.length) {
+      lines.push('_Queue is empty._');
+    } else {
+      lines.push('| Customer | Job | Completed | Days | Channel | Status | Verdict |');
+      lines.push('| --- | --- | --- | --- | --- | --- | --- |');
+      sortedCustomers().forEach((cu) => {
+        lines.push(`| ${cu.name || '—'} | ${cu.job || '—'} | ${cu.completedDate} | ${daysSince(cu.completedDate)} | ${CHANNELS[cu.channel]} | ${cu.status} | ${verdictLabel(cu).label} |`);
+      });
+    }
+    lines.push('', '---', 'Review Request Composer · local-first · manual send only.');
+    return lines.join('\n');
   }
-  function buildSpec(){
-    const sourceApp = appName();
-    const output = currentOutput();
-    const questions = inferQuestions(output);
-    const flags = [];
-    if(/password|secret|token|api key|credit card|ssn|social security/i.test(output)) flags.push('Sensitive-data wording detected. Remove secret/payment/SSN/password questions before use.');
-    if(/send|publish|customer|crm|webhook|public|dispatch/i.test(output)) flags.push('Public/customer/action wording detected. Keep this as a draft spec until approved.');
-    if(!/review|approve|proof|check|confirm/i.test(output)) flags.push('Add explicit human review/proof confirmation before publishing the form.');
-    return { sourceApp, formName:`${sourceApp} intake draft`, channel:'Draft local form spec', questions, flags:flags.length ? flags : ['No blocking draft flags detected. Privacy review still required.'], privacyRule:'Do not collect secrets, payment cards, SSNs, medical data, or unnecessary IDs.', sourceSnippet:output, generatedAt:new Date().toISOString() };
+
+  function csvPacket() {
+    const head = ['customer', 'job', 'completed_date', 'days_since', 'channel', 'tone', 'satisfaction', 'status', 'verdict', 'asked_date'];
+    const rows = sortedCustomers().map((c) => [
+      c.name, c.job, c.completedDate, daysSince(c.completedDate), CHANNELS[c.channel],
+      TONES[c.tone], SATISFACTIONS[c.satisfaction], c.status, verdictLabel(c).label, c.askedDate || ''
+    ]);
+    return [head, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(','))
+      .join('\n');
   }
-  function markdown(spec){
-    return ['# Intake Form Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only form spec. Do not publish or collect customer submissions until privacy/proof review is complete.','',`Source app: ${spec.sourceApp}`,`Form name: ${spec.formName}`,'','## Questions',...spec.questions.map(q => `### ${q.order}. ${q.label}\n- Type: ${q.type}\n- Section: ${q.section}\n- Required: ${q.required ? 'yes' : 'no'}\n- Helper/choices: ${q.helper}`),'','## Privacy rule',spec.privacyRule,'','## Review flags',...spec.flags.map(v => `- ${v}`),'','## Source snippet',spec.sourceSnippet].join('\n');
-  }
-  function render(){
-    const spec = buildSpec();
-    const required = spec.questions.filter(q => q.required).length;
-    cardsEl.innerHTML = [
-      ['Questions', String(spec.questions.length)],
-      ['Required', String(required)],
-      ['Flags', String(spec.flags.length)],
-      ['Channel', 'Draft spec'],
-      ['Boundary', 'No publish']
-    ].map(([label, value]) => `<article><span>${escForm(label)}</span><strong>${escForm(value)}</strong></article>`).join('');
-    textEl.value = markdown(spec);
-    return spec;
-  }
-  function download(spec){
-    const blob = new Blob([JSON.stringify({ ...spec, markdown: markdown(spec) }, null, 2)], {type:'application/json'});
+
+  function download(name, text, type) {
+    const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `${spec.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-intake-form-bridge.json`;
-    a.click();
+    a.href = url; a.download = name; a.click();
     URL.revokeObjectURL(url);
   }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
+  function copyText(text, okMsg) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast(okMsg))
+        .catch(() => showToast('Copy blocked — select the text manually.'));
+    } else {
+      showToast('Clipboard unavailable — select the text manually.');
+    }
+  }
+
+  // ---------------------------------------------------------------- rendering
+  function applyTheme() {
+    document.documentElement.dataset.theme = state.theme;
+    const btn = $('themeToggle');
+    btn.setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false');
+    btn.innerHTML = state.theme === 'light' ? '&#9788; Light' : '&#9789; Dark';
+  }
+
+  function renderStats() {
+    const s = computeStats();
+    $('statReady').textContent = s.ready;
+    $('statHold').textContent = s.hold;
+    $('statAsked').textContent = s.asked;
+    $('statReviewed').textContent = s.reviewed;
+  }
+
+  function filteredCustomers() {
+    const f = state.queueFilter;
+    return sortedCustomers().filter((c) => {
+      if (f === 'pending') return c.status === 'pending';
+      if (f === 'asked') return c.status === 'asked';
+      if (f === 'done') return c.status === 'reviewed' || c.status === 'skipped';
+      return true;
+    });
+  }
+
+  function renderQueue() {
+    const list = $('customerList');
+    const items = filteredCustomers();
+    if (!state.customers.length) {
+      list.innerHTML = `<div class="empty-state empty-mini" role="listitem">
+        <p><strong>Queue is empty.</strong></p>
+        <p>Add a completed job, or load the demo.</p>
+        <div class="empty-actions">
+          <button class="btn btn-primary" type="button" data-action="add">+ Add customer</button>
+          <button class="btn" type="button" data-action="demo">Load demo</button>
+        </div></div>`;
+      return;
+    }
+    if (!items.length) {
+      list.innerHTML = `<div class="empty-state empty-mini" role="listitem"><p>Nothing matches this filter.</p></div>`;
+      return;
+    }
+    list.innerHTML = items.map((c) => {
+      const v = verdictLabel(c);
+      const d = daysSince(c.completedDate);
+      return `<button type="button" role="listitem" class="customer-card ${c.id === state.selectedId ? 'active' : ''}" data-select="${esc(c.id)}">
+        <strong>${esc(c.name || 'Unnamed customer')}</strong>
+        <small>${esc(c.job || 'No job noted')} · ${d} day${d === 1 ? '' : 's'} ago</small>
+        <span class="badge-row">
+          <span class="badge ${v.key}">${esc(v.label)}</span>
+          <span class="badge">${esc(CHANNELS[c.channel])}</span>
+        </span>
+      </button>`;
+    }).join('');
+  }
+
+  function renderComposerFields() {
+    const c = selected();
+    const empty = !c;
+    $('composerEmpty').classList.toggle('hidden', !empty);
+    $('composerBody').classList.toggle('hidden', empty);
+    if (empty) return;
+    $('composerTitle').textContent = c.name || 'New customer';
+    $('custName').value = c.name;
+    $('custName').classList.toggle('invalid', !c.name.trim());
+    $('custJob').value = c.job;
+    $('custJob').classList.toggle('invalid', !c.job.trim());
+    $('custDate').value = c.completedDate;
+    $('custSatisfaction').value = c.satisfaction;
+    $('custTone').value = c.tone;
+    $('custDetail').value = c.detail;
+    renderChannelTabs();
+    renderDraft();
+    renderStatusButtons();
+  }
+
+  function renderChannelTabs() {
+    const c = selected(); if (!c) return;
+    $('chanSms').setAttribute('aria-pressed', c.channel === 'sms' ? 'true' : 'false');
+    $('chanEmail').setAttribute('aria-pressed', c.channel === 'email' ? 'true' : 'false');
+  }
+
+  function renderDraft() {
+    const c = selected(); if (!c) return;
+    $('draftText').value = effectiveDraft(c, c.channel);
+    renderDraftDerived();
+  }
+
+  function renderDraftDerived() {
+    const c = selected(); if (!c) return;
+    const text = $('draftText').value;
+    const meta = $('draftMeta');
+    if (c.channel === 'sms') {
+      const seg = smsSegments(text.length);
+      meta.textContent = `${text.length} chars · ${seg} SMS segment${seg === 1 ? '' : 's'}`;
+    } else {
+      const words = (text.trim().match(/\S+/g) || []).length;
+      meta.textContent = `${text.length} chars · ${words} words · ~${Math.max(1, Math.round(words / 220 * 60))}s read`;
+    }
+    const edited = typeof c.overrides[c.channel] === 'string';
+    $('regenBtn').disabled = !edited;
+    $('regenBtn').textContent = edited ? 'Regenerate (discard edits)' : 'Regenerate';
+    renderLint();
+    renderVerdict();
+  }
+
+  function renderLint() {
+    const c = selected(); if (!c) return;
+    const findings = lintDraft($('draftText').value, c, c.channel);
+    const badge = $('lintBadge');
+    const blocks = findings.filter((f) => f.level === 'block').length;
+    if (!findings.length) { badge.textContent = 'Clean'; badge.className = 'pill clean'; }
+    else if (blocks) { badge.textContent = `${blocks} blocker${blocks === 1 ? '' : 's'}`; badge.className = 'pill block'; }
+    else { badge.textContent = `${findings.length} warning${findings.length === 1 ? '' : 's'}`; badge.className = 'pill warn'; }
+    $('lintList').innerHTML = findings.length
+      ? findings.map((f) => `<li class="${f.level}"><strong>${f.level === 'block' ? 'Blocker' : 'Warning'} · ${esc(f.name)}</strong><span>${esc(f.tip)}</span></li>`).join('')
+      : `<li class="clean">No pressure patterns found. The ask is honest, optional, and specific — send-worthy once the timing checks pass.</li>`;
+  }
+
+  function renderVerdict() {
+    const c = selected(); if (!c) return;
+    const v = verdictLabel(c);
+    $('verdictPill').textContent = v.label;
+    $('verdictPill').className = `pill ${v.key === 'done' ? '' : v.key}`;
+  }
+
+  function renderTiming() {
+    const c = selected();
+    const list = $('timingList');
+    const verdict = $('timingVerdict');
+    if (!c) {
+      verdict.textContent = 'Select a customer to see timing guidance.';
+      list.innerHTML = '';
+      return;
+    }
+    const t = timingAdvice(c);
+    const msgs = {
+      ready: 'Green light — this ask is earned and inside the prime window.',
+      wait: 'Almost — resolve the flagged items before sending.',
+      hold: 'Hold — do not send this one yet.',
+      asked: 'Already asked — watch the follow-up guidance below.',
+      done: c.status === 'reviewed'
+        ? 'Closed — the review landed. Nothing more to send.'
+        : 'Closed — skipped by choice. No further asks.'
+    };
+    verdict.textContent = msgs[t.verdict] || msgs.wait;
+    list.innerHTML = t.checks.map((ch) =>
+      `<li class="${ch.level}"><strong>${esc(ch.title)}</strong><span>${esc(ch.msg)}</span></li>`).join('');
+  }
+
+  function renderStatusButtons() {
+    const c = selected(); if (!c) return;
+    const pending = c.status === 'pending';
+    $('markAskedBtn').classList.toggle('hidden', !pending);
+    $('markSkipBtn').classList.toggle('hidden', !pending);
+    $('markReviewedBtn').classList.toggle('hidden', c.status !== 'asked');
+    $('reopenBtn').classList.toggle('hidden', pending);
+  }
+
+  function renderBusiness() {
+    $('bizName').value = state.business.name;
+    $('senderName').value = state.business.sender;
+    $('platform').value = state.business.platform;
+    $('queueFilter').value = state.queueFilter;
+  }
+
+  function renderExport() {
+    $('exportPreview').textContent = mdPacket();
+  }
+
+  function renderAll() {
+    applyTheme();
+    renderBusiness();
+    renderStats();
+    renderQueue();
+    renderComposerFields();
+    renderTiming();
+    renderExport();
+    save();
+  }
+
+  // Keystroke-level refresh that leaves the form inputs alone.
+  function renderDerived() {
+    renderStats();
+    renderQueue();
+    renderTiming();
+    renderExport();
+    save();
+  }
+
+  // ---------------------------------------------------------------- toast / undo
+  function showToast(msg, undoFn) {
+    const toast = $('toast');
+    const action = $('toastAction');
+    $('toastMsg').textContent = msg;
+    clearTimeout(toastTimer);
+    if (undoFn) {
+      action.classList.remove('hidden');
+      action.onclick = () => { undoFn(); hideToast(); };
+    } else {
+      action.classList.add('hidden');
+      action.onclick = null;
+    }
+    toast.classList.add('show');
+    toastTimer = setTimeout(hideToast, undoFn ? 7000 : 2200);
+  }
+  function hideToast() { $('toast').classList.remove('show'); }
+
+  // ---------------------------------------------------------------- actions
+  function addCustomer() {
+    const c = normalizeCustomer({
+      id: uid(), name: '', job: '', completedDate: daysAgoIso(1),
+      satisfaction: 'happy', tone: 'warm', channel: 'sms', detail: '', status: 'pending'
+    });
+    state.customers.unshift(c);
+    state.selectedId = c.id;
+    state.queueFilter = 'all';
+    renderAll();
+    $('custName').focus();
+    showToast('Customer added — fill in the job facts.');
+  }
+
+  function deleteSelected() {
+    const c = selected(); if (!c) return;
+    const idx = state.customers.indexOf(c);
+    lastDeleted = { item: c, index: idx };
+    state.customers.splice(idx, 1);
+    state.selectedId = state.customers.length
+      ? state.customers[Math.min(idx, state.customers.length - 1)].id
+      : null;
+    renderAll();
+    showToast(`Deleted ${c.name || 'customer'}.`, () => {
+      if (!lastDeleted) return;
+      state.customers.splice(Math.min(lastDeleted.index, state.customers.length), 0, lastDeleted.item);
+      state.selectedId = lastDeleted.item.id;
+      lastDeleted = null;
+      renderAll();
+      showToast('Restored.');
+    });
+  }
+
+  function setStatus(status) {
+    const c = selected(); if (!c) return;
+    c.status = status;
+    if (status === 'asked') c.askedDate = todayIso();
+    if (status === 'pending') c.askedDate = null;
+    renderComposerFields();
+    renderDerived();
+    const msgs = {
+      asked: 'Logged as asked — you sent it yourself; the app just keeps score.',
+      reviewed: 'Review landed. Nice.',
+      skipped: 'Skipped — no ask for this one.',
+      pending: 'Back in the queue.'
+    };
+    showToast(msgs[status] || 'Status updated.');
+  }
+
+  function loadDemo() {
+    const demo = normalize({
+      theme: state.theme,
+      seenGuide: state.seenGuide,
+      business: { name: 'Lakeside Plumbing & Air', sender: 'Sam', platform: 'Google' },
+      customers: [
+        { id: 'd1', name: 'Maya Patel', job: 'tankless water heater replacement', completedDate: daysAgoIso(2), satisfaction: 'happy', tone: 'warm', channel: 'sms', detail: 'Install finished a day early and the crew left the utility room cleaner than they found it.', status: 'pending' },
+        { id: 'd2', name: 'Northside Dental LLC', job: 'after-hours HVAC repair', completedDate: daysAgoIso(3), satisfaction: 'solved', tone: 'pro', channel: 'email', detail: 'The office reopened on schedule and your manager thanked our tech for the hourly updates.', status: 'pending' },
+        { id: 'd3', name: 'Avery Chen', job: 'annual maintenance plan visit', completedDate: daysAgoIso(9), satisfaction: 'repeat', tone: 'low', channel: 'sms', detail: 'Second visit this year with zero callbacks.', status: 'asked', askedDate: daysAgoIso(8) },
+        { id: 'd4', name: 'Rob Kowalski', job: 'sump pump install', completedDate: daysAgoIso(12), satisfaction: 'happy', tone: 'grateful', channel: 'email', detail: 'The basement stayed dry through last week’s storm — Rob texted a photo to say thanks.', status: 'reviewed', askedDate: daysAgoIso(10) },
+        { id: 'd5', name: 'Cedar Lane HOA', job: 'clubhouse panel upgrade', completedDate: daysAgoIso(0), satisfaction: 'neutral', tone: 'tech', channel: 'email', detail: '', status: 'pending' },
+        { id: 'd6', name: 'Dana Whitfield', job: 'garbage disposal swap', completedDate: daysAgoIso(1), satisfaction: 'issue', tone: 'warm', channel: 'sms', detail: 'Mentioned a lingering rattle — tech is scheduled to recheck Thursday.', status: 'pending' }
+      ]
+    });
+    demo.selectedId = 'd1';
+    state = demo;
+    renderAll();
+    showToast('Demo loaded — six jobs in various states.');
+  }
+
+  function resetAll() {
+    if (!window.confirm('Reset everything? This clears the queue and business profile from this browser.')) return;
+    const theme = state.theme;
+    state = defaultState();
+    state.theme = theme;
+    state.seenGuide = true;
+    renderAll();
+    showToast('Reset. Clean slate.');
+  }
+
+  function importJson(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        state = normalize(parsed && typeof parsed.state === 'object' ? parsed.state : parsed);
+        renderAll();
+        showToast(`Imported ${state.customers.length} customer${state.customers.length === 1 ? '' : 's'}.`);
+      } catch {
+        showToast('Import failed — that file is not valid JSON.');
+      }
+    };
+    reader.onerror = () => showToast('Could not read that file.');
+    reader.readAsText(file);
+  }
+
+  // ---------------------------------------------------------------- help modal
+  function openHelp() {
+    lastFocus = document.activeElement;
+    const dlg = $('helpModal');
+    if (!dlg.open) dlg.showModal();
+    $('helpCloseBtn').focus();
+  }
+  function closeHelp() {
+    const dlg = $('helpModal');
+    if (dlg.open) dlg.close();
+    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  }
+
+  // ---------------------------------------------------------------- wiring
+  function updateSelectedFromField(key, value) {
+    const c = selected(); if (!c) return;
+    c[key] = value;
+    renderDraft();      // regenerates unless the channel draft is overridden
+    renderDerived();
+  }
+
+  function setChannel(ch) {
+    const c = selected(); if (!c || c.channel === ch) return;
+    c.channel = ch;
+    renderChannelTabs();
+    renderDraft();
+    renderDerived();
+  }
+
+  function refreshAfterBusinessEdit() {
+    if (selected()) renderDraft();
+    renderDerived();
+  }
+
+  function wire() {
+    $('themeToggle').addEventListener('click', () => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      applyTheme(); save();
+    });
+    $('helpBtn').addEventListener('click', openHelp);
+    $('helpCloseBtn').addEventListener('click', closeHelp);
+    $('helpModal').addEventListener('cancel', (e) => { e.preventDefault(); closeHelp(); });
+    $('helpModal').addEventListener('click', (e) => { if (e.target === $('helpModal')) closeHelp(); });
+    $('demoBtn').addEventListener('click', loadDemo);
+    $('addCustomerBtn').addEventListener('click', addCustomer);
+    $('resetBtn').addEventListener('click', resetAll);
+
+    // Queue: delegation for select + empty-state actions
+    $('customerList').addEventListener('click', (e) => {
+      const sel = e.target.closest('[data-select]');
+      if (sel) {
+        state.selectedId = sel.dataset.select;
+        renderQueue(); renderComposerFields(); renderTiming(); renderExport(); save();
+        return;
+      }
+      const act = e.target.closest('[data-action]');
+      if (act) (act.dataset.action === 'add' ? addCustomer : loadDemo)();
+    });
+    $('composerEmpty').addEventListener('click', (e) => {
+      const act = e.target.closest('[data-action]');
+      if (act) (act.dataset.action === 'add' ? addCustomer : loadDemo)();
+    });
+    $('queueFilter').addEventListener('change', () => {
+      state.queueFilter = $('queueFilter').value;
+      renderQueue(); save();
+    });
+
+    // Business profile
+    $('bizName').addEventListener('input', () => { state.business.name = $('bizName').value; refreshAfterBusinessEdit(); });
+    $('senderName').addEventListener('input', () => { state.business.sender = $('senderName').value; refreshAfterBusinessEdit(); });
+    $('platform').addEventListener('change', () => { state.business.platform = $('platform').value; refreshAfterBusinessEdit(); });
+
+    // Composer fields
+    $('custName').addEventListener('input', () => {
+      const v = $('custName').value;
+      $('custName').classList.toggle('invalid', !v.trim());
+      const c = selected(); if (!c) return;
+      c.name = v;
+      $('composerTitle').textContent = v || 'New customer';
+      renderDraft(); renderDerived();
+    });
+    $('custJob').addEventListener('input', () => {
+      $('custJob').classList.toggle('invalid', !$('custJob').value.trim());
+      updateSelectedFromField('job', $('custJob').value);
+    });
+    $('custDate').addEventListener('change', () => {
+      let v = $('custDate').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) v = todayIso();
+      if (v > todayIso()) { v = todayIso(); showToast('Completed date can’t be in the future — clamped to today.'); }
+      $('custDate').value = v;
+      updateSelectedFromField('completedDate', v);
+    });
+    $('custSatisfaction').addEventListener('change', () => updateSelectedFromField('satisfaction', $('custSatisfaction').value));
+    $('custTone').addEventListener('change', () => updateSelectedFromField('tone', $('custTone').value));
+    $('custDetail').addEventListener('input', () => updateSelectedFromField('detail', $('custDetail').value));
+
+    // Channel tabs
+    $('chanSms').addEventListener('click', () => setChannel('sms'));
+    $('chanEmail').addEventListener('click', () => setChannel('email'));
+
+    // Draft editing → per-channel override
+    $('draftText').addEventListener('input', () => {
+      const c = selected(); if (!c) return;
+      const text = $('draftText').value;
+      c.overrides[c.channel] = (text === generatedDraft(c, c.channel)) ? null : text;
+      renderDraftDerived();
+      renderStats(); renderExport(); save();
+    });
+    $('regenBtn').addEventListener('click', () => {
+      const c = selected(); if (!c) return;
+      c.overrides[c.channel] = null;
+      renderDraft(); renderDerived();
+      showToast('Draft regenerated from the template.');
+    });
+    $('copyDraftBtn').addEventListener('click', () => {
+      const c = selected(); if (!c) return;
+      copyText($('draftText').value, `${CHANNELS[c.channel]} draft copied — paste it into your own ${c.channel === 'sms' ? 'messages app' : 'email client'} to send.`);
+    });
+
+    // Status actions
+    $('markAskedBtn').addEventListener('click', () => setStatus('asked'));
+    $('markReviewedBtn').addEventListener('click', () => setStatus('reviewed'));
+    $('markSkipBtn').addEventListener('click', () => setStatus('skipped'));
+    $('reopenBtn').addEventListener('click', () => setStatus('pending'));
+    $('deleteBtn').addEventListener('click', deleteSelected);
+
+    // Export & handoff
+    $('copyMdBtn').addEventListener('click', () => copyText(mdPacket(), 'Markdown packet copied.'));
+    $('downloadJsonBtn').addEventListener('click', () => {
+      download('review-request-composer.json', JSON.stringify({
+        app: 'review-request-composer', version: 1,
+        exportedAt: new Date().toISOString(),
+        boundary: 'Drafts only — a human sends every message manually.',
+        state
+      }, null, 2), 'application/json');
+      showToast('JSON downloaded.');
+    });
+    $('importBtn').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', () => {
+      const file = $('importFile').files && $('importFile').files[0];
+      if (file) importJson(file);
+      $('importFile').value = '';
+    });
+    $('downloadCsvBtn').addEventListener('click', () => {
+      download('review-request-queue.csv', csvPacket(), 'text/csv');
+      showToast('CSV downloaded.');
+    });
+    $('printBtn').addEventListener('click', () => { renderExport(); window.print(); });
+
+    // Keyboard
+    document.addEventListener('keydown', (e) => {
+      const tag = (document.activeElement && document.activeElement.tagName) || '';
+      const typing = /^(input|textarea|select)$/i.test(tag);
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        copyText(mdPacket(), 'Markdown packet copied.');
+        return;
+      }
+      if (e.key === '?' && !typing && !$('helpModal').open) { e.preventDefault(); openHelp(); }
+      if (e.key === 'Escape' && $('helpModal').open) closeHelp();
+    });
+  }
+
+  // ---------------------------------------------------------------- init
+  function init() {
+    wire();
+    renderAll();
+    if (!state.seenGuide) {
+      state.seenGuide = true;
+      save();
+      openHelp();
+    }
+  }
+
+  init();
+})();

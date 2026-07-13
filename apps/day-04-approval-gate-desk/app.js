@@ -1,844 +1,920 @@
-const STORAGE_KEY = 'approval-gate-desk-v3';
-const nowIso = () => new Date().toISOString();
-const demoState = {
-  theme: 'dark',
-  filter: 'all',
-  selectedId: 'd1',
-  drafts: [
-    { id:'d1', customer:'Maya Patel', channel:'SMS', owner:'Owner', status:'pending', risk:'Medium', createdAt:nowIso(), message:'Hi Maya — we saw your estimate request came in after hours. We can hold a Tuesday morning slot if that still works. Reply YES and a human will confirm.', reviewNote:'Check if Tuesday slot is actually available before use.' },
-    { id:'d2', customer:'Jensen Roofing lead', channel:'Email', owner:'Dispatcher', status:'pending', risk:'Low', createdAt:nowIso(), message:'Thanks for reaching out. We received your roof repair request and can send available inspection windows once you confirm the address and best callback number.', reviewNote:'Approve if the address request matches intake policy.' },
-    { id:'d3', customer:'Avery Chen', channel:'Portal message', owner:'GM', status:'revise', risk:'High', createdAt:nowIso(), message:'We guarantee same-day repair if you approve today.', reviewNote:'Revise: guarantee is too strong. Replace with a qualified scheduling promise.' }
-  ],
-  ledger: [
-    { id:'l1', draftId:'d3', customer:'Avery Chen', decision:'revise', owner:'GM', note:'Guarantee wording needs safer proof-backed language.', at:nowIso() }
-  ]
-};
-let state = loadState();
-const $ = id => document.getElementById(id);
-function clone(v){ return typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)); }
-function loadState(){ try { const raw=localStorage.getItem(STORAGE_KEY); return raw ? { ...clone(demoState), ...JSON.parse(raw) } : clone(demoState); } catch { return clone(demoState); } }
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function selectedDraft(){ return state.drafts.find(d => d.id === state.selectedId) || state.drafts[0]; }
-function statusClass(status){ return `status-chip status-${status || 'pending'}`; }
-function riskLevel(){ const pending = state.drafts.filter(d => d.status === 'pending').length; const high = state.drafts.filter(d => d.risk === 'High' && d.status === 'pending').length; if (high) return 'High'; if (pending > 3) return 'Medium'; return 'Low'; }
-function applyTheme(){ document.documentElement.dataset.theme = state.theme === 'light' ? 'light' : 'dark'; $('themeToggle').textContent = state.theme === 'light' ? 'Dark' : 'Light'; $('themeToggle').setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false'); }
-function renderMetrics(){ $('metricPending').textContent = state.drafts.filter(d => d.status === 'pending').length; $('metricApproved').textContent = state.drafts.filter(d => d.status === 'approved').length; $('metricRejected').textContent = state.drafts.filter(d => ['rejected','revise'].includes(d.status)).length; $('metricRisk').textContent = riskLevel(); }
-function filteredDrafts(){ return state.drafts.filter(d => state.filter === 'all' || d.status === state.filter); }
-function renderQueue(){ $('draftList').innerHTML = filteredDrafts().map(d => `<button class="draft-card ${d.id===state.selectedId?'active':''}" data-select="${esc(d.id)}" type="button"><strong>${esc(d.customer)}</strong><p>${esc(d.channel)} · ${esc(d.owner)} · ${esc(d.message).slice(0,120)}${d.message.length>120?'…':''}</p><span class="${statusClass(d.status)}">${esc(d.status)}</span></button>`).join('') || '<p class="muted">No drafts match this filter.</p>'; document.querySelectorAll('[data-select]').forEach(btn => btn.addEventListener('click', () => { state.selectedId = btn.dataset.select; renderAll(); })); document.querySelectorAll('[data-filter]').forEach(btn => { btn.classList.toggle('active', btn.dataset.filter === state.filter); }); }
-function bindEditor(){ const d = selectedDraft(); if (!d) return; $('reviewTitle').textContent = `${d.customer} · ${d.channel}`; $('riskPill').textContent = `${d.risk || 'Low'} risk · ${d.status}`; $('riskPill').className = `risk-pill ${statusClass(d.status)}`; ['customer','channel','owner','message','reviewNote'].forEach(k => { $(k).value = d[k] || ''; }); }
-function renderLedger(){ $('ledgerList').innerHTML = (state.ledger || []).slice().reverse().map(item => `<article class="ledger-entry"><span class="${statusClass(item.decision)}">${esc(item.decision)}</span><p><strong>${esc(item.customer)}</strong><br>${esc(item.note || 'No reviewer note')}</p><time>${new Date(item.at).toLocaleString()} · ${esc(item.owner || 'Owner')}</time></article>`).join('') || '<p>No decisions logged yet.</p>'; }
+/* Approval Gate Desk — human review queue for AI-drafted customer messages.
+   Local-first, no network calls, no accounts. All data lives in localStorage. */
+(() => {
+'use strict';
 
-function quoteApprovalMarkdown(){
-  const pending = state.drafts.filter(d => d.status === 'pending');
-  const quoteDrafts = pending.filter(d => /quote|estimate|price|proposal|slot|follow/i.test(`${d.customer} ${d.message} ${d.reviewNote}`));
-  const queue = quoteDrafts.length ? quoteDrafts : pending.slice(0,3);
-  const lines = ['# Quote Chase Board approval queue','',`Generated: ${new Date().toLocaleString()}`,`Drafts needing quote/follow-up stamp: ${queue.length}`,'','Load these into Quote Chase Board as review notes before any human follows up:'];
-  queue.forEach((d,idx) => lines.push('', `### ${idx+1}. ${d.customer}`, `- Channel: ${d.channel}`, `- Owner: ${d.owner}`, `- Current status: ${d.status}`, `- Risk: ${d.risk}`, `- Draft follow-up note: ${d.message}`, `- Reviewer note: ${d.reviewNote || 'Confirm the quote value, schedule, and claim before customer contact.'}`));
-  lines.push('', 'Safety:', '- Approval Gate Desk records approve/reject/revise only.', '- Quote Chase Board tracks timing/value only.', '- No message is sent and no CRM record is changed from either app.');
+/* ============================== constants ============================== */
+
+const LS_KEY = 'fable-remake:day-04-approval-gate-desk:v1';
+const CHANNELS = ['SMS', 'Email', 'Voicemail callback', 'Portal message', 'Chat'];
+const STATUSES = ['pending', 'revision', 'approved', 'rejected'];
+const RISKS = ['Low', 'Medium', 'High'];
+const STATUS_RANK = { pending: 0, revision: 1, approved: 2, rejected: 3 };
+const RISK_RANK = { High: 0, Medium: 1, Low: 2 };
+
+const ACTION_LABELS = {
+  'approved': 'Approved',
+  'approved-with-edits': 'Approved with edits',
+  'rejected': 'Rejected',
+  'revision-requested': 'Revision requested',
+  'reopened': 'Reopened'
+};
+
+/* Rejection reason taxonomy — required on reject, optional on revision. */
+const REASONS = [
+  { code: 'overpromise', label: 'Overpromise / unverifiable guarantee' },
+  { code: 'pricing', label: 'Unauthorized pricing, discount, or refund' },
+  { code: 'tone', label: 'Tone or brand mismatch' },
+  { code: 'factual', label: 'Factual error / wrong details' },
+  { code: 'privacy', label: 'Privacy / personal data exposure' },
+  { code: 'policy', label: 'Compliance or policy violation' },
+  { code: 'context', label: 'Wrong recipient or missing context' },
+  { code: 'other', label: 'Other (explain in note)' }
+];
+
+/* Heuristic risk scan over the draft text. Weights sum to a level:
+   score >= 3 -> High, >= 1 -> Medium, else Low. */
+const RISK_RULES = [
+  { code: 'guarantee', label: 'Guarantee / absolute promise', weight: 3,
+    re: /\b(guarantee[ds]?|promise[sd]?|100\s?%|risk[- ]free|no risk|never fails?)\b/i },
+  { code: 'pricing', label: 'Pricing / discount commitment', weight: 2,
+    re: /(\$\s?\d|\d{1,3}\s?%\s?off|discount|waived?|free of charge|no charge|refund)/i },
+  { code: 'urgency', label: 'Pressure / urgency tactic', weight: 2,
+    re: /\b(today only|act now|last chance|final notice|expires (today|tonight|soon))\b/i },
+  { code: 'legal', label: 'Legal / warranty exposure', weight: 2,
+    re: /\b(warrant(y|ies)|liabilit\w*|lawsuit|legally binding|insurance claim|code violation)\b/i },
+  { code: 'pii', label: 'Possible personal data', weight: 2,
+    re: /(\d{3}[-.\s]\d{3}[-.\s]\d{4}|\bssn\b|social security|card number|account (number|#))/i },
+  { code: 'absolute', label: 'Absolute wording', weight: 1,
+    re: /\b(always|definitely|certainly)\b/i }
+];
+
+/* ============================== tiny helpers ============================== */
+
+const $$ = sel => [...document.querySelectorAll(sel)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() :
+  `id-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`);
+const isIso = v => typeof v === 'string' && !Number.isNaN(Date.parse(v));
+const fmt = iso => new Date(iso).toLocaleString(undefined,
+  { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+function timeAgo(iso) {
+  const mins = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 60000));
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+
+function debounce(fn, ms) {
+  let t = null;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+/* ============================== state ============================== */
+
+function defaultState() {
+  return {
+    v: 1,
+    theme: null,            /* null = follow prefers-color-scheme */
+    seenGuide: false,
+    reviewer: '',
+    selectedId: null,
+    filters: { status: 'all', risk: 'all', q: '' },
+    ledgerFilter: 'all',
+    drafts: [],
+    ledger: []
+  };
+}
+
+const normStr = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+
+function normalizeDraft(raw) {
+  const d = raw && typeof raw === 'object' ? raw : {};
+  let status = normStr(d.status, 20);
+  if (status === 'revise') status = 'revision'; /* legacy value */
+  return {
+    id: normStr(d.id, 40) || uid(),
+    customer: normStr(d.customer, 90),
+    channel: CHANNELS.includes(d.channel) ? d.channel : 'Email',
+    intent: normStr(d.intent ?? d.reviewNote, 140), /* legacy: reviewNote */
+    message: normStr(d.message, 1200),
+    original: typeof d.original === 'string' ? d.original.slice(0, 1200) : null,
+    riskOverride: RISKS.includes(d.riskOverride) ? d.riskOverride : '',
+    status: STATUSES.includes(status) ? status : 'pending',
+    createdAt: isIso(d.createdAt) ? d.createdAt : new Date().toISOString(),
+    decidedAt: isIso(d.decidedAt) ? d.decidedAt : null
+  };
+}
+
+function normalizeEntry(raw) {
+  const e = raw && typeof raw === 'object' ? raw : {};
+  return {
+    seq: Number.isFinite(e.seq) ? e.seq : 0,
+    id: normStr(e.id, 40) || uid(),
+    at: isIso(e.at) ? e.at : new Date().toISOString(),
+    draftId: normStr(e.draftId, 40),
+    customer: normStr(e.customer, 90) || 'Unnamed customer',
+    channel: normStr(e.channel, 30) || 'Email',
+    action: ACTION_LABELS[e.action] ? e.action : 'approved',
+    reviewer: normStr(e.reviewer, 60) || 'Reviewer',
+    reasonCode: normStr(e.reasonCode, 30),
+    reasonLabel: normStr(e.reasonLabel, 80),
+    note: normStr(e.note, 300),
+    edited: !!e.edited,
+    risk: RISKS.includes(e.risk) ? e.risk : 'Low',
+    snapshot: normStr(e.snapshot, 1200),
+    /* Hashes are preserved as-is so external tampering stays detectable. */
+    prevHash: normStr(e.prevHash, 40),
+    hash: normStr(e.hash, 40)
+  };
+}
+
+function normalize(raw) {
+  const src = raw && typeof raw === 'object' ? raw : {};
+  const st = defaultState();
+  if (src.theme === 'light' || src.theme === 'dark') st.theme = src.theme;
+  st.seenGuide = !!src.seenGuide;
+  st.reviewer = normStr(src.reviewer, 60);
+  const f = src.filters && typeof src.filters === 'object' ? src.filters : {};
+  st.filters.status = ['all', ...STATUSES].includes(f.status) ? f.status : 'all';
+  st.filters.risk = ['all', ...RISKS].includes(f.risk) ? f.risk : 'all';
+  st.filters.q = normStr(f.q, 90);
+  st.ledgerFilter = ['all', ...Object.keys(ACTION_LABELS)].includes(src.ledgerFilter) ? src.ledgerFilter : 'all';
+  st.drafts = Array.isArray(src.drafts) ? src.drafts.map(normalizeDraft) : [];
+  st.ledger = Array.isArray(src.ledger) ? src.ledger.map(normalizeEntry) : [];
+  st.ledger.sort((a, b) => a.seq - b.seq);
+  st.selectedId = st.drafts.some(d => d.id === src.selectedId) ? src.selectedId : null;
+  return st;
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? normalize(JSON.parse(raw)) : defaultState();
+  } catch {
+    return defaultState();
+  }
+}
+
+let state = load();
+
+function saveNow() {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch { /* storage full or blocked */ }
+}
+const save = debounce(saveNow, 250);
+
+/* ============================== domain: risk ============================== */
+
+function analyzeRisk(text) {
+  const flags = RISK_RULES.filter(r => r.re.test(text || ''));
+  const score = flags.reduce((s, r) => s + r.weight, 0);
+  const level = score >= 3 ? 'High' : score >= 1 ? 'Medium' : 'Low';
+  return { level, score, flags };
+}
+const draftRisk = d => analyzeRisk(`${d.message} ${d.intent}`);
+const effectiveRisk = d => d.riskOverride || draftRisk(d).level;
+
+/* ============================== domain: hash-chained ledger ============================== */
+
+function fnv1a(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function entryDigest(e) {
+  return [e.seq, e.at, e.draftId, e.customer, e.channel, e.action, e.reviewer,
+    e.reasonCode, e.note, e.edited ? 1 : 0, e.risk, e.snapshot, e.prevHash].join('␟');
+}
+
+/* 16 hex chars: fnv1a of the digest plus a salted second pass. */
+function hashEntry(e) {
+  const d = entryDigest(e);
+  return fnv1a(d) + fnv1a(d + '::gate');
+}
+
+function appendDecision(ledger, draft, action, opts = {}) {
+  const prev = ledger[ledger.length - 1];
+  const reason = REASONS.find(r => r.code === opts.reasonCode);
+  const entry = {
+    seq: prev ? prev.seq + 1 : 1,
+    id: uid(),
+    at: opts.at || new Date().toISOString(),
+    draftId: draft.id,
+    customer: draft.customer.trim() || 'Unnamed customer',
+    channel: draft.channel,
+    action,
+    reviewer: (opts.reviewer || state.reviewer || 'Reviewer').trim() || 'Reviewer',
+    reasonCode: reason ? reason.code : '',
+    reasonLabel: reason ? reason.label : '',
+    note: (opts.note || '').trim(),
+    edited: !!opts.edited,
+    risk: effectiveRisk(draft),
+    snapshot: draft.message,
+    prevHash: prev ? prev.hash : 'GENESIS'
+  };
+  entry.hash = hashEntry(entry);
+  ledger.push(entry);
+  return entry;
+}
+
+function verifyChain(ledger) {
+  for (let i = 0; i < ledger.length; i++) {
+    const e = ledger[i];
+    const expectedPrev = i === 0 ? 'GENESIS' : ledger[i - 1].hash;
+    if (e.prevHash !== expectedPrev || e.hash !== hashEntry(e)) {
+      return { ok: false, at: e.seq };
+    }
+  }
+  return { ok: true, at: null };
+}
+
+/* ============================== domain: queue & counts ============================== */
+
+function counts() {
+  const c = { pending: 0, revision: 0, approved: 0, rejected: 0, highPending: 0 };
+  for (const d of state.drafts) {
+    c[d.status]++;
+    if (d.status === 'pending' && effectiveRisk(d) === 'High') c.highPending++;
+  }
+  return c;
+}
+
+function visibleDrafts() {
+  const { status, risk, q } = state.filters;
+  const needle = q.trim().toLowerCase();
+  return state.drafts
+    .filter(d =>
+      (status === 'all' || d.status === status) &&
+      (risk === 'all' || effectiveRisk(d) === risk) &&
+      (!needle || `${d.customer} ${d.message} ${d.intent}`.toLowerCase().includes(needle)))
+    .sort((a, b) =>
+      STATUS_RANK[a.status] - STATUS_RANK[b.status] ||
+      RISK_RANK[effectiveRisk(a)] - RISK_RANK[effectiveRisk(b)] ||
+      a.createdAt.localeCompare(b.createdAt));
+}
+
+const selectedDraft = () => state.drafts.find(d => d.id === state.selectedId) || null;
+
+/* ============================== exports ============================== */
+
+function buildMarkdown() {
+  const c = counts();
+  const chain = verifyChain(state.ledger);
+  const lines = [
+    '# Approval Gate Desk — review packet', '',
+    `Generated: ${new Date().toLocaleString()}`,
+    `Reviewer: ${state.reviewer || 'Not set'}`, '',
+    '## Queue snapshot',
+    `- Pending review: ${c.pending} (high risk: ${c.highPending})`,
+    `- Awaiting revision: ${c.revision}`,
+    `- Approved: ${c.approved}`,
+    `- Rejected: ${c.rejected}`, '',
+    '## Drafts awaiting review'
+  ];
+  const open = state.drafts.filter(d => d.status === 'pending' || d.status === 'revision');
+  if (!open.length) lines.push('', '_Queue is clear — no drafts waiting._');
+  open.forEach((d, i) => {
+    const r = draftRisk(d);
+    lines.push('',
+      `### ${i + 1}. ${d.customer.trim() || 'Unnamed customer'} — ${d.channel}`,
+      `- Status: ${d.status}`,
+      `- Risk: ${effectiveRisk(d)}${d.riskOverride ? ' (manual override)' : ''}`,
+      `- Flags: ${r.flags.length ? r.flags.map(fl => fl.label).join('; ') : 'none detected'}`,
+      `- Context: ${d.intent || '—'}`,
+      '', '```text', d.message || '(empty draft)', '```');
+  });
+  lines.push('', '## Decision log (append-only)');
+  if (!state.ledger.length) lines.push('', '_No decisions recorded yet._');
+  state.ledger.forEach(e => {
+    lines.push(`- #${e.seq} · ${new Date(e.at).toLocaleString()} · ${ACTION_LABELS[e.action]} · ` +
+      `${e.customer} (${e.channel}) · by ${e.reviewer}` +
+      (e.reasonLabel ? ` · reason: ${e.reasonLabel}` : '') +
+      (e.edited ? ' · edited before approval' : '') +
+      (e.note ? ` · note: ${e.note}` : ''));
+  });
+  lines.push('',
+    `Chain check: ${chain.ok ? `intact (${state.ledger.length} entries)` : `BROKEN at entry #${chain.at}`}`, '',
+    '## Boundary',
+    'Every message here is a draft for human review. Approval Gate Desk records decisions locally; it never sends messages or writes to any external system.');
   return lines.join('\n');
 }
-function renderQuoteApproval(){
-  const pending = state.drafts.filter(d => d.status === 'pending');
-  const quoteDrafts = pending.filter(d => /quote|estimate|price|proposal|slot|follow/i.test(`${d.customer} ${d.message} ${d.reviewNote}`));
-  const cards = [['Quote drafts', String(quoteDrafts.length || pending.length)], ['Late-risk cue', riskLevel()], ['Required stamp', 'Approve/revise'], ['Mode', 'Local ledger only']];
-  $('quoteApprovalCards').innerHTML = cards.map(([label,value]) => `<article><span>${esc(label)}</span><strong>${esc(value)}</strong></article>`).join('');
-  $('quoteApprovalText').value = quoteApprovalMarkdown();
+
+const csvCell = v => `"${String(v ?? '').replaceAll('"', '""')}"`;
+
+function buildCsv() {
+  const head = ['seq', 'timestamp', 'action', 'customer', 'channel', 'reviewer', 'risk',
+    'reason', 'note', 'edited', 'message_snapshot', 'prev_hash', 'hash'];
+  const rows = state.ledger.map(e => [e.seq, e.at, e.action, e.customer, e.channel,
+    e.reviewer, e.risk, e.reasonLabel, e.note, e.edited ? 'yes' : 'no',
+    e.snapshot, e.prevHash, e.hash]);
+  return [head, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
 }
 
-function markdown(){ const counts = { pending: state.drafts.filter(d=>d.status==='pending').length, approved: state.drafts.filter(d=>d.status==='approved').length, rejected: state.drafts.filter(d=>d.status==='rejected').length, revise: state.drafts.filter(d=>d.status==='revise').length }; const lines = ['# Approval Gate Desk packet','',`Generated: ${new Date().toLocaleString()}`,'','', '## Counts', `- Pending: ${counts.pending}`, `- Approved: ${counts.approved}`, `- Rejected: ${counts.rejected}`, `- Needs revision: ${counts.revise}`, `- Current risk signal: ${riskLevel()}`, '', '## Draft queue']; state.drafts.forEach((d, idx) => { lines.push('', `### ${idx+1}. ${d.customer}`, `- Channel: ${d.channel}`, `- Owner: ${d.owner}`, `- Status: ${d.status}`, `- Risk: ${d.risk}`, `- Reviewer note: ${d.reviewNote || 'None'}`, '', '```', d.message, '```'); }); lines.push('', '## Decision ledger'); (state.ledger || []).forEach(item => lines.push(`- ${new Date(item.at).toLocaleString()} — ${item.decision.toUpperCase()} — ${item.customer} — ${item.note || 'No note'} (${item.owner || 'Owner'})`)); lines.push('', '## Quote Chase Board approval queue', ...quoteApprovalMarkdown().split('\n').filter(line=>!line.startsWith('# ')).map(line=>line ? `- ${line}` : '')); return lines.join('\n'); }
-function csv(){ const rows = [['customer','channel','owner','status','risk','review_note','message']].concat(state.drafts.map(d => [d.customer,d.channel,d.owner,d.status,d.risk,d.reviewNote,d.message])); return rows.map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); }
-function renderExport(){ $('exportText').value = markdown(); }
-function renderAll(){ applyTheme(); renderMetrics(); renderQueue(); bindEditor(); renderLedger(); renderQuoteApproval(); renderExport(); saveState(); }
-function toast(msg){ const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.classList.remove('show'),1700); }
-function updateSelectedFromEditor(){ const d = selectedDraft(); if (!d) return; ['customer','channel','owner','message','reviewNote'].forEach(k => d[k] = $(k).value); }
-function decide(decision){ const d = selectedDraft(); if (!d) return; updateSelectedFromEditor(); d.status = decision; d.risk = decision === 'approved' ? 'Low' : d.risk; state.ledger.push({ id: crypto.randomUUID(), draftId:d.id, customer:d.customer, decision, owner:d.owner, note:d.reviewNote, at:nowIso() }); renderAll(); toast(`${decision.toUpperCase()} stamped`); }
-function download(name, text, type){ const blob=new Blob([text], {type}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url); }
-['customer','channel','owner','message','reviewNote'].forEach(k => $(k).addEventListener('input', () => { updateSelectedFromEditor(); renderMetrics(); renderQueue(); renderExport(); saveState(); }));
-document.querySelectorAll('[data-filter]').forEach(btn => btn.addEventListener('click', () => { state.filter = btn.dataset.filter; renderQueue(); saveState(); }));
-$('themeToggle').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; renderAll(); toast(`${state.theme === 'light' ? 'Light':'Dark'} mode saved`); });
-$('demoBtn').addEventListener('click', () => { state = clone(demoState); renderAll(); toast('Demo loaded'); });
-$('newDraftBtn').addEventListener('click', () => { const id = crypto.randomUUID(); state.drafts.unshift({ id, customer:'New customer', channel:'SMS', owner:'Owner', status:'pending', risk:'Medium', createdAt:nowIso(), message:'Write the draft here. Keep it specific and true. Approval Gate Desk only logs the decision; the decision log is available for review.', reviewNote:'Needs human review.' }); state.selectedId=id; state.filter='all'; renderAll(); toast('Draft created'); });
-$('approveBtn').addEventListener('click', () => decide('approved'));
-$('rejectBtn').addEventListener('click', () => decide('rejected'));
-$('reviseBtn').addEventListener('click', () => decide('revise'));
-$('copyMarkdown').addEventListener('click', () => navigator.clipboard?.writeText($('exportText').value).then(()=>toast('Markdown copied')).catch(()=>{ $('exportText').focus(); $('exportText').select(); toast('Select/copy from export'); }));
-$('copyQuoteApproval').addEventListener('click', () => navigator.clipboard?.writeText($('quoteApprovalText').value).then(()=>toast('Quote queue copied')).catch(()=>{ $('quoteApprovalText').focus(); $('quoteApprovalText').select(); toast('Select/copy from quote queue'); }));
-$('downloadJson').addEventListener('click', () => download('approval-gate-desk.json', JSON.stringify({ ...state, generatedAt: nowIso(), safety:'approval export' }, null, 2), 'application/json'));
-$('downloadCsv').addEventListener('click', () => download('approval-gate-desk.csv', csv(), 'text/csv'));
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================== demo scenario ============================== */
+
+function buildDemo() {
+  const st = defaultState();
+  st.theme = state.theme;
+  st.seenGuide = true;
+  st.reviewer = state.reviewer || 'Sam (owner)';
+  const h = 3600000;
+  const now = Date.now();
+  const iso = msAgo => new Date(now - msAgo).toISOString();
+  const mk = (o, msAgo) => normalizeDraft({ id: uid(), ...o, createdAt: iso(msAgo) });
+
+  const d1 = mk({ customer: 'Dana Whitfield', channel: 'Email',
+    intent: 'Reply to refund question after a cancelled install',
+    message: 'Hi Dana, sorry about the cancelled install. We can offer a full refund plus 20% off your next booking if you stay with us — just say the word and it is done.' }, 2 * h);
+  const d2 = mk({ customer: 'Marcus Lee', channel: 'SMS',
+    intent: 'Appointment reminder for Tuesday tune-up',
+    message: 'Hi Marcus — reminder that your furnace tune-up is Tuesday between 9 and 11 AM. Reply C to confirm or R to reschedule. Thanks!' }, 5 * h);
+  const d3 = mk({ customer: 'Harborview Dental (office mgr)', channel: 'Email',
+    intent: 'Follow-up on the duct cleaning quote sent last week',
+    message: 'Hi — checking in on the duct cleaning quote we sent last Wednesday. If budget is the sticking point we could look at a small discount for booking this month. Happy to answer questions.' }, 26 * h);
+  const d4 = mk({ customer: 'Priya Nair', channel: 'SMS',
+    intent: 'Missed call follow-up about a leaking water heater',
+    message: 'Hi Priya, sorry we missed your call about the water heater leak. We guarantee same-day service if you book before noon — a tech will fix it today, no risk to you.' }, 1 * h);
+  const d5 = mk({ customer: 'Tom Alvarez', channel: 'Portal message',
+    intent: 'Response to warranty claim on compressor',
+    message: 'Hi Tom, thanks for the warranty claim. Our records show the compressor may be covered; we are confirming with the manufacturer and will follow up with scheduling options.',
+    original: 'Hi Tom, the compressor is definitely covered under warranty and we will replace it free of charge this week, guaranteed.' }, 30 * h);
+  const d6 = mk({ customer: 'Jess Kim', channel: 'Email',
+    intent: 'Thank-you note after completed AC repair',
+    message: 'Hi Jess, thanks for having us out today. If anything about the repair feels off in the next few days, reply here and we will take another look.',
+    original: 'Hi Jess! Thanks a million!! If you loved the repair we would KILL for a 5-star review — it takes two seconds!!' }, 50 * h);
+  const d7 = mk({ customer: 'Ridgeline HOA board', channel: 'Email',
+    intent: 'Cover note for annual maintenance proposal',
+    message: 'Attached is our proposal. Choose us and your maintenance costs will drop 30% guaranteed — no other vendor can match this, and prices expire soon.' }, 52 * h);
+  const d8 = mk({ customer: 'Sofia Grant', channel: 'SMS',
+    intent: 'Confirming rescheduled gutter cleaning',
+    message: 'Hi Sofia — your gutter cleaning has moved to Friday at 2 PM as requested. Reply if that no longer works. See you then!' }, 28 * h);
+
+  st.drafts = [d1, d2, d3, d4, d5, d6, d7, d8];
+
+  /* Replay decisions in chronological order so the hash chain is valid. */
+  const dec = (draft, action, msAgo, opts = {}) => {
+    appendDecision(st.ledger, draft, action, { ...opts, at: iso(msAgo), reviewer: st.reviewer });
+    if (action === 'rejected') { draft.status = 'rejected'; draft.decidedAt = iso(msAgo); }
+    else if (action.startsWith('approved')) { draft.status = 'approved'; draft.decidedAt = iso(msAgo); }
+    else if (action === 'revision-requested') { draft.status = 'revision'; }
+  };
+  dec(d7, 'rejected', 49 * h, { reasonCode: 'overpromise',
+    note: '30% and "guaranteed" are unverifiable. Rewrite around the maintenance checklist instead.' });
+  dec(d6, 'approved-with-edits', 47 * h, { edited: true,
+    note: 'Toned down the review ask; kept it service-first.' });
+  dec(d5, 'revision-requested', 27 * h, { reasonCode: 'factual',
+    note: 'Verify warranty coverage with the manufacturer before promising a replacement.' });
+  dec(d8, 'approved', 25 * h);
+
+  st.selectedId = d4.id;
+  return st;
+}
+
+/* ============================== element registry ============================== */
+
+const el = {};
+[
+  'demoBtn', 'helpBtn', 'themeToggle', 'newDraftBtn', 'emptyNewBtn',
+  'statPending', 'statHighRisk', 'statApproved', 'statDecisions',
+  'statusFilters', 'riskFilter', 'searchInput', 'queueList', 'queueCount',
+  'reviewEmpty', 'reviewForm', 'reviewerName', 'statusChip', 'riskBadge', 'editedBadge', 'draftMeta',
+  'fCustomer', 'fChannel', 'fIntent', 'fMessage', 'riskFlags',
+  'originalWrap', 'originalText', 'revertBtn', 'riskOverride',
+  'approveBtn', 'reviseBtn', 'rejectBtn', 'reopenBtn', 'deleteBtn',
+  'drawer', 'drawerTitle', 'reasonRequired', 'drawerReason', 'drawerNote', 'drawerConfirm', 'drawerCancel',
+  'chainBadge', 'ledgerCount', 'ledgerFilter', 'ledgerList',
+  'copyMdBtn', 'downloadJsonBtn', 'downloadCsvBtn', 'printBtn', 'importBtn', 'importFile', 'resetBtn',
+  'toast', 'toastMsg', 'toastAction',
+  'helpModal', 'helpClose', 'printArea'
+].forEach(id => { el[id] = document.getElementById(id); });
+
+/* ============================== render ============================== */
+
+function renderStats() {
+  const c = counts();
+  el.statPending.textContent = String(c.pending);
+  el.statHighRisk.textContent = String(c.highPending);
+  el.statApproved.textContent = String(c.approved);
+  el.statDecisions.textContent = String(state.ledger.length);
+}
+
+function renderQueue() {
+  const list = visibleDrafts();
+  el.queueCount.textContent = String(list.length);
+  $$('#statusFilters .pill').forEach(b => {
+    const active = b.dataset.status === state.filters.status;
+    b.classList.toggle('is-active', active);
+    b.setAttribute('aria-pressed', String(active));
+  });
+  if (el.riskFilter.value !== state.filters.risk) el.riskFilter.value = state.filters.risk;
+  if (el.searchInput.value !== state.filters.q) el.searchInput.value = state.filters.q;
+
+  if (!list.length) {
+    el.queueList.innerHTML = `<li class="empty-state">${state.drafts.length
+      ? '<p><strong>No drafts match these filters.</strong></p><p>Clear the search or switch the status and risk filters.</p>'
+      : '<p><strong>The queue is empty.</strong></p><p>Load the demo scenario or add the first AI draft to review.</p>'}</li>`;
+    return;
+  }
+  el.queueList.innerHTML = list.map(d => {
+    const risk = effectiveRisk(d);
+    const msg = d.message || 'Empty draft — add the message text.';
+    const snippet = msg.slice(0, 110) + (msg.length > 110 ? '…' : '');
+    const selected = d.id === state.selectedId;
+    return `<li><button type="button" class="queue-item${selected ? ' is-selected' : ''}" data-id="${esc(d.id)}" aria-pressed="${selected}">
+      <span class="qi-top"><strong>${esc(d.customer.trim() || 'Unnamed customer')}</strong><span class="chip risk-${risk.toLowerCase()}">${risk}</span></span>
+      <span class="qi-snippet">${esc(snippet)}</span>
+      <span class="qi-meta"><span class="chip status-${esc(d.status)}">${esc(d.status)}</span><span class="meta-text">${esc(d.channel)} · ${esc(timeAgo(d.createdAt))}</span></span>
+    </button></li>`;
+  }).join('');
+}
+
+function renderRiskUI() {
+  const d = selectedDraft();
+  if (!d || el.reviewForm.hidden) return;
+  const r = draftRisk(d);
+  const eff = effectiveRisk(d);
+  el.riskBadge.textContent = `${eff} risk${d.riskOverride ? ' (override)' : ''}`;
+  el.riskBadge.className = `chip risk-${eff.toLowerCase()}`;
+  el.riskFlags.innerHTML = r.flags.length
+    ? r.flags.map(fl => `<span class="flag">${esc(fl.label)}</span>`).join('')
+    : '<span class="flag flag-none">No risk flags detected</span>';
+  const edited = d.original !== null && d.original !== d.message;
+  el.editedBadge.hidden = !edited;
+  el.originalWrap.hidden = !edited;
+  if (edited) el.originalText.textContent = d.original;
+}
+
+function renderReview() {
+  const d = selectedDraft();
+  if (el.reviewerName.value !== state.reviewer) el.reviewerName.value = state.reviewer;
+  if (!d) {
+    el.reviewEmpty.hidden = false;
+    el.reviewForm.hidden = true;
+    return;
+  }
+  el.reviewEmpty.hidden = true;
+  el.reviewForm.hidden = false;
+  el.fCustomer.value = d.customer;
+  el.fChannel.value = d.channel;
+  el.fIntent.value = d.intent;
+  el.fMessage.value = d.message;
+  el.riskOverride.value = d.riskOverride;
+  el.statusChip.textContent = d.status;
+  el.statusChip.className = `chip status-${d.status}`;
+  el.draftMeta.textContent = `created ${fmt(d.createdAt)}${d.decidedAt ? ` · decided ${fmt(d.decidedAt)}` : ''}`;
+  const locked = d.status === 'approved' || d.status === 'rejected';
+  [el.fCustomer, el.fChannel, el.fIntent, el.fMessage, el.riskOverride].forEach(i => { i.disabled = locked; });
+  el.approveBtn.hidden = locked;
+  el.reviseBtn.hidden = locked;
+  el.rejectBtn.hidden = locked;
+  el.reopenBtn.hidden = !locked;
+  el.fCustomer.classList.remove('invalid');
+  el.fMessage.classList.remove('invalid');
+  closeDrawer();
+  renderRiskUI();
+}
+
+function renderLedger() {
+  const chain = verifyChain(state.ledger);
+  el.ledgerCount.textContent = String(state.ledger.length);
+  el.chainBadge.textContent = !state.ledger.length ? 'No entries yet'
+    : chain.ok ? `Chain intact · ${state.ledger.length} entries`
+    : `Chain broken at #${chain.at}`;
+  el.chainBadge.className = `chip ${!state.ledger.length ? '' : chain.ok ? 'chip-ok' : 'chip-bad'}`;
+  if (el.ledgerFilter.value !== state.ledgerFilter) el.ledgerFilter.value = state.ledgerFilter;
+
+  const rows = state.ledger
+    .filter(e => state.ledgerFilter === 'all' || e.action === state.ledgerFilter)
+    .slice().reverse();
+  if (!rows.length) {
+    el.ledgerList.innerHTML = `<li class="empty-state"><p><strong>${state.ledger.length
+      ? 'No entries match this filter.' : 'No decisions logged yet.'}</strong></p><p>${state.ledger.length
+      ? 'Switch the filter to see other decision types.'
+      : 'Approve, reject, or request revision on a draft — every decision lands here permanently.'}</p></li>`;
+    return;
+  }
+  el.ledgerList.innerHTML = rows.map(e => `<li class="ledger-item act-${esc(e.action)}">
+    <div class="li-top">
+      <span class="chip act-chip-${esc(e.action)}">${esc(ACTION_LABELS[e.action])}</span>
+      <strong>${esc(e.customer)}</strong>
+      <span class="meta-text">${esc(e.channel)} · by ${esc(e.reviewer)}</span>
+      <time class="meta-text mono" datetime="${esc(e.at)}">${esc(fmt(e.at))}</time>
+    </div>
+    ${e.reasonLabel ? `<p class="li-line">Reason: ${esc(e.reasonLabel)}</p>` : ''}
+    ${e.note ? `<p class="li-line">${esc(e.note)}</p>` : ''}
+    ${e.edited ? '<p class="li-line meta-text">Message was edited before approval.</p>' : ''}
+    <p class="hash-line mono">#${e.seq} · ${esc(e.hash)} &larr; ${esc(e.prevHash)}</p>
+  </li>`).join('');
+}
+
+function renderPrint() {
+  const c = counts();
+  const chain = verifyChain(state.ledger);
+  const open = state.drafts.filter(d => d.status === 'pending' || d.status === 'revision');
+  el.printArea.innerHTML = `
+    <h1>Approval Gate Desk — audit report</h1>
+    <p>Generated ${esc(new Date().toLocaleString())} · Reviewer: ${esc(state.reviewer || 'Not set')}</p>
+    <p>Pending ${c.pending} (high risk ${c.highPending}) · Revision ${c.revision} · Approved ${c.approved} · Rejected ${c.rejected} · Chain: ${chain.ok ? 'intact' : `BROKEN at #${chain.at}`}</p>
+    <h2>Drafts awaiting review</h2>
+    ${open.length ? open.map(d => `<div class="print-draft">
+      <h3>${esc(d.customer.trim() || 'Unnamed customer')} — ${esc(d.channel)} · ${esc(effectiveRisk(d))} risk · ${esc(d.status)}</h3>
+      ${d.intent ? `<p><em>${esc(d.intent)}</em></p>` : ''}
+      <blockquote>${esc(d.message || '(empty draft)')}</blockquote>
+    </div>`).join('') : '<p>Queue is clear.</p>'}
+    <h2>Decision log</h2>
+    ${state.ledger.length ? `<table><thead><tr><th>#</th><th>When</th><th>Action</th><th>Customer</th><th>Reviewer</th><th>Reason / note</th></tr></thead><tbody>${
+      state.ledger.map(e => `<tr><td>${e.seq}</td><td>${esc(fmt(e.at))}</td><td>${esc(ACTION_LABELS[e.action])}${e.edited ? ' (edited)' : ''}</td><td>${esc(e.customer)}</td><td>${esc(e.reviewer)}</td><td>${esc([e.reasonLabel, e.note].filter(Boolean).join(' — '))}</td></tr>`).join('')
+    }</tbody></table>` : '<p>No decisions logged.</p>'}
+    <p class="print-foot">Draft-only boundary: all messages are drafts for human review; nothing is sent from this tool.</p>`;
+}
+
+function renderAll() {
+  renderStats();
+  renderQueue();
+  renderReview();
+  renderLedger();
+}
+
+/* ============================== toast ============================== */
+
+let toastTimer = null;
+function toast(msg, opts = {}) {
+  el.toastMsg.textContent = msg;
+  if (opts.actionLabel && opts.onAction) {
+    el.toastAction.hidden = false;
+    el.toastAction.textContent = opts.actionLabel;
+    el.toastAction.onclick = () => { hideToast(); opts.onAction(); };
+  } else {
+    el.toastAction.hidden = true;
+    el.toastAction.onclick = null;
+  }
+  el.toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, opts.duration || 3200);
+}
+function hideToast() { el.toast.classList.remove('show'); }
+
+/* ============================== help modal ============================== */
+
+let lastFocus = null;
+function openHelp() {
+  lastFocus = document.activeElement;
+  el.helpModal.hidden = false;
+  el.helpClose.focus();
+}
+function closeHelp() {
+  el.helpModal.hidden = true;
+  if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+}
+el.helpModal.addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const items = $$('#helpModal button, #helpModal a[href], #helpModal input, #helpModal select, #helpModal textarea')
+    .filter(i => !i.disabled);
+  if (!items.length) return;
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
+el.helpModal.addEventListener('click', e => { if (e.target === el.helpModal) closeHelp(); });
+el.helpClose.addEventListener('click', closeHelp);
+el.helpBtn.addEventListener('click', openHelp);
+
+/* ============================== decisions ============================== */
+
+function requireValidDraft(d) {
+  let ok = true;
+  if (!d.customer.trim()) { el.fCustomer.classList.add('invalid'); ok = false; }
+  if (!d.message.trim()) { el.fMessage.classList.add('invalid'); ok = false; }
+  if (!ok) toast('Add a customer name and message text before deciding.');
+  return ok;
+}
+
+function approveSelected() {
+  const d = selectedDraft();
+  if (!d || d.status === 'approved' || d.status === 'rejected') return;
+  if (!requireValidDraft(d)) return;
+  if (d.original === null) d.original = d.message;
+  const edited = d.original.trim() !== d.message.trim();
+  appendDecision(state.ledger, d, edited ? 'approved-with-edits' : 'approved', { edited });
+  d.status = 'approved';
+  d.decidedAt = new Date().toISOString();
+  save();
+  renderAll();
+  toast(edited ? 'Approved with edits — logged.' : 'Approved — logged.');
+}
+
+let drawerMode = 'reject';
+function openDrawer(mode) {
+  const d = selectedDraft();
+  if (!d || !requireValidDraft(d)) return;
+  drawerMode = mode;
+  el.drawerTitle.textContent = mode === 'reject' ? 'Reject this draft' : 'Request a revision';
+  el.reasonRequired.hidden = mode !== 'reject';
+  el.drawerConfirm.textContent = mode === 'reject' ? 'Confirm rejection' : 'Log revision request';
+  el.drawerConfirm.classList.toggle('btn-danger', mode === 'reject');
+  el.drawerReason.value = '';
+  el.drawerNote.value = '';
+  el.drawerReason.classList.remove('invalid');
+  el.drawer.hidden = false;
+  el.drawerReason.focus();
+}
+function closeDrawer() { el.drawer.hidden = true; }
+
+function confirmDrawer() {
+  const d = selectedDraft();
+  if (!d) return;
+  const reasonCode = el.drawerReason.value;
+  if (drawerMode === 'reject' && !reasonCode) {
+    el.drawerReason.classList.add('invalid');
+    toast('Pick a rejection reason — it feeds the taxonomy in the audit log.');
+    return;
+  }
+  const note = el.drawerNote.value.trim();
+  if (d.original === null && d.message.trim()) d.original = d.message;
+  if (drawerMode === 'reject') {
+    appendDecision(state.ledger, d, 'rejected', { reasonCode, note });
+    d.status = 'rejected';
+    d.decidedAt = new Date().toISOString();
+    toast('Rejected — reason logged.');
+  } else {
+    appendDecision(state.ledger, d, 'revision-requested', { reasonCode, note });
+    d.status = 'revision';
+    d.decidedAt = null;
+    toast('Revision requested — logged.');
+  }
+  save();
+  renderAll();
+}
+
+function reopenSelected() {
+  const d = selectedDraft();
+  if (!d || (d.status !== 'approved' && d.status !== 'rejected')) return;
+  appendDecision(state.ledger, d, 'reopened', { note: 'Returned to pending for another review.' });
+  d.status = 'pending';
+  d.decidedAt = null;
+  save();
+  renderAll();
+  toast('Reopened — back in the pending queue.');
+}
+
+function deleteSelected() {
+  const d = selectedDraft();
+  if (!d) return;
+  const idx = state.drafts.indexOf(d);
+  state.drafts.splice(idx, 1);
+  state.selectedId = null;
+  save();
+  renderAll();
+  toast(`Deleted draft for ${d.customer.trim() || 'unnamed customer'}.`, {
+    actionLabel: 'Undo',
+    duration: 7000,
+    onAction: () => {
+      state.drafts.splice(Math.min(idx, state.drafts.length), 0, d);
+      state.selectedId = d.id;
+      save();
+      renderAll();
+      toast('Draft restored.');
+    }
+  });
+}
+
+function newDraft() {
+  const d = normalizeDraft({ id: uid(), channel: 'SMS', status: 'pending' });
+  state.drafts.unshift(d);
+  state.selectedId = d.id;
+  state.filters = { status: 'all', risk: 'all', q: '' };
+  save();
+  renderAll();
+  el.fCustomer.focus();
+  toast('New draft added to the queue.');
+}
+
+/* ============================== event wiring ============================== */
+
+/* Queue selection (event delegation). */
+el.queueList.addEventListener('click', e => {
+  const btn = e.target.closest('[data-id]');
+  if (!btn) return;
+  state.selectedId = btn.dataset.id;
+  save();
+  renderQueue();
+  renderReview();
+});
+
+/* Filters. */
+el.statusFilters.addEventListener('click', e => {
+  const btn = e.target.closest('[data-status]');
+  if (!btn) return;
+  state.filters.status = btn.dataset.status;
+  save();
+  renderQueue();
+});
+el.riskFilter.addEventListener('change', () => { state.filters.risk = el.riskFilter.value; save(); renderQueue(); });
+el.searchInput.addEventListener('input', () => { state.filters.q = el.searchInput.value; save(); renderQueue(); });
+el.ledgerFilter.addEventListener('change', () => { state.ledgerFilter = el.ledgerFilter.value; save(); renderLedger(); });
+
+/* Review pad inputs write straight into the selected draft. */
+function updateDraftField(key, value) {
+  const d = selectedDraft();
+  if (!d) return;
+  d[key] = value;
+  save();
+  renderStats();
+  renderQueue();
+  renderRiskUI();
+}
+el.fCustomer.addEventListener('input', () => { el.fCustomer.classList.remove('invalid'); updateDraftField('customer', el.fCustomer.value); });
+el.fChannel.addEventListener('change', () => updateDraftField('channel', el.fChannel.value));
+el.fIntent.addEventListener('input', () => updateDraftField('intent', el.fIntent.value));
+el.fMessage.addEventListener('input', () => { el.fMessage.classList.remove('invalid'); updateDraftField('message', el.fMessage.value); });
+/* The first committed message text becomes the preserved "original AI draft" baseline. */
+el.fMessage.addEventListener('change', () => {
+  const d = selectedDraft();
+  if (d && d.original === null && d.message.trim()) { d.original = d.message; save(); }
+});
+el.riskOverride.addEventListener('change', () => updateDraftField('riskOverride', el.riskOverride.value));
+el.revertBtn.addEventListener('click', () => {
+  const d = selectedDraft();
+  if (!d || d.original === null) return;
+  d.message = d.original;
+  save();
+  renderAll();
+  toast('Reverted to the original AI draft.');
+});
+el.reviewerName.addEventListener('input', () => { state.reviewer = el.reviewerName.value; save(); });
+
+/* Decisions. */
+el.approveBtn.addEventListener('click', approveSelected);
+el.rejectBtn.addEventListener('click', () => openDrawer('reject'));
+el.reviseBtn.addEventListener('click', () => openDrawer('revise'));
+el.drawerConfirm.addEventListener('click', confirmDrawer);
+el.drawerCancel.addEventListener('click', closeDrawer);
+el.reopenBtn.addEventListener('click', reopenSelected);
+el.deleteBtn.addEventListener('click', deleteSelected);
+el.newDraftBtn.addEventListener('click', newDraft);
+el.emptyNewBtn.addEventListener('click', newDraft);
+
+/* Header actions. */
+el.demoBtn.addEventListener('click', () => {
+  if ((state.drafts.length || state.ledger.length) &&
+      !confirm('Replace the current drafts and decision log with the demo scenario?')) return;
+  state = buildDemo();
+  saveNow();
+  applyTheme();
+  renderAll();
+  toast('Demo loaded — 8 drafts, 4 logged decisions.');
+});
+el.themeToggle.addEventListener('click', () => {
+  const current = document.documentElement.dataset.theme;
+  state.theme = current === 'dark' ? 'light' : 'dark';
+  save();
+  applyTheme();
+});
+
+/* Export & handoff. */
+function copyText(text, okMsg) {
+  const done = () => toast(okMsg);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+  } else {
+    fallbackCopy(text, done);
+  }
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); done(); }
+  catch { toast('Copy failed — use Download JSON instead.'); }
+  ta.remove();
+}
+el.copyMdBtn.addEventListener('click', () => copyText(buildMarkdown(), 'Markdown packet copied.'));
+el.downloadJsonBtn.addEventListener('click', () => {
+  download('approval-gate-desk.json', JSON.stringify({
+    app: 'Approval Gate Desk',
+    exportedAt: new Date().toISOString(),
+    boundary: 'Draft-only: every message requires human review before sending.',
+    ...state
+  }, null, 2), 'application/json');
+  toast('JSON backup downloaded.');
+});
+el.downloadCsvBtn.addEventListener('click', () => {
+  if (!state.ledger.length) { toast('No decisions to export yet.'); return; }
+  download('approval-gate-desk-audit.csv', buildCsv(), 'text/csv');
+  toast('Audit CSV downloaded.');
+});
+el.printBtn.addEventListener('click', () => { renderPrint(); window.print(); });
+window.addEventListener('beforeprint', renderPrint);
+el.importBtn.addEventListener('click', () => el.importFile.click());
+el.importFile.addEventListener('change', () => {
+  const file = el.importFile.files && el.importFile.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      state = normalize(JSON.parse(String(reader.result)));
+      saveNow();
+      applyTheme();
+      renderAll();
+      toast('Import complete.');
+    } catch {
+      toast('Import failed — that file is not valid JSON.');
+    }
+  };
+  reader.readAsText(file);
+  el.importFile.value = '';
+});
+el.resetBtn.addEventListener('click', () => {
+  if (!confirm('Reset Approval Gate Desk? This clears all drafts and the decision log from this browser.')) return;
+  const theme = state.theme;
+  const seen = state.seenGuide;
+  state = defaultState();
+  state.theme = theme;
+  state.seenGuide = seen;
+  saveNow();
+  renderAll();
+  toast('All data cleared.');
+});
+
+/* Keyboard shortcuts. */
+function moveSelection(dir) {
+  const list = visibleDrafts();
+  if (!list.length) return;
+  const idx = list.findIndex(d => d.id === state.selectedId);
+  const nextIdx = idx === -1
+    ? (dir > 0 ? 0 : list.length - 1)
+    : Math.min(list.length - 1, Math.max(0, idx + dir));
+  state.selectedId = list[nextIdx].id;
+  save();
+  renderQueue();
+  renderReview();
+}
+document.addEventListener('keydown', e => {
+  const typing = /^(input|textarea|select)$/i.test(e.target.tagName);
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    copyText(buildMarkdown(), 'Markdown packet copied.');
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    if (el.drawer.hidden) approveSelected();
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (!el.helpModal.hidden) closeHelp();
+    else if (!el.drawer.hidden) closeDrawer();
+    return;
+  }
+  if (typing) return;
+  if (e.key === '?') { e.preventDefault(); openHelp(); return; }
+  if (e.key === 'j' || e.key === 'J') { moveSelection(1); return; }
+  if (e.key === 'k' || e.key === 'K') { moveSelection(-1); }
+});
+
+/* ============================== theme & init ============================== */
+
+function applyTheme() {
+  const preferLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+  const t = state.theme || (preferLight ? 'light' : 'dark');
+  document.documentElement.dataset.theme = t;
+  el.themeToggle.textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+  el.themeToggle.setAttribute('aria-pressed', String(t === 'light'));
+}
+
+/* Populate the rejection-reason taxonomy once. */
+el.drawerReason.innerHTML = '<option value="">Select a reason…</option>' +
+  REASONS.map(r => `<option value="${esc(r.code)}">${esc(r.label)}</option>`).join('');
+
+applyTheme();
 renderAll();
 
+if (!state.seenGuide) {
+  state.seenGuide = true;
+  saveNow();
+  openHelp();
+}
 
-// DAY06_REVIEW_REQUEST_BRIDGE_START
-(function initReviewRequestBridge(){
-  const cards = document.getElementById('reviewRequestCards');
-  const text = document.getElementById('reviewRequestText');
-  if(!cards || !text) return;
-  const getVal = id => { const el = document.getElementById(id); if(!el) return ''; return ('value' in el ? el.value : el.textContent || '').trim(); };
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const title = document.title;
-    if(title.includes('Pilot Forge')) return { source:title, candidate:`${getVal('businessType') || 'Service business'} pilot customer`, moment:'After the proof window shows a real completed win', proof:getVal('proof') || getVal('scoreText') || 'Owner-visible proof from the pilot', ask:`If the pilot created a clear win, ask for one honest sentence about the experience.`, guard:'Do not request a review until the job outcome is real, verified, and customer-safe.' };
-    if(title.includes('Lead Leak Radar')) return { source:title, candidate:`${getVal('businessType') || 'Recovered lead'} customer`, moment:'After a recovered lead books, completes, and thanks the team', proof:`${getVal('totalRecoverable') || 'Recovered value'} signal plus ${getVal('riskTitle') || 'lead leak fix'}`, ask:'Turn the recovered-lead win into a low-pressure review request candidate.', guard:'Never ask from a raw lead list; wait for completed service and positive signal.' };
-    if(title.includes('Owner Report Studio')) return { source:title, candidate:getVal('businessName') || 'Owner-report customer', moment:'When the daily report shows a completed win with no open blocker', proof:getVal('win') || getVal('executiveSummary') || 'Today’s documented win', ask:'Use the owner report as the proof note for a review ask packet.', guard:'If the report has a risk/blocker, resolve it before requesting a review.' };
-    if(title.includes('Approval Gate Desk')) return { source:title, candidate:getVal('customer') || 'Approved draft customer', moment:'After a human approves the request wording and confirms job quality', proof:getVal('reviewNote') || `${getVal('metricApproved') || '0'} approved decisions in the ledger`, ask:'Route the review request through the same approval stamp before manual send.', guard:'No unstamped review requests; reject or revise if claims, discounts, or pressure appear.' };
-    return { source:title, candidate:getVal('customer') || 'Won quote customer', moment:'After the quoted work is completed and the customer is satisfied', proof:getVal('note') || `${getVal('metricWon') || '$0'} won quote value with a completed job`, ask:'Convert won/completed quote momentum into a low-pressure review request.', guard:'A won quote alone is not enough; wait for finished work and positive customer signal.' };
-  }
-  function packet(){ const c = context(); return ['# Review Request Composer bridge','',`Source app: ${c.source}`,`Candidate: ${c.candidate}`,`Best moment: ${c.moment}`,`Proof detail: ${c.proof}`,`Draft ask: ${c.ask}`,`Safety guard: ${c.guard}`,'','Manual-send boundary: this app only drafts/copies/exports. A human verifies customer mood, job outcome, and platform policy before contact.'].join('\n'); }
-  function render(){ const c = context(); cards.innerHTML = [['Candidate',c.candidate],['Best moment',c.moment],['Proof detail',c.proof],['Guardrail',c.guard]].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c = context(); const blob = new Blob([JSON.stringify({ ...c, markdown: packet(), generatedAt:new Date().toISOString(), safety:'draft-only manual-send boundary' }, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'review-request-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyReviewRequestBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadReviewRequestBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
 })();
-// DAY06_REVIEW_REQUEST_BRIDGE_END
-
-// DAY07_TECH_BRIEF_BRIDGE_START
-(() => {
-  const root = document.getElementById('tech-brief-bridge');
-  if(!root) return;
-  const cards = document.getElementById('techBriefCards');
-  const text = document.getElementById('techBriefText');
-  const clean = v => String(v || '').trim();
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const title = document.title || 'Local app';
-    const customer = val('customer') || val('businessType') || val('businessName') || val('metricOpenValue') || 'Customer/site from current app';
-    const issue = val('issue') || val('win') || val('proofRequirement') || val('note') || val('requestDraft') || val('message') || 'Translate current app output into the job issue and field objective.';
-    const parts = val('parts') || val('actionList') || val('quoteLeakText') || val('approvalDeskText') || val('exportText') || 'Bring the checklist, screenshots, quote/report proof, and any likely parts before dispatch.';
-    const risk = val('hazards') || val('risk') || val('metricRisk') || 'Verify access, safety, customer mood, scope, timing, and price before making commitments.';
-    return { source:title, customer, issue:issue.slice(0,260), parts:parts.slice(0,260), risk:risk.slice(0,220), boundary:'Draft/export only. A human verifies the site, customer, safety, pricing, and schedule before dispatch or contact.' };
-  }
-  function packet(){ const c=context(); return ['# Technician Brief Builder bridge','',`Source app: ${c.source}`,`Customer/site: ${c.customer}`,`Reported issue / objective: ${c.issue}`,`Parts/checks to carry forward: ${c.parts}`,`Risk notes: ${c.risk}`,`No-promise boundary: ${c.boundary}`,'','Use this as a starter handoff inside Technician Brief Builder; do not send, schedule, quote, or update a customer from this bridge.'].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Customer/site',c.customer],['Issue/objective',c.issue],['Parts/checks',c.parts],['Risk boundary',c.risk]].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only technician brief handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='technician-brief-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyTechBriefBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadTechBriefBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY07_TECH_BRIEF_BRIDGE_END
-
-// DAY08_SERVICE_TRIAGE_BRIDGE_START
-(() => {
-  const root = document.getElementById('service-triage-bridge');
-  if(!root) return;
-  const cards = document.getElementById('serviceTriageCards');
-  const text = document.getElementById('serviceTriageText');
-  const clean = v => String(v || '').trim();
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const page = document.title || 'Local app';
-    const caller = val('caller') || val('customer') || val('businessType') || val('businessName') || val('metricOpenValue') || 'Caller/customer from current app';
-    const issue = val('callerSays') || val('issue') || val('win') || val('requestDraft') || val('message') || val('exportText') || 'Translate this app output into the caller-reported issue.';
-    const constraints = val('constraints') || val('risk') || val('metricRisk') || val('hazards') || 'Confirm access, timing, risk, owner approval needs, and no price/ETA promises.';
-    const urgentWords = /urgent|today|tonight|asap|smoke|leak|hazard|complaint|callback|stale|lost|risk/i.test(`${issue} ${constraints}`);
-    const route = urgentWords ? 'Dispatcher/owner review before booking' : 'Standard triage queue';
-    return { source:page, caller, issue:issue.slice(0,260), constraints:constraints.slice(0,220), urgency:urgentWords ? 'Review / possible same-day' : 'Normal', route, boundary:'Draft/export only. A human confirms category, ETA, price, availability, and customer contact before any action.' };
-  }
-  function packet(){ const c=context(); return ['# Service Triage Flow bridge','',`Source app: ${c.source}`,`Caller/customer: ${c.caller}`,`Caller-reported issue: ${c.issue}`,`Constraints/risk: ${c.constraints}`,`Urgency cue: ${c.urgency}`,`Route: ${c.route}`,`No-promise boundary: ${c.boundary}`,'','Next questions: confirm contact, exact site, when it started, active hazards, access details, photos/model numbers, and who must approve scheduling or pricing.'].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Caller',c.caller],['Urgency',c.urgency],['Route',c.route],['Boundary','Human approval before action']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only service triage handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='service-triage-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyServiceTriageBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadServiceTriageBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY08_SERVICE_TRIAGE_BRIDGE_END
-
-// DAY09_WARM_OUTREACH_BRIDGE_START
-(() => {
-  const root = document.getElementById('warm-outreach-bridge');
-  if(!root) return;
-  const cards = document.getElementById('warmOutreachCards');
-  const text = document.getElementById('warmOutreachText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function context(){
-    const source = document.title || 'Local app';
-    const prospect = val('prospect') || val('businessType') || val('businessName') || val('caller') || val('customer') || val('metricRoute') || 'Target local business / owner';
-    const observed = val('observed') || val('callerSays') || val('issue') || val('win') || val('exportText') || 'This app surfaced a workflow gap worth a small human review.';
-    const proof = val('proof') || val('metricProof') || val('metricRecovered') || val('metricOpenValue') || 'Use a small proof window, existing notes, and owner-visible before/after evidence.';
-    const constraints = val('constraints') || val('risk') || val('metricRisk') || 'No guaranteed result, no fake familiarity, no customer action, no CRM write, and no send without approval.';
-    const ask = /urgent|same-day|critical|lost|stale|leak|risk/i.test(`${observed} ${constraints}`) ? 'Ask for a short review of the highest-friction handoff.' : 'Ask whether a one-page example would be useful.';
-    return { source, prospect:prospect.slice(0,120), observed:observed.slice(0,280), proof:proof.slice(0,220), constraints:constraints.slice(0,220), ask, boundary:'Draft/export only. A human reviews tone, claims, proof, timing, and recipient before any outreach is used.' };
-  }
-  function endSentence(s){ const t = String(s || '').trim(); return /[.!?]$/.test(t) ? t : `${t}.`; }
-  function packet(){ const c=context(); return ['# Warm Outreach Lab bridge','',`Source app: ${c.source}`,`Prospect/context: ${c.prospect}`,`What to mention: ${c.observed}`,`Proof cue: ${c.proof}`,`Constraint: ${c.constraints}`,`Soft ask: ${c.ask}`,`Safety boundary: ${c.boundary}`,'','Starter draft:',`Hi ${c.prospect} — quick note after noticing this: ${endSentence(c.observed)} ${c.proof} ${c.ask}`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Prospect',c.prospect],['Proof cue',c.proof],['Ask',c.ask],['Boundary','Human review before send']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only warm outreach handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='warm-outreach-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyWarmOutreachBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadWarmOutreachBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY09_WARM_OUTREACH_BRIDGE_END
-
-// DAY10_PILOT_PRICING_BRIDGE_START
-(() => {
-  const root = document.getElementById('pilot-pricing-bridge');
-  if(!root) return;
-  const cards = document.getElementById('pilotPricingCards');
-  const text = document.getElementById('pilotPricingText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const moneyNum = s => { const nums = String(s || '').match(/[0-9][0-9,]*/g); return nums ? Number(nums[0].replaceAll(',','')) : 0; };
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  function dollars(n){ return Number(n || 0).toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}); }
-  function context(){
-    const source = document.title || 'Local app';
-    const client = val('client') || val('prospect') || val('businessName') || val('businessType') || val('caller') || val('customer') || 'Prospect / owner';
-    const workflow = val('workflow') || val('observed') || val('issue') || val('callerSays') || val('metricRoute') || 'Current workflow output from this app';
-    const recoveredCue = moneyNum(val('metricRecovered') || val('metricOpenValue') || val('metricValue') || val('exportText')) || 4200;
-    const riskText = val('risk') || val('metricRisk') || val('constraints') || 'Scope and proof need human review before quoting.';
-    const low = Math.max(750, recoveredCue * 0.18);
-    const high = Math.max(low + 500, recoveredCue * 0.42);
-    const target = (low + high) / 2;
-    return { source, client:client.slice(0,120), workflow:workflow.slice(0,240), recoveredCue, low, target, high, riskText:riskText.slice(0,220), boundary:'Draft/export only. Human reviews assumptions, terms, proof window, claims, and client-facing language before sharing a price.' };
-  }
-  function packet(){ const c=context(); return ['# Pilot Pricing Calculator bridge','',`Source app: ${c.source}`,`Client/prospect: ${c.client}`,`Workflow priced: ${c.workflow}`,`Recovered value cue: ${dollars(c.recoveredCue)} per month / opportunity signal`, `Draft range: ${dollars(c.low)}–${dollars(c.high)}`,`Working quote: ${dollars(c.target)}`,`Risk/proof note: ${c.riskText}`,`Safety boundary: ${c.boundary}`,'','Owner-safe story:',`Price this as a short proof window. The range is tied to the current value cue and delivery risk, not a guaranteed result.`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Client',c.client],['Recovered cue',dollars(c.recoveredCue)],['Draft range',`${dollars(c.low)}–${dollars(c.high)}`],['Boundary','Human review before quote']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only pilot pricing handoff' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='pilot-pricing-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyPilotPricingBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadPilotPricingBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY10_PILOT_PRICING_BRIDGE_END
-
-// DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START
-(() => {
-  const root = document.getElementById('local-biz-snapshot-bridge');
-  if(!root) return;
-  const cards = document.getElementById('localBizSnapshotCards');
-  const text = document.getElementById('localBizSnapshotText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const tokens = () => clean([document.title, val('exportText'), val('pilotPricingText'), val('metricValue'), val('metricRecovered'), val('metricRisk'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const business = val('businessName') || val('client') || val('prospect') || val('customer') || val('caller') || 'Prospect / local business';
-    const type = val('businessType') || val('workflow') || val('issue') || val('observed') || 'Service business workflow';
-    const blob = tokens().toLowerCase();
-    const leaks = [];
-    if(/call|missed|phone|triage/.test(blob)) leaks.push('Missed-call or intake leak');
-    if(/form|booking|schedule/.test(blob)) leaks.push('Booking/form friction');
-    if(/quote|price|pricing|proposal/.test(blob)) leaks.push('Quote follow-up gap');
-    if(/review|proof|owner report|case/.test(blob)) leaks.push('Proof/reporting gap');
-    if(!leaks.length) leaks.push('Manual follow-up leak to verify');
-    const wedge = leaks[0].includes('Quote') ? 'Quote follow-up cleanup' : leaks[0].includes('Proof') ? 'Owner proof snapshot' : leaks[0].includes('Booking') ? 'Service intake triage' : 'Missed-call recovery check';
-    const score = Math.min(96, Math.max(42, 48 + leaks.length * 11 + (clean(val('exportText')).length > 400 ? 12 : 0)));
-    return { source, business:business.slice(0,120), type:type.slice(0,180), leaks:[...new Set(leaks)].slice(0,4), wedge, score, nextStep:'Verify facts manually, ask for one small data sample, and get human approval before outreach or claims.', boundary:'Draft/export only. No scraping, enrichment, CRM writes, sends, or public/customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Local Biz Snapshot bridge','',`Source app: ${c.source}`,`Business/profile cue: ${c.business}`,`Workflow/type cue: ${c.type}`,`Fit score: ${c.score}/100`,`Likely leaks: ${c.leaks.join('; ')}`,`First wedge: ${c.wedge}`,`Human next step: ${c.nextStep}`,`Safety boundary: ${c.boundary}`,'','Plain-English snapshot:',`This looks like a ${c.wedge.toLowerCase()} candidate if the public/profile cues hold up. Keep it as an internal dossier until a human verifies the facts.`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Business cue',c.business],['Likely leak',c.leaks[0]],['First wedge',c.wedge],['Boundary','Human review first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only local business snapshot' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='local-biz-snapshot-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyLocalBizSnapshotBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadLocalBizSnapshotBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END
-
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START
-(() => {
-  const root = document.getElementById('script-rehearsal-room-bridge');
-  if(!root) return;
-  const cards = document.getElementById('scriptRehearsalCards');
-  const text = document.getElementById('scriptRehearsalText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const blob = () => clean([document.title, val('exportText'), val('localBizSnapshotText'), val('pilotPricingText'), val('metricFit'), val('metricValue'), val('metricRecovered'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const raw = blob();
-    const lower = raw.toLowerCase();
-    const prospect = val('businessName') || val('prospect') || val('customer') || val('caller') || val('client') || 'Owner / prospect';
-    const objective = lower.includes('quote') ? 'ask where quote follow-up stalls and propose a tiny cleanup test' : lower.includes('review') ? 'learn what proof customers trust and rehearse a low-pressure ask' : lower.includes('pricing') ? 'validate whether the pilot scope and proof window feel fair' : lower.includes('triage') || lower.includes('call') ? 'understand intake friction and pick one safe next question' : 'find one practical workflow leak worth a small proof step';
-    const prompt = lower.includes('price') || lower.includes('pricing') ? 'What price range feels low-risk enough to test, and what proof would change your mind?' : lower.includes('review') ? 'Which customer result would you feel comfortable asking about manually?' : lower.includes('quote') ? 'Which open quote should get a human follow-up first, and why?' : 'Where does the current workflow slow down when the team is busy?';
-    const objection = lower.includes('cost') || lower.includes('price') || lower.includes('pricing') ? 'We do not have budget.' : lower.includes('busy') || lower.includes('triage') ? 'I am too busy right now.' : 'How do I know this works?';
-    const response = objection.includes('budget') ? 'Keep the answer tied to a short proof window and a small manual pilot before any build.' : objection.includes('busy') ? 'Ask for one ten-minute sample review instead of a full meeting.' : 'Point to measured proof and avoid any revenue promise until facts are verified.';
-    return { source, prospect:prospect.slice(0,120), objective, opening:`I want to keep this useful and low-pressure. The goal is to ${objective}, then decide whether one human-reviewed proof step is worth doing.`, prompt, objection, response, boundary:'Draft rehearsal only. Get human approval before calls, sends, recordings, CRM updates, claims, or customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Script Rehearsal Room bridge','',`Source app: ${c.source}`,`Prospect/customer cue: ${c.prospect}`,`Call objective: ${c.objective}`,'',`Opening line: ${c.opening}`,'','Discovery prompts:',`1. ${c.prompt}`,'2. What would count as proof that this is worth testing?','3. Who needs to approve the smallest next step?','',`Objection card: ${c.objection}`,`Practice response: ${c.response}`,'',`Safety boundary: ${c.boundary}`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Prospect cue',c.prospect],['Objective',c.objective],['Objection',c.objection],['Boundary','Human approval first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blobObj = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only script rehearsal' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blobObj); const a=document.createElement('a'); a.href=url; a.download='script-rehearsal-room-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyScriptRehearsalBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadScriptRehearsalBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END
-
-// Day 13 Proof Vault bridge: source-output-to-evidence handoff.
-(() => {
-  const section = document.getElementById('proof-vault-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('proofVaultCards');
-  const textEl = document.getElementById('proofVaultText');
-  const copyBtn = document.getElementById('copyProofVault');
-  const downloadBtn = document.getElementById('downloadProofVault');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escPv = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'proofVaultText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    const live = clean(document.querySelector('main')?.innerText || document.body.innerText || '');
-    return live.slice(0, 900);
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const headline = clean(document.querySelector('h1')?.textContent || name);
-    const resultCue = output.match(/\$[0-9,.kK]+|[0-9]+%|ready|approval|recover|score|proof/i)?.[0] || 'add measured result before external use';
-    return {
-      sourceApp: name,
-      artifactType: 'Report snippet / screenshot candidate',
-      proofTitle: `${name} output evidence`,
-      location: 'Capture a local screenshot or export from this app before sharing.',
-      snippet: output,
-      result: `Evidence cue: ${resultCue}. Verify against real owner/customer data before using as proof.`,
-      caseStudyAngle: `${headline} can become a Proof Vault card if the screenshot/snippet is redacted, tied to a measured result, and approved by the owner.`,
-      redactionChecklist: ['Remove customer names and identifiers', 'Confirm no API keys, tokens, account IDs, phone numbers, or private URLs are visible', 'Mark owner approval before any external case-study use'],
-      safety: 'Draft-only local handoff. Do not publish, send, or claim results without redaction and explicit human approval.',
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Proof Vault evidence card','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Redact and obtain explicit approval before external use.','',`## Source app`,packet.sourceApp,'',`## Proof title`,packet.proofTitle,'',`## Artifact type`,packet.artifactType,'',`## Location`,packet.location,'',`## Evidence snippet`,packet.snippet,'',`## Result / signal`,packet.result,'',`## Case-study angle`,packet.caseStudyAngle,'',`## Redaction checklist`,...packet.redactionChecklist.map(item => `- [ ] ${item}`),'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Source', packet.sourceApp],
-      ['Artifact', packet.artifactType],
-      ['Result cue', packet.result],
-      ['Boundary', 'Redact + owner approval']
-    ].map(([label, value]) => `<article><span>${escPv(label)}</span><strong>${escPv(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify(packet, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-proof-vault-card.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 14 SOP Builder bridge: current-output-to-repeatable-procedure handoff.
-(() => {
-  const section = document.getElementById('sop-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('sopBuilderCards');
-  const textEl = document.getElementById('sopBuilderText');
-  const copyBtn = document.getElementById('copySopBuilder');
-  const downloadBtn = document.getElementById('downloadSopBuilder');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escSop = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'sopBuilderText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 900);
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const title = clean(document.querySelector('h1')?.textContent || name);
-    const trigger = output.match(/when|after|if|before|daily|lead|quote|approval|proof|review/i)?.[0] || 'When this workflow output needs to be repeated';
-    const stepA = `Open ${name}, load or enter the working context, and confirm the task is still draft-only.`;
-    const stepB = `Use the current output to decide the next internal handoff: ${output.slice(0, 180) || 'document the workflow result'}.`;
-    const stepC = 'Run the quality checks, get human approval for customer-facing action, then log the decision outside this bridge.';
-    return {
-      sourceApp: name,
-      sopTitle: `${name} repeatable handoff SOP`,
-      trigger,
-      owner: 'Human operator / owner delegate',
-      inputs: 'Current app output, source notes, approval status, and any measured result cues.',
-      doneDefinition: 'The handoff is copied/exported, reviewed by a human, and either approved, revised, or parked.',
-      steps: [stepA, stepB, stepC],
-      qualityChecks: ['No secrets, tokens, account IDs, or private customer identifiers are visible', 'Claims are tied to visible evidence or marked as assumptions', 'Human approval is required before sends, CRM writes, quotes, public changes, or customer contact'],
-      exceptionPath: 'If context is unclear, sensitive, or high-risk, stop and ask the owner for review instead of acting.',
-      sourceSnippet: output,
-      safety: 'Draft-only SOP handoff. No customer-facing action, CRM write, send, quote, or destructive change from this bridge.',
-      generatedAt: new Date().toISOString(),
-      headline: title
-    };
-  }
-  function markdown(packet){
-    return ['# SOP Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Human approval is required before customer-facing or destructive action.','',`## SOP`,packet.sopTitle,`Source app: ${packet.sourceApp}`,`Trigger: ${packet.trigger}`,`Owner: ${packet.owner}`,`Inputs: ${packet.inputs}`,`Done definition: ${packet.doneDefinition}`,'',`## Steps`,...packet.steps.map((step, idx) => `${idx + 1}. ${step}`),'',`## Quality checks`,...packet.qualityChecks.map(item => `- [ ] ${item}`),'',`## Exception path`,packet.exceptionPath,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Trigger', packet.trigger],
-      ['Owner', packet.owner],
-      ['Steps', `${packet.steps.length} starter stations`],
-      ['Boundary', 'Human approval before action']
-    ].map(([label, value]) => `<article><span>${escSop(label)}</span><strong>${escSop(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-sop-builder-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 15 Daily Cash Board bridge: current-output-to-cash-action handoff.
-(() => {
-  const section = document.getElementById('daily-cash-board-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('dailyCashBoardCards');
-  const textEl = document.getElementById('dailyCashBoardText');
-  const copyBtn = document.getElementById('copyDailyCashBoard');
-  const downloadBtn = document.getElementById('downloadDailyCashBoard');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCash = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'dailyCashBoardText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1000);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1000);
-  }
-  function valueCue(text){
-    const match = text.match(/\$\s?([0-9][0-9,]*(?:\.\d{1,2})?)/);
-    return match ? `$${match[1]}` : 'Value not set';
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const dueSignal = /today|daily|now|urgent|stale|follow|invoice|quote|call/i.test(output) ? 'Due today / review now' : 'Schedule the next review date';
-    return {
-      sourceApp: name,
-      cashSignal: valueCue(output),
-      offerCheckpoint: `If ${name} reveals a clear wedge, draft one narrow offer and route it for human approval.`,
-      followupCheckpoint: `If the output mentions a quote, lead, proof, review, or owner decision, create one follow-up task instead of letting it sit.`,
-      callCheckpoint: 'If discovery is needed, book or prepare one human-led call; do not send from this bridge.',
-      invoiceCheckpoint: 'If work is complete or approved, check invoice/collection status outside this app.',
-      nextAction: `${dueSignal}: copy this cash brief into Daily Cash Board and choose the single highest-cash next move.`,
-      risk: 'No customer-facing sends, CRM writes, invoices, payments, public changes, pricing promises, or destructive actions from this bridge.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Daily Cash Board bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local cash brief. Human approval is required before customer-facing, billing, CRM, payment, or public actions.','',`## Source`,packet.sourceApp,`Cash/value cue: ${packet.cashSignal}`,'',`## Cash checkpoints`,`- Offer: ${packet.offerCheckpoint}`,`- Follow-up: ${packet.followupCheckpoint}`,`- Booked call: ${packet.callCheckpoint}`,`- Invoice / collect: ${packet.invoiceCheckpoint}`,'',`## Next action`,packet.nextAction,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.risk].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Value cue', packet.cashSignal],
-      ['Offer', 'Draft only'],
-      ['Follow-up', 'One due action'],
-      ['Invoice', 'Check status'],
-      ['Boundary', 'Human approval']
-    ].map(([label, value]) => `<article><span>${escCash(label)}</span><strong>${escCash(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-daily-cash-board-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 16 Meeting Follow-up Kit bridge: current-output-to-recap handoff.
-(() => {
-  const section = document.getElementById('meeting-followup-kit-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('meetingFollowupCards');
-  const textEl = document.getElementById('meetingFollowupText');
-  const copyBtn = document.getElementById('copyMeetingFollowup');
-  const downloadBtn = document.getElementById('downloadMeetingFollowup');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escMeeting = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'meetingFollowupText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1200);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1200);
-  }
-  function firstSentence(text){ const match = clean(text).match(/[^.!?]+[.!?]/); return match ? match[0].trim() : clean(text).slice(0, 160); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const decisionCue = /(approve|approved|decision|choose|selected|ready|won|yes|no|price|pilot|scope)/i.test(output) ? 'Decision cue found' : 'Decision needs owner confirmation';
-    const riskCue = /(risk|block|guardrail|approval|secret|payment|invoice|customer|public|send|crm)/i.test(output) ? 'Risk/approval cue found' : 'No obvious risk cue';
-    return {
-      sourceApp: name,
-      recapHeadline: firstSentence(output) || `${name} output needs a meeting recap.`,
-      followupEmail: `Subject: Follow-up from ${name}\n\nHi all,\n\nQuick recap: ${firstSentence(output) || 'we reviewed the current app output.'}\n\nProposed next action: assign one owner, one due date, and one approval check before anything customer-facing happens.\n\nPlease confirm the decisions, risks, and open questions below before sending or acting.`,
-      ownerTasks: [`Name one owner for the next ${name} action`, 'Set a due date before the next review', 'Copy the guardrail into the handoff'],
-      decisions: [decisionCue, 'Confirm whether this output is ready for the next app/workflow'],
-      risks: [riskCue, 'No sends, CRM writes, invoices, payments, public changes, or customer contact from this bridge'],
-      questions: ['Who owns the next step?', 'What must be approved before real-world action?'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Meeting Follow-up Kit bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local recap. Human approval is required before sending email, calendar invites, CRM updates, customer messages, billing, or public changes.','',`## Source`,packet.sourceApp,'',`## Recap headline`,packet.recapHeadline,'',`## Draft follow-up email`,'```',packet.followupEmail,'```','',`## Tasks`,...packet.ownerTasks.map(v => `- ${v}`),'',`## Decisions`,...packet.decisions.map(v => `- ${v}`),'',`## Risks`,...packet.risks.map(v => `- ${v}`),'',`## Open questions`,...packet.questions.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Recap', 'Ready'],
-      ['Email', 'Draft only'],
-      ['Tasks', String(packet.ownerTasks.length)],
-      ['Risks', String(packet.risks.length)],
-      ['Boundary', 'Human review']
-    ].map(([label, value]) => `<article><span>${escMeeting(label)}</span><strong>${escMeeting(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-meeting-followup-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 17 Credential Handoff Checklist bridge: no-secret access custody handoff.
-(() => {
-  const section = document.getElementById('credential-handoff-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('credentialHandoffCards');
-  const textEl = document.getElementById('credentialHandoffText');
-  const copyBtn = document.getElementById('copyCredentialHandoff');
-  const downloadBtn = document.getElementById('downloadCredentialHandoff');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCred = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'credentialHandoffText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1400);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1400);
-  }
-  function findSystems(text){
-    const lower = text.toLowerCase();
-    const systems = [];
-    if(/email|inbox|follow-up|message|sms/.test(lower)) systems.push('Messaging/inbox access');
-    if(/calendar|booking|appointment|schedule/.test(lower)) systems.push('Booking/calendar access');
-    if(/crm|lead|customer|quote|invoice/.test(lower)) systems.push('CRM/customer record access');
-    if(/api|webhook|integration|automation/.test(lower)) systems.push('API/integration access');
-    if(/payment|billing|price|cash|invoice/.test(lower)) systems.push('Billing/payment portal access');
-    return systems.length ? [...new Set(systems)].slice(0,4) : ['App/operator access'];
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const systems = findSystems(output);
-    const riskWords = (output.match(/secret|token|key|password|customer|payment|send|crm|public|invoice|api/gi) || []).length;
-    return {
-      sourceApp: name,
-      systems,
-      primaryOwner: 'Assign primary owner',
-      backupOwner: 'Assign backup owner',
-      storageReference: 'Password-manager item label only — do not paste secret value',
-      requiredChecks: ['MFA confirmed', 'Least privilege confirmed', 'Storage reference verified', 'Revocation path documented', 'Rotation date set', 'No raw secret stored in this app/export'],
-      revocationPlan: systems.map(system => `${system}: document where to remove user/key and who can execute it.`),
-      riskFlags: riskWords ? [`${riskWords} sensitive/action words detected in source output; review access boundaries.`] : ['No obvious credential/action keywords detected; still review manually.'],
-      approvalBoundary: 'Human approval required before sharing, rotating, revoking, sending, CRM changes, billing actions, customer contact, or public changes.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Credential Handoff Checklist bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: metadata only. Do not paste raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment details. Use an encrypted/password-manager workflow for the actual secret handoff.','',`## Source`,packet.sourceApp,'',`## Systems/access surfaces`,...packet.systems.map(v => `- ${v}`),'',`## Owners`,`- Primary owner: ${packet.primaryOwner}`,`- Backup owner: ${packet.backupOwner}`,'',`## Storage reference`,packet.storageReference,'',`## Required checks`,...packet.requiredChecks.map(v => `- [ ] ${v}`),'',`## Revocation plan`,...packet.revocationPlan.map(v => `- ${v}`),'',`## Risk flags`,...packet.riskFlags.map(v => `- ${v}`),'',`## Approval boundary`,packet.approvalBoundary,'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Surfaces', String(packet.systems.length)],
-      ['Secret values', 'Never store'],
-      ['Checks', String(packet.requiredChecks.length)],
-      ['Revoke path', 'Required'],
-      ['Approval', 'Human gate']
-    ].map(([label, value]) => `<article><span>${escCred(label)}</span><strong>${escCred(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-credential-handoff-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 18 Content Repurposer bridge: draft-only publishing packet.
-(() => {
-  const section = document.getElementById('content-repurposer-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('contentRepurposerCards');
-  const textEl = document.getElementById('contentRepurposerText');
-  const copyBtn = document.getElementById('copyContentRepurposer');
-  const downloadBtn = document.getElementById('downloadContentRepurposer');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escContent = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'contentRepurposerText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function splitSentences(text){ return clean(text).split(/(?<=[.!?])\s+/).filter(Boolean); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const sentences = splitSentences(output);
-    const proofWords = (output.match(/verified|smoke|browser|export|recording|phone|proof|score|ready|passed/gi) || []).length;
-    const publicWords = (output.match(/send|publish|post|customer|client|public|crm|payment|billing/gi) || []).length;
-    const title = `${name}: turn the output into a proof-ready draft`.slice(0, 92);
-    const chapters = [
-      ['00:00', 'What the app produced', sentences[0] || `${name} generated a useful local-first output.`],
-      ['00:35', 'Core workflow', sentences[1] || 'Walk through the main inputs, decisions, and generated packet.'],
-      ['01:15', 'Proof and caveats', sentences[2] || 'Show verification, limits, and human-review boundaries.'],
-      ['02:00', 'Next action', 'Copy/export the draft packet, then review before public use.']
-    ];
-    return {
-      sourceApp: name,
-      title,
-      description: `${name} produced a local-first business workflow output. This bridge repurposes it into a draft content packet with proof notes, caveats, chapters, and short posts. Human review is required before publishing.`,
-      chapters,
-      shortPosts: [
-        `Built/useful output from ${name}: now it has a draft content packet with title, description, chapters, proof notes, and caveats.`,
-        `The important boundary: this is content drafting only. Review before anything public, customer-facing, or promotional.`,
-        proofWords ? `Proof cues detected in the source: ${proofWords}. Keep those in the public story instead of hype.` : `Add verification proof before publishing this story.`
-      ],
-      checklist: ['Confirm claims match the source output', 'Add proof and screenshots only if secret-safe', 'Keep caveats visible', 'Human approval before public posting', 'No customer data or secrets in exported content'],
-      flags: publicWords ? [`${publicWords} public/customer/action words detected; approval review required.`] : ['No obvious public-action terms detected; still review manually.'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Content Repurposer bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Does not post, upload, send, call APIs, or publish. Human approval required before public use.','',`## Source`,packet.sourceApp,'',`## YouTube title`,packet.title,'',`## Description`,packet.description,'',`## Chapters`,...packet.chapters.map(c => `- ${c[0]} — ${c[1]}: ${c[2]}`),'',`## Short posts`,...packet.shortPosts.map((v,i)=>`### Post ${i+1}\n${v}`),'',`## Review checklist`,...packet.checklist.map(v => `- [ ] ${v}`),'',`## Flags`,...packet.flags.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Title', '1 draft'],
-      ['Chapters', String(packet.chapters.length)],
-      ['Posts', String(packet.shortPosts.length)],
-      ['Proof gate', 'Required'],
-      ['Public action', 'Human review']
-    ].map(([label, value]) => `<article><span>${escContent(label)}</span><strong>${escContent(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-content-repurposer-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 19 Home Service Route Planner bridge: draft-only service route sheet.
-(() => {
-  const section = document.getElementById('home-service-route-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('homeServiceRouteCards');
-  const textEl = document.getElementById('homeServiceRouteText');
-  const copyBtn = document.getElementById('copyHomeServiceRoute');
-  const downloadBtn = document.getElementById('downloadHomeServiceRoute');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escRoute = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'homeServiceRouteText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function chunks(text){ const parts = clean(text).split(/(?<=[.!?])\s+|\n+/).filter(Boolean); return parts.length ? parts : ['Review generated output', 'Confirm next action', 'Owner approval checkpoint']; }
-  function buildRoute(){
-    const name = appName();
-    const output = currentOutput();
-    const parts = chunks(output).slice(0, 5);
-    const base = 8 * 60;
-    const stops = parts.map((part, index) => {
-      const priority = /urgent|risk|overdue|stale|critical|high|emergency/i.test(part) ? 5 : (/review|approve|owner|proof/i.test(part) ? 4 : 3);
-      const arrive = base + index * 105;
-      return { order:index+1, customer:`${name} stop ${index+1}`, area:['North route','East route','South route','West route','Overflow'][index] || 'Route TBD', priority, windowStart:`${String(Math.floor(arrive/60)).padStart(2,'0')}:${String(arrive%60).padStart(2,'0')}`, duration: priority >= 5 ? 90 : 60, work:part };
-    });
-    const totalDrive = Math.max(0, stops.length - 1) * 22;
-    const totalWork = stops.reduce((sum, stop) => sum + stop.duration, 0);
-    const flags = [];
-    if(/send|publish|customer|client|dispatch|public|crm|payment/gi.test(output)) flags.push('Customer/public/dispatch action words detected; confirm manually before use.');
-    if(stops.length > 4) flags.push('Route has more than four derived stops; dispatcher should tighten scope.');
-    if(!/proof|verified|review|approve|check/gi.test(output)) flags.push('Add verification/proof checks before committing this route.');
-    return { sourceApp:name, depot:'Draft depot / confirm before dispatch', technician:'Unassigned tech', driveBufferMinutes:22, stops, totals:{drive:totalDrive, work:totalWork, total:totalDrive + totalWork + 30}, flags: flags.length ? flags : ['No blocking route flags detected. Confirm traffic/windows manually.'], sourceSnippet:output, generatedAt:new Date().toISOString() };
-  }
-  function markdown(packet){
-    return ['# Home Service Route Planner bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Confirm traffic, customer windows, technician constraints, and approvals before dispatch.','',`Source app: ${packet.sourceApp}`,`Depot: ${packet.depot}`,`Technician: ${packet.technician}`,'','## Route summary',`- Stops: ${packet.stops.length}`,`- Drive buffer: ${packet.totals.drive} minutes`,`- Work time: ${packet.totals.work} minutes`,`- Total with admin buffer: ${packet.totals.total} minutes`,'','## Stop order',...packet.stops.map(stop => `### ${stop.order}. ${stop.customer}\n- Area: ${stop.area}\n- Window: ${stop.windowStart}\n- Priority: ${stop.priority >= 5 ? 'Emergency' : stop.priority >= 4 ? 'High' : 'Normal'}\n- Duration: ${stop.duration} minutes\n- Work: ${stop.work}`),'','## Review flags',...packet.flags.map(v => `- ${v}`),'','## Source snippet',packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildRoute();
-    cardsEl.innerHTML = [
-      ['Stops', String(packet.stops.length)],
-      ['Drive buffer', `${packet.totals.drive}m`],
-      ['Work', `${packet.totals.work}m`],
-      ['Flags', String(packet.flags.length)],
-      ['Boundary', 'Draft-only']
-    ].map(([label, value]) => `<article><span>${escRoute(label)}</span><strong>${escRoute(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-route-planner-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 20 Intake Form Builder bridge: draft-only intake form spec.
-(() => {
-  const section = document.getElementById('intake-form-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('intakeFormCards');
-  const textEl = document.getElementById('intakeFormText');
-  const copyBtn = document.getElementById('copyIntakeForm');
-  const downloadBtn = document.getElementById('downloadIntakeForm');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escForm = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'intakeFormText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1700);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1700);
-  }
-  function inferQuestions(output){
-    const base = [
-      ['Contact name and best callback', 'short-text', 'Contact', true, 'Name, phone, and best time to respond.'],
-      ['Service location or account context', 'short-text', 'Contact', true, 'Enough context to route the request; do not ask for unnecessary IDs.'],
-      ['What should we help with?', 'long-text', 'Job details', true, 'Let the requester explain the need in plain words.']
-    ];
-    if(/urgent|risk|critical|emergency|stale|overdue/i.test(output)) base.push(['How urgent is this request?', 'select', 'Urgency', true, 'Emergency | Today | This week | Planning ahead']);
-    if(/proof|screenshot|photo|evidence|result/i.test(output)) base.push(['What proof or files are available?', 'long-text', 'Proof / files', false, 'Describe evidence; do not upload sensitive material here.']);
-    if(/price|quote|invoice|cash|revenue|roi|cost/i.test(output)) base.push(['What value, quote, or budget context matters?', 'short-text', 'Commercial context', false, 'Keep estimates draft-only until reviewed.']);
-    if(/meeting|call|follow|schedule|route|dispatch|appointment/i.test(output)) base.push(['Preferred timing or next appointment window', 'checkboxes', 'Scheduling', false, 'Morning | Midday | Afternoon | Flexible']);
-    base.push(['Consent to be contacted about this request', 'select', 'Consent', true, 'Yes, contact me about this request | No, do not contact me']);
-    return base.map((row,index) => ({order:index+1,label:row[0],type:row[1],section:row[2],required:row[3],helper:row[4]}));
-  }
-  function buildSpec(){
-    const sourceApp = appName();
-    const output = currentOutput();
-    const questions = inferQuestions(output);
-    const flags = [];
-    if(/password|secret|token|api key|credit card|ssn|social security/i.test(output)) flags.push('Sensitive-data wording detected. Remove secret/payment/SSN/password questions before use.');
-    if(/send|publish|customer|crm|webhook|public|dispatch/i.test(output)) flags.push('Public/customer/action wording detected. Keep this as a draft spec until approved.');
-    if(!/review|approve|proof|check|confirm/i.test(output)) flags.push('Add explicit human review/proof confirmation before publishing the form.');
-    return { sourceApp, formName:`${sourceApp} intake draft`, channel:'Draft local form spec', questions, flags:flags.length ? flags : ['No blocking draft flags detected. Privacy review still required.'], privacyRule:'Do not collect secrets, payment cards, SSNs, medical data, or unnecessary IDs.', sourceSnippet:output, generatedAt:new Date().toISOString() };
-  }
-  function markdown(spec){
-    return ['# Intake Form Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only form spec. Do not publish or collect customer submissions until privacy/proof review is complete.','',`Source app: ${spec.sourceApp}`,`Form name: ${spec.formName}`,'','## Questions',...spec.questions.map(q => `### ${q.order}. ${q.label}\n- Type: ${q.type}\n- Section: ${q.section}\n- Required: ${q.required ? 'yes' : 'no'}\n- Helper/choices: ${q.helper}`),'','## Privacy rule',spec.privacyRule,'','## Review flags',...spec.flags.map(v => `- ${v}`),'','## Source snippet',spec.sourceSnippet].join('\n');
-  }
-  function render(){
-    const spec = buildSpec();
-    const required = spec.questions.filter(q => q.required).length;
-    cardsEl.innerHTML = [
-      ['Questions', String(spec.questions.length)],
-      ['Required', String(required)],
-      ['Flags', String(spec.flags.length)],
-      ['Channel', 'Draft spec'],
-      ['Boundary', 'No publish']
-    ].map(([label, value]) => `<article><span>${escForm(label)}</span><strong>${escForm(value)}</strong></article>`).join('');
-    textEl.value = markdown(spec);
-    return spec;
-  }
-  function download(spec){
-    const blob = new Blob([JSON.stringify({ ...spec, markdown: markdown(spec) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${spec.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-intake-form-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
