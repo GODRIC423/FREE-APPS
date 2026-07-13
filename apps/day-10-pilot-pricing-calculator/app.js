@@ -1,684 +1,785 @@
-const STORAGE_KEY = 'pilot-pricing-calculator-v1';
-const demoState = { theme:'dark', client:'North Star Plumbing pilot', workflow:'Missed call + quote follow-up recovery lane', monthlyLeads:140, leakRate:18, avgValue:850, recoveryRate:32, setupHours:18, weeklyHours:4, proofWeeks:6, risk:4, fit:8, proofClarity:7 };
-let state = loadState();
-const $ = id => document.getElementById(id);
-const textFields = ['client','workflow'];
-const numberFields = ['monthlyLeads','leakRate','avgValue','recoveryRate','setupHours','weeklyHours','proofWeeks'];
-const ranges = ['risk','fit','proofClarity'];
-function clone(v){ return typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)); }
-function loadState(){ try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? { ...clone(demoState), ...JSON.parse(raw) } : clone(demoState); } catch { return clone(demoState); } }
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function money(n){ const safe = Number.isFinite(n) ? n : 0; return safe.toLocaleString(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}); }
-function num(k){ return Number(state[k] || 0); }
-function calc(){
-  const missed = num('monthlyLeads') * (num('leakRate')/100);
-  const recoveredEvents = missed * (num('recoveryRate')/100);
-  const monthlyRecovered = recoveredEvents * num('avgValue');
-  const proofValue = monthlyRecovered * Math.max(1,num('proofWeeks')) / 4.345;
-  const effortCost = (num('setupHours') * 140) + (num('weeklyHours') * Math.max(1,num('proofWeeks')) * 120);
-  const riskMult = 1 + ((num('risk') - 5) * 0.045);
-  const proofDiscount = 1 - ((num('proofClarity') - 5) * 0.025);
-  const fitDiscount = 1 - Math.max(0, num('fit') - 7) * 0.025;
-  const valueAnchor = monthlyRecovered * 0.42;
-  const floor = Math.max(750, effortCost * 0.72);
-  const target = Math.max(floor, ((valueAnchor * 0.55) + (effortCost * 0.65)) * riskMult * proofDiscount * fitDiscount);
-  const low = Math.max(500, target * 0.78);
-  const high = Math.max(low + 250, target * 1.28);
-  return { missed, recoveredEvents, monthlyRecovered, proofValue, effortCost, low, target, high, riskMult };
-}
-function labelEffort(){ const hours = num('setupHours') + num('weeklyHours') * num('proofWeeks'); return hours > 60 ? 'Heavy' : hours > 30 ? 'Medium' : 'Light'; }
-function applyTheme(){ document.documentElement.dataset.theme = state.theme === 'light' ? 'light' : 'dark'; $('themeToggle').textContent = state.theme === 'light' ? 'Dark' : 'Light'; $('themeToggle').setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false'); }
-function bind(){ textFields.forEach(k => $(k).value = state[k] || ''); numberFields.forEach(k => $(k).value = state[k] ?? 0); ranges.forEach(k => { $(k).value = state[k] || demoState[k]; $(`${k}Out`).textContent = $(k).value; }); }
-function renderMetrics(){ const c=calc(); $('metricPrice').textContent = `${money(c.low)}–${money(c.high)}`; $('metricRecovered').textContent = money(c.monthlyRecovered); $('metricEffort').textContent = labelEffort(); }
-function renderBands(){ const c=calc(); const rows = [['Floor', money(Math.max(750,c.effortCost*.72)), 'Covers delivery without pretending upside is proven.'], ['Recommended', money(c.target), 'Balanced between effort, proof clarity, and recoverable value.'], ['Upside cap', money(c.high), 'Use only when the proof window and owner fit are strong.']]; $('bandCards').innerHTML = rows.map(([a,b,d]) => `<article><span>${esc(a)}</span><strong>${esc(b)}</strong><p>${esc(d)}</p></article>`).join(''); }
-function renderScenarios(){ const c=calc(); const scenarios = [['Conservative', c.low, 'Good when data is thin or delivery risk is still unknown.'], ['Recommended', c.target, 'Lead with this if proof, scope, and approval path are clear.'], ['Performance anchor', c.high, 'Use as an anchor, not a promise; tie it to a measured proof window.']]; $('scenarioGrid').innerHTML = scenarios.map(([a,b,d]) => `<article><span>${esc(a)}</span><strong>${money(b)}</strong><p>${esc(d)}</p></article>`).join(''); }
-function markdown(){ const c=calc(); return ['# Pilot Pricing Calculator memo','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft/export only. This app does not create invoices, process payments, send proposals, sign contracts, update a CRM, or contact customers.','','## Pilot',`- Client/pilot: ${state.client || 'Missing'}`,`- Workflow: ${state.workflow || 'Missing'}`,`- Proof window: ${state.proofWeeks} weeks`,'','## Recovery model',`- Monthly leads/events: ${state.monthlyLeads}`,`- Leak/miss rate: ${state.leakRate}%`,`- Average value: ${money(num('avgValue'))}`,`- Expected recovery rate: ${state.recoveryRate}%`,`- Estimated recovered value/month: ${money(c.monthlyRecovered)}`,`- Estimated proof-window value: ${money(c.proofValue)}`,'','## Delivery model',`- Setup hours: ${state.setupHours}`,`- Weekly ops hours: ${state.weeklyHours}`,`- Effort cost proxy: ${money(c.effortCost)}`,`- Delivery risk: ${state.risk}/10`,`- Strategic fit: ${state.fit}/10`,`- Proof clarity: ${state.proofClarity}/10`,'','## Price range',`- Conservative floor: ${money(c.low)}`,`- Recommended pilot: ${money(c.target)}`,`- Upside anchor: ${money(c.high)}`,'','## Plain-English story',`For ${state.client || 'this prospect'}, the pilot should be priced against a narrow proof window, not a guaranteed outcome. The current model estimates about ${money(c.monthlyRecovered)} in possible monthly recovery if the assumptions hold. The recommended pilot range is ${money(c.low)}–${money(c.high)}, with ${money(c.target)} as the working quote before human review.`,'','## Guardrail','Human review required before sharing. Re-check assumptions, scope, proof window, claims, payment terms, and whether the prospect has approved the actual pilot boundary.'].join('\n'); }
-function csv(){ const c=calc(); const rows = [['field','value'],['client',state.client],['workflow',state.workflow],['monthly_leads',state.monthlyLeads],['leak_rate_pct',state.leakRate],['avg_value',state.avgValue],['recovery_rate_pct',state.recoveryRate],['setup_hours',state.setupHours],['weekly_hours',state.weeklyHours],['proof_weeks',state.proofWeeks],['monthly_recovered',Math.round(c.monthlyRecovered)],['price_low',Math.round(c.low)],['price_target',Math.round(c.target)],['price_high',Math.round(c.high)],['safety','draft-only human review required']]; return rows.map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); }
-function renderAll(){ applyTheme(); bind(); renderMetrics(); renderBands(); renderScenarios(); $('exportText').value = markdown(); saveState(); }
-function update(){ textFields.forEach(k => state[k] = $(k).value); numberFields.forEach(k => state[k] = Number($(k).value || 0)); ranges.forEach(k => state[k] = Number($(k).value)); renderAll(); }
-function toast(msg){ const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.classList.remove('show'),1700); }
-function download(name,text,type){ const blob = new Blob([text], {type}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url); }
-function copy(text){ navigator.clipboard?.writeText(text).then(()=>toast('Copied')).catch(()=>{ $('exportText').focus(); $('exportText').select(); toast('Select/copy from export'); }); }
-[...textFields,...numberFields].forEach(k => $(k).addEventListener('input', update));
-ranges.forEach(k => $(k).addEventListener('input', update));
-$('themeToggle').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; renderAll(); toast(`${state.theme === 'light' ? 'Light':'Dark'} mode saved`); });
-$('demoBtn').addEventListener('click', () => { state = clone(demoState); renderAll(); toast('Demo pricing loaded'); });
-$('blankBtn').addEventListener('click', () => { state = { ...clone(demoState), client:'', workflow:'', monthlyLeads:0, leakRate:0, avgValue:0, recoveryRate:0, setupHours:0, weeklyHours:0, proofWeeks:4 }; renderAll(); toast('Blank calculator ready'); });
-$('copyMarkdown').addEventListener('click', () => copy($('exportText').value));
-$('downloadJson').addEventListener('click', () => download('pilot-pricing-calculator.json', JSON.stringify({ ...state, calculation:calc(), markdown:markdown(), generatedAt:new Date().toISOString(), safety:'draft-only human review required' }, null, 2), 'application/json'));
-$('downloadCsv').addEventListener('click', () => download('pilot-pricing-calculator.csv', csv(), 'text/csv'));
-renderAll();
-
-// DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START
+/* Pilot Pricing Calculator — remake (Day 10)
+ * Price an AI pilot from recovered value, effort, and risk.
+ * Local-first, draft-only. No network, no accounts, no sends.
+ */
 (() => {
-  const root = document.getElementById('local-biz-snapshot-bridge');
-  if(!root) return;
-  const cards = document.getElementById('localBizSnapshotCards');
-  const text = document.getElementById('localBizSnapshotText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const tokens = () => clean([document.title, val('exportText'), val('pilotPricingText'), val('metricValue'), val('metricRecovered'), val('metricRisk'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const business = val('businessName') || val('client') || val('prospect') || val('customer') || val('caller') || 'Prospect / local business';
-    const type = val('businessType') || val('workflow') || val('issue') || val('observed') || 'Service business workflow';
-    const blob = tokens().toLowerCase();
-    const leaks = [];
-    if(/call|missed|phone|triage/.test(blob)) leaks.push('Missed-call or intake leak');
-    if(/form|booking|schedule/.test(blob)) leaks.push('Booking/form friction');
-    if(/quote|price|pricing|proposal/.test(blob)) leaks.push('Quote follow-up gap');
-    if(/review|proof|owner report|case/.test(blob)) leaks.push('Proof/reporting gap');
-    if(!leaks.length) leaks.push('Manual follow-up leak to verify');
-    const wedge = leaks[0].includes('Quote') ? 'Quote follow-up cleanup' : leaks[0].includes('Proof') ? 'Owner proof snapshot' : leaks[0].includes('Booking') ? 'Service intake triage' : 'Missed-call recovery check';
-    const score = Math.min(96, Math.max(42, 48 + leaks.length * 11 + (clean(val('exportText')).length > 400 ? 12 : 0)));
-    return { source, business:business.slice(0,120), type:type.slice(0,180), leaks:[...new Set(leaks)].slice(0,4), wedge, score, nextStep:'Verify facts manually, ask for one small data sample, and get human approval before outreach or claims.', boundary:'Draft/export only. No scraping, enrichment, CRM writes, sends, or public/customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Local Biz Snapshot bridge','',`Source app: ${c.source}`,`Business/profile cue: ${c.business}`,`Workflow/type cue: ${c.type}`,`Fit score: ${c.score}/100`,`Likely leaks: ${c.leaks.join('; ')}`,`First wedge: ${c.wedge}`,`Human next step: ${c.nextStep}`,`Safety boundary: ${c.boundary}`,'','Plain-English snapshot:',`This looks like a ${c.wedge.toLowerCase()} candidate if the public/profile cues hold up. Keep it as an internal dossier until a human verifies the facts.`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Business cue',c.business],['Likely leak',c.leaks[0]],['First wedge',c.wedge],['Boundary','Human review first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blob = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only local business snapshot' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='local-biz-snapshot-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyLocalBizSnapshotBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadLocalBizSnapshotBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END
+  'use strict';
 
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START
-(() => {
-  const root = document.getElementById('script-rehearsal-room-bridge');
-  if(!root) return;
-  const cards = document.getElementById('scriptRehearsalCards');
-  const text = document.getElementById('scriptRehearsalText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const blob = () => clean([document.title, val('exportText'), val('localBizSnapshotText'), val('pilotPricingText'), val('metricFit'), val('metricValue'), val('metricRecovered'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const raw = blob();
-    const lower = raw.toLowerCase();
-    const prospect = val('businessName') || val('prospect') || val('customer') || val('caller') || val('client') || 'Owner / prospect';
-    const objective = lower.includes('quote') ? 'ask where quote follow-up stalls and propose a tiny cleanup test' : lower.includes('review') ? 'learn what proof customers trust and rehearse a low-pressure ask' : lower.includes('pricing') ? 'validate whether the pilot scope and proof window feel fair' : lower.includes('triage') || lower.includes('call') ? 'understand intake friction and pick one safe next question' : 'find one practical workflow leak worth a small proof step';
-    const prompt = lower.includes('price') || lower.includes('pricing') ? 'What price range feels low-risk enough to test, and what proof would change your mind?' : lower.includes('review') ? 'Which customer result would you feel comfortable asking about manually?' : lower.includes('quote') ? 'Which open quote should get a human follow-up first, and why?' : 'Where does the current workflow slow down when the team is busy?';
-    const objection = lower.includes('cost') || lower.includes('price') || lower.includes('pricing') ? 'We do not have budget.' : lower.includes('busy') || lower.includes('triage') ? 'I am too busy right now.' : 'How do I know this works?';
-    const response = objection.includes('budget') ? 'Keep the answer tied to a short proof window and a small manual pilot before any build.' : objection.includes('busy') ? 'Ask for one ten-minute sample review instead of a full meeting.' : 'Point to measured proof and avoid any revenue promise until facts are verified.';
-    return { source, prospect:prospect.slice(0,120), objective, opening:`I want to keep this useful and low-pressure. The goal is to ${objective}, then decide whether one human-reviewed proof step is worth doing.`, prompt, objection, response, boundary:'Draft rehearsal only. Get human approval before calls, sends, recordings, CRM updates, claims, or customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Script Rehearsal Room bridge','',`Source app: ${c.source}`,`Prospect/customer cue: ${c.prospect}`,`Call objective: ${c.objective}`,'',`Opening line: ${c.opening}`,'','Discovery prompts:',`1. ${c.prompt}`,'2. What would count as proof that this is worth testing?','3. Who needs to approve the smallest next step?','',`Objection card: ${c.objection}`,`Practice response: ${c.response}`,'',`Safety boundary: ${c.boundary}`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Prospect cue',c.prospect],['Objective',c.objective],['Objection',c.objection],['Boundary','Human approval first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blobObj = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only script rehearsal' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blobObj); const a=document.createElement('a'); a.href=url; a.download='script-rehearsal-room-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyScriptRehearsalBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadScriptRehearsalBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END
+  // ---------------------------------------------------------------- constants
 
-// Day 13 Proof Vault bridge: source-output-to-evidence handoff.
-(() => {
-  const section = document.getElementById('proof-vault-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('proofVaultCards');
-  const textEl = document.getElementById('proofVaultText');
-  const copyBtn = document.getElementById('copyProofVault');
-  const downloadBtn = document.getElementById('downloadProofVault');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escPv = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'proofVaultText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    const live = clean(document.querySelector('main')?.innerText || document.body.innerText || '');
-    return live.slice(0, 900);
+  const STORAGE_KEY = 'fable-remake:day-10-pilot-pricing-calculator:v1';
+  const WEEKS_PER_MONTH = 4.345;
+  const MIN_FLOOR = 750;        // never price a staffed pilot under this
+  const FLOOR_MARGIN = 1.15;    // cost floor = effort cost + 15% margin
+  const ROUND_TO = 25;          // present prices rounded to nearest $25
+
+  const TEXT_FIELDS = { client: 90, workflow: 140 };
+
+  const NUM_FIELDS = {
+    monthlyLeads: { min: 0, max: 20000, def: 0 },
+    leakRate:     { min: 0, max: 100, def: 0 },
+    avgValue:     { min: 0, max: 1000000, def: 0 },
+    recoveryRate: { min: 0, max: 100, def: 0 },
+    proofWeeks:   { min: 1, max: 26, def: 6 },
+    setupHours:   { min: 0, max: 400, def: 0 },
+    weeklyHours:  { min: 0, max: 80, def: 0 },
+    hourlyRate:   { min: 25, max: 1000, def: 125 },
+  };
+
+  const SLIDER_FIELDS = {
+    valueShare:   { min: 5, max: 40, def: 20 },
+    horizon:      { min: 1, max: 12, def: 3 },
+    risk:         { min: 1, max: 10, def: 5 },
+    proofClarity: { min: 1, max: 10, def: 5 },
+    fit:          { min: 1, max: 10, def: 5 },
+  };
+
+  const DEMO = {
+    client: 'North Star Plumbing — missed-call recovery pilot',
+    workflow: 'Missed call + quote follow-up recovery lane',
+    monthlyLeads: 140, leakRate: 18, avgValue: 850, recoveryRate: 32,
+    proofWeeks: 6, setupHours: 12, weeklyHours: 2.5, hourlyRate: 110,
+    valueShare: 20, horizon: 3, risk: 4, proofClarity: 7, fit: 8,
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  // ------------------------------------------------------------ state helpers
+
+  function defaultState() {
+    const s = { v: 1, theme: prefersLight() ? 'light' : 'dark', seenGuide: false, client: '', workflow: '' };
+    for (const k of Object.keys(NUM_FIELDS)) s[k] = NUM_FIELDS[k].def;
+    for (const k of Object.keys(SLIDER_FIELDS)) s[k] = SLIDER_FIELDS[k].def;
+    return s;
   }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const headline = clean(document.querySelector('h1')?.textContent || name);
-    const resultCue = output.match(/\$[0-9,.kK]+|[0-9]+%|ready|approval|recover|score|proof/i)?.[0] || 'add measured result before external use';
+
+  function prefersLight() {
+    try { return window.matchMedia('(prefers-color-scheme: light)').matches; }
+    catch { return false; }
+  }
+
+  function clampNum(raw, spec) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return spec.def;
+    return Math.min(spec.max, Math.max(spec.min, n));
+  }
+
+  function normalize(raw) {
+    const base = defaultState();
+    if (!raw || typeof raw !== 'object') return base;
+    const s = { ...base };
+    if (raw.theme === 'light' || raw.theme === 'dark') s.theme = raw.theme;
+    s.seenGuide = raw.seenGuide === true;
+    for (const [k, max] of Object.entries(TEXT_FIELDS)) {
+      if (typeof raw[k] === 'string') s[k] = raw[k].slice(0, max);
+    }
+    for (const [k, spec] of Object.entries(NUM_FIELDS)) {
+      if (raw[k] !== undefined) s[k] = clampNum(raw[k], spec);
+    }
+    for (const [k, spec] of Object.entries(SLIDER_FIELDS)) {
+      if (raw[k] !== undefined) s[k] = Math.round(clampNum(raw[k], spec));
+    }
+    return s;
+  }
+
+  function loadState() {
+    try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY))); }
+    catch { return defaultState(); }
+  }
+
+  let state = loadState();
+  let saveTimer = null;
+
+  function saveNow() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage full/blocked */ }
+  }
+  function saveSoon() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNow, 300);
+  }
+
+  // ------------------------------------------------------------- domain logic
+
+  function multipliers(s) {
     return {
-      sourceApp: name,
-      artifactType: 'Report snippet / screenshot candidate',
-      proofTitle: `${name} output evidence`,
-      location: 'Capture a local screenshot or export from this app before sharing.',
-      snippet: output,
-      result: `Evidence cue: ${resultCue}. Verify against real owner/customer data before using as proof.`,
-      caseStudyAngle: `${headline} can become a Proof Vault card if the screenshot/snippet is redacted, tied to a measured result, and approved by the owner.`,
-      redactionChecklist: ['Remove customer names and identifiers', 'Confirm no API keys, tokens, account IDs, phone numbers, or private URLs are visible', 'Mark owner approval before any external case-study use'],
-      safety: 'Draft-only local handoff. Do not publish, send, or claim results without redaction and explicit human approval.',
-      generatedAt: new Date().toISOString()
+      risk: 1 + (s.risk - 5) * 0.05,                 // 0.80 … 1.25 contingency premium
+      clarity: 0.85 + s.proofClarity * 0.03,         // 0.88 … 1.15 proof confidence
+      fit: 1 - Math.max(0, s.fit - 5) * 0.02,        // 1.00 … 0.90 strategic-fit discount
     };
   }
-  function markdown(packet){
-    return ['# Proof Vault evidence card','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Redact and obtain explicit approval before external use.','',`## Source app`,packet.sourceApp,'',`## Proof title`,packet.proofTitle,'',`## Artifact type`,packet.artifactType,'',`## Location`,packet.location,'',`## Evidence snippet`,packet.snippet,'',`## Result / signal`,packet.result,'',`## Case-study angle`,packet.caseStudyAngle,'',`## Redaction checklist`,...packet.redactionChecklist.map(item => `- [ ] ${item}`),'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Source', packet.sourceApp],
-      ['Artifact', packet.artifactType],
-      ['Result cue', packet.result],
-      ['Boundary', 'Redact + owner approval']
-    ].map(([label, value]) => `<article><span>${escPv(label)}</span><strong>${escPv(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify(packet, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-proof-vault-card.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 14 SOP Builder bridge: current-output-to-repeatable-procedure handoff.
-(() => {
-  const section = document.getElementById('sop-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('sopBuilderCards');
-  const textEl = document.getElementById('sopBuilderText');
-  const copyBtn = document.getElementById('copySopBuilder');
-  const downloadBtn = document.getElementById('downloadSopBuilder');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escSop = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'sopBuilderText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 900);
+  function priceFromValue(monthlyValue, s, mults, floor) {
+    const anchor = monthlyValue * s.horizon * (s.valueShare / 100);
+    const adjusted = anchor * mults.risk * mults.clarity * mults.fit;
+    const target = Math.max(floor, adjusted);
+    const low = Math.max(floor, target * 0.85);
+    const high = Math.max(target * 1.2, low + 250);
+    return { anchor, adjusted, target, low, high, floorBound: floor > 0 && adjusted < floor };
   }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const title = clean(document.querySelector('h1')?.textContent || name);
-    const trigger = output.match(/when|after|if|before|daily|lead|quote|approval|proof|review/i)?.[0] || 'When this workflow output needs to be repeated';
-    const stepA = `Open ${name}, load or enter the working context, and confirm the task is still draft-only.`;
-    const stepB = `Use the current output to decide the next internal handoff: ${output.slice(0, 180) || 'document the workflow result'}.`;
-    const stepC = 'Run the quality checks, get human approval for customer-facing action, then log the decision outside this bridge.';
-    return {
-      sourceApp: name,
-      sopTitle: `${name} repeatable handoff SOP`,
-      trigger,
-      owner: 'Human operator / owner delegate',
-      inputs: 'Current app output, source notes, approval status, and any measured result cues.',
-      doneDefinition: 'The handoff is copied/exported, reviewed by a human, and either approved, revised, or parked.',
-      steps: [stepA, stepB, stepC],
-      qualityChecks: ['No secrets, tokens, account IDs, or private customer identifiers are visible', 'Claims are tied to visible evidence or marked as assumptions', 'Human approval is required before sends, CRM writes, quotes, public changes, or customer contact'],
-      exceptionPath: 'If context is unclear, sensitive, or high-risk, stop and ask the owner for review instead of acting.',
-      sourceSnippet: output,
-      safety: 'Draft-only SOP handoff. No customer-facing action, CRM write, send, quote, or destructive change from this bridge.',
-      generatedAt: new Date().toISOString(),
-      headline: title
-    };
-  }
-  function markdown(packet){
-    return ['# SOP Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Human approval is required before customer-facing or destructive action.','',`## SOP`,packet.sopTitle,`Source app: ${packet.sourceApp}`,`Trigger: ${packet.trigger}`,`Owner: ${packet.owner}`,`Inputs: ${packet.inputs}`,`Done definition: ${packet.doneDefinition}`,'',`## Steps`,...packet.steps.map((step, idx) => `${idx + 1}. ${step}`),'',`## Quality checks`,...packet.qualityChecks.map(item => `- [ ] ${item}`),'',`## Exception path`,packet.exceptionPath,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Trigger', packet.trigger],
-      ['Owner', packet.owner],
-      ['Steps', `${packet.steps.length} starter stations`],
-      ['Boundary', 'Human approval before action']
-    ].map(([label, value]) => `<article><span>${escSop(label)}</span><strong>${escSop(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-sop-builder-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 15 Daily Cash Board bridge: current-output-to-cash-action handoff.
-(() => {
-  const section = document.getElementById('daily-cash-board-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('dailyCashBoardCards');
-  const textEl = document.getElementById('dailyCashBoardText');
-  const copyBtn = document.getElementById('copyDailyCashBoard');
-  const downloadBtn = document.getElementById('downloadDailyCashBoard');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCash = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'dailyCashBoardText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1000);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1000);
-  }
-  function valueCue(text){
-    const match = text.match(/\$\s?([0-9][0-9,]*(?:\.\d{1,2})?)/);
-    return match ? `$${match[1]}` : 'Value not set';
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const dueSignal = /today|daily|now|urgent|stale|follow|invoice|quote|call/i.test(output) ? 'Due today / review now' : 'Schedule the next review date';
-    return {
-      sourceApp: name,
-      cashSignal: valueCue(output),
-      offerCheckpoint: `If ${name} reveals a clear wedge, draft one narrow offer and route it for human approval.`,
-      followupCheckpoint: `If the output mentions a quote, lead, proof, review, or owner decision, create one follow-up task instead of letting it sit.`,
-      callCheckpoint: 'If discovery is needed, book or prepare one human-led call; do not send from this bridge.',
-      invoiceCheckpoint: 'If work is complete or approved, check invoice/collection status outside this app.',
-      nextAction: `${dueSignal}: copy this cash brief into Daily Cash Board and choose the single highest-cash next move.`,
-      risk: 'No customer-facing sends, CRM writes, invoices, payments, public changes, pricing promises, or destructive actions from this bridge.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Daily Cash Board bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local cash brief. Human approval is required before customer-facing, billing, CRM, payment, or public actions.','',`## Source`,packet.sourceApp,`Cash/value cue: ${packet.cashSignal}`,'',`## Cash checkpoints`,`- Offer: ${packet.offerCheckpoint}`,`- Follow-up: ${packet.followupCheckpoint}`,`- Booked call: ${packet.callCheckpoint}`,`- Invoice / collect: ${packet.invoiceCheckpoint}`,'',`## Next action`,packet.nextAction,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.risk].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Value cue', packet.cashSignal],
-      ['Offer', 'Draft only'],
-      ['Follow-up', 'One due action'],
-      ['Invoice', 'Check status'],
-      ['Boundary', 'Human approval']
-    ].map(([label, value]) => `<article><span>${escCash(label)}</span><strong>${escCash(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-daily-cash-board-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+  function computeModel(s) {
+    const proofMonths = s.proofWeeks / WEEKS_PER_MONTH;
+    const missed = s.monthlyLeads * (s.leakRate / 100);
+    const recovered = missed * (s.recoveryRate / 100);
+    const monthlyValue = recovered * s.avgValue;
+    const proofValue = monthlyValue * proofMonths;
+    const horizonValue = monthlyValue * s.horizon;
 
-// Day 16 Meeting Follow-up Kit bridge: current-output-to-recap handoff.
-(() => {
-  const section = document.getElementById('meeting-followup-kit-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('meetingFollowupCards');
-  const textEl = document.getElementById('meetingFollowupText');
-  const copyBtn = document.getElementById('copyMeetingFollowup');
-  const downloadBtn = document.getElementById('downloadMeetingFollowup');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escMeeting = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'meetingFollowupText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1200);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1200);
-  }
-  function firstSentence(text){ const match = clean(text).match(/[^.!?]+[.!?]/); return match ? match[0].trim() : clean(text).slice(0, 160); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const decisionCue = /(approve|approved|decision|choose|selected|ready|won|yes|no|price|pilot|scope)/i.test(output) ? 'Decision cue found' : 'Decision needs owner confirmation';
-    const riskCue = /(risk|block|guardrail|approval|secret|payment|invoice|customer|public|send|crm)/i.test(output) ? 'Risk/approval cue found' : 'No obvious risk cue';
-    return {
-      sourceApp: name,
-      recapHeadline: firstSentence(output) || `${name} output needs a meeting recap.`,
-      followupEmail: `Subject: Follow-up from ${name}\n\nHi all,\n\nQuick recap: ${firstSentence(output) || 'we reviewed the current app output.'}\n\nProposed next action: assign one owner, one due date, and one approval check before anything customer-facing happens.\n\nPlease confirm the decisions, risks, and open questions below before sending or acting.`,
-      ownerTasks: [`Name one owner for the next ${name} action`, 'Set a due date before the next review', 'Copy the guardrail into the handoff'],
-      decisions: [decisionCue, 'Confirm whether this output is ready for the next app/workflow'],
-      risks: [riskCue, 'No sends, CRM writes, invoices, payments, public changes, or customer contact from this bridge'],
-      questions: ['Who owns the next step?', 'What must be approved before real-world action?'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Meeting Follow-up Kit bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local recap. Human approval is required before sending email, calendar invites, CRM updates, customer messages, billing, or public changes.','',`## Source`,packet.sourceApp,'',`## Recap headline`,packet.recapHeadline,'',`## Draft follow-up email`,'```',packet.followupEmail,'```','',`## Tasks`,...packet.ownerTasks.map(v => `- ${v}`),'',`## Decisions`,...packet.decisions.map(v => `- ${v}`),'',`## Risks`,...packet.risks.map(v => `- ${v}`),'',`## Open questions`,...packet.questions.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Recap', 'Ready'],
-      ['Email', 'Draft only'],
-      ['Tasks', String(packet.ownerTasks.length)],
-      ['Risks', String(packet.risks.length)],
-      ['Boundary', 'Human review']
-    ].map(([label, value]) => `<article><span>${escMeeting(label)}</span><strong>${escMeeting(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-meeting-followup-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+    const effortHours = s.setupHours + s.weeklyHours * s.proofWeeks;
+    const effortCost = effortHours * s.hourlyRate;
+    const floor = effortHours > 0 ? Math.max(MIN_FLOOR, effortCost * FLOOR_MARGIN) : 0;
 
-// Day 17 Credential Handoff Checklist bridge: no-secret access custody handoff.
-(() => {
-  const section = document.getElementById('credential-handoff-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('credentialHandoffCards');
-  const textEl = document.getElementById('credentialHandoffText');
-  const copyBtn = document.getElementById('copyCredentialHandoff');
-  const downloadBtn = document.getElementById('downloadCredentialHandoff');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCred = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'credentialHandoffText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1400);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1400);
-  }
-  function findSystems(text){
-    const lower = text.toLowerCase();
-    const systems = [];
-    if(/email|inbox|follow-up|message|sms/.test(lower)) systems.push('Messaging/inbox access');
-    if(/calendar|booking|appointment|schedule/.test(lower)) systems.push('Booking/calendar access');
-    if(/crm|lead|customer|quote|invoice/.test(lower)) systems.push('CRM/customer record access');
-    if(/api|webhook|integration|automation/.test(lower)) systems.push('API/integration access');
-    if(/payment|billing|price|cash|invoice/.test(lower)) systems.push('Billing/payment portal access');
-    return systems.length ? [...new Set(systems)].slice(0,4) : ['App/operator access'];
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const systems = findSystems(output);
-    const riskWords = (output.match(/secret|token|key|password|customer|payment|send|crm|public|invoice|api/gi) || []).length;
-    return {
-      sourceApp: name,
-      systems,
-      primaryOwner: 'Assign primary owner',
-      backupOwner: 'Assign backup owner',
-      storageReference: 'Password-manager item label only — do not paste secret value',
-      requiredChecks: ['MFA confirmed', 'Least privilege confirmed', 'Storage reference verified', 'Revocation path documented', 'Rotation date set', 'No raw secret stored in this app/export'],
-      revocationPlan: systems.map(system => `${system}: document where to remove user/key and who can execute it.`),
-      riskFlags: riskWords ? [`${riskWords} sensitive/action words detected in source output; review access boundaries.`] : ['No obvious credential/action keywords detected; still review manually.'],
-      approvalBoundary: 'Human approval required before sharing, rotating, revoking, sending, CRM changes, billing actions, customer contact, or public changes.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Credential Handoff Checklist bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: metadata only. Do not paste raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment details. Use an encrypted/password-manager workflow for the actual secret handoff.','',`## Source`,packet.sourceApp,'',`## Systems/access surfaces`,...packet.systems.map(v => `- ${v}`),'',`## Owners`,`- Primary owner: ${packet.primaryOwner}`,`- Backup owner: ${packet.backupOwner}`,'',`## Storage reference`,packet.storageReference,'',`## Required checks`,...packet.requiredChecks.map(v => `- [ ] ${v}`),'',`## Revocation plan`,...packet.revocationPlan.map(v => `- ${v}`),'',`## Risk flags`,...packet.riskFlags.map(v => `- ${v}`),'',`## Approval boundary`,packet.approvalBoundary,'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Surfaces', String(packet.systems.length)],
-      ['Secret values', 'Never store'],
-      ['Checks', String(packet.requiredChecks.length)],
-      ['Revoke path', 'Required'],
-      ['Approval', 'Human gate']
-    ].map(([label, value]) => `<article><span>${escCred(label)}</span><strong>${escCred(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-credential-handoff-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+    const mults = multipliers(s);
+    const base = priceFromValue(monthlyValue, s, mults, floor);
+    const hasValue = monthlyValue > 0;
+    const hasModel = hasValue || effortHours > 0;
 
-// Day 18 Content Repurposer bridge: draft-only publishing packet.
-(() => {
-  const section = document.getElementById('content-repurposer-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('contentRepurposerCards');
-  const textEl = document.getElementById('contentRepurposerText');
-  const copyBtn = document.getElementById('copyContentRepurposer');
-  const downloadBtn = document.getElementById('downloadContentRepurposer');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escContent = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'contentRepurposerText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function splitSentences(text){ return clean(text).split(/(?<=[.!?])\s+/).filter(Boolean); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const sentences = splitSentences(output);
-    const proofWords = (output.match(/verified|smoke|browser|export|recording|phone|proof|score|ready|passed/gi) || []).length;
-    const publicWords = (output.match(/send|publish|post|customer|client|public|crm|payment|billing/gi) || []).length;
-    const title = `${name}: turn the output into a proof-ready draft`.slice(0, 92);
-    const chapters = [
-      ['00:00', 'What the app produced', sentences[0] || `${name} generated a useful local-first output.`],
-      ['00:35', 'Core workflow', sentences[1] || 'Walk through the main inputs, decisions, and generated packet.'],
-      ['01:15', 'Proof and caveats', sentences[2] || 'Show verification, limits, and human-review boundaries.'],
-      ['02:00', 'Next action', 'Copy/export the draft packet, then review before public use.']
-    ];
-    return {
-      sourceApp: name,
-      title,
-      description: `${name} produced a local-first business workflow output. This bridge repurposes it into a draft content packet with proof notes, caveats, chapters, and short posts. Human review is required before publishing.`,
-      chapters,
-      shortPosts: [
-        `Built/useful output from ${name}: now it has a draft content packet with title, description, chapters, proof notes, and caveats.`,
-        `The important boundary: this is content drafting only. Review before anything public, customer-facing, or promotional.`,
-        proofWords ? `Proof cues detected in the source: ${proofWords}. Keep those in the public story instead of hype.` : `Add verification proof before publishing this story.`
-      ],
-      checklist: ['Confirm claims match the source output', 'Add proof and screenshots only if secret-safe', 'Keep caveats visible', 'Human approval before public posting', 'No customer data or secrets in exported content'],
-      flags: publicWords ? [`${publicWords} public/customer/action words detected; approval review required.`] : ['No obvious public-action terms detected; still review manually.'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Content Repurposer bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Does not post, upload, send, call APIs, or publish. Human approval required before public use.','',`## Source`,packet.sourceApp,'',`## YouTube title`,packet.title,'',`## Description`,packet.description,'',`## Chapters`,...packet.chapters.map(c => `- ${c[0]} — ${c[1]}: ${c[2]}`),'',`## Short posts`,...packet.shortPosts.map((v,i)=>`### Post ${i+1}\n${v}`),'',`## Review checklist`,...packet.checklist.map(v => `- [ ] ${v}`),'',`## Flags`,...packet.flags.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Title', '1 draft'],
-      ['Chapters', String(packet.chapters.length)],
-      ['Posts', String(packet.shortPosts.length)],
-      ['Proof gate', 'Required'],
-      ['Public action', 'Human review']
-    ].map(([label, value]) => `<article><span>${escContent(label)}</span><strong>${escContent(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-content-repurposer-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
+    const target = hasModel ? base.target : 0;
+    const low = hasModel ? base.low : 0;
+    const high = hasModel ? base.high : 0;
+    const buyerRoi = target > 0 && hasValue ? horizonValue / target : 0;
 
-// Day 19 Home Service Route Planner bridge: draft-only service route sheet.
-(() => {
-  const section = document.getElementById('home-service-route-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('homeServiceRouteCards');
-  const textEl = document.getElementById('homeServiceRouteText');
-  const copyBtn = document.getElementById('copyHomeServiceRoute');
-  const downloadBtn = document.getElementById('downloadHomeServiceRoute');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escRoute = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'homeServiceRouteText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function chunks(text){ const parts = clean(text).split(/(?<=[.!?])\s+|\n+/).filter(Boolean); return parts.length ? parts : ['Review generated output', 'Confirm next action', 'Owner approval checkpoint']; }
-  function buildRoute(){
-    const name = appName();
-    const output = currentOutput();
-    const parts = chunks(output).slice(0, 5);
-    const base = 8 * 60;
-    const stops = parts.map((part, index) => {
-      const priority = /urgent|risk|overdue|stale|critical|high|emergency/i.test(part) ? 5 : (/review|approve|owner|proof/i.test(part) ? 4 : 3);
-      const arrive = base + index * 105;
-      return { order:index+1, customer:`${name} stop ${index+1}`, area:['North route','East route','South route','West route','Overflow'][index] || 'Route TBD', priority, windowStart:`${String(Math.floor(arrive/60)).padStart(2,'0')}:${String(arrive%60).padStart(2,'0')}`, duration: priority >= 5 ? 90 : 60, work:part };
+    // Sensitivity scenarios: recovery rate ±30%.
+    const scenarios = [
+      { name: 'Conservative', factor: 0.7 },
+      { name: 'Base case', factor: 1 },
+      { name: 'Optimistic', factor: 1.3 },
+    ].map((sc) => {
+      const rate = Math.min(100, s.recoveryRate * sc.factor);
+      const mv = missed * (rate / 100) * s.avgValue;
+      const p = priceFromValue(mv, s, mults, floor);
+      return { ...sc, rate, monthlyValue: mv, target: hasModel ? p.target : 0, floorBound: p.floorBound };
     });
-    const totalDrive = Math.max(0, stops.length - 1) * 22;
-    const totalWork = stops.reduce((sum, stop) => sum + stop.duration, 0);
-    const flags = [];
-    if(/send|publish|customer|client|dispatch|public|crm|payment/gi.test(output)) flags.push('Customer/public/dispatch action words detected; confirm manually before use.');
-    if(stops.length > 4) flags.push('Route has more than four derived stops; dispatcher should tighten scope.');
-    if(!/proof|verified|review|approve|check/gi.test(output)) flags.push('Add verification/proof checks before committing this route.');
-    return { sourceApp:name, depot:'Draft depot / confirm before dispatch', technician:'Unassigned tech', driveBufferMinutes:22, stops, totals:{drive:totalDrive, work:totalWork, total:totalDrive + totalWork + 30}, flags: flags.length ? flags : ['No blocking route flags detected. Confirm traffic/windows manually.'], sourceSnippet:output, generatedAt:new Date().toISOString() };
-  }
-  function markdown(packet){
-    return ['# Home Service Route Planner bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Confirm traffic, customer windows, technician constraints, and approvals before dispatch.','',`Source app: ${packet.sourceApp}`,`Depot: ${packet.depot}`,`Technician: ${packet.technician}`,'','## Route summary',`- Stops: ${packet.stops.length}`,`- Drive buffer: ${packet.totals.drive} minutes`,`- Work time: ${packet.totals.work} minutes`,`- Total with admin buffer: ${packet.totals.total} minutes`,'','## Stop order',...packet.stops.map(stop => `### ${stop.order}. ${stop.customer}\n- Area: ${stop.area}\n- Window: ${stop.windowStart}\n- Priority: ${stop.priority >= 5 ? 'Emergency' : stop.priority >= 4 ? 'High' : 'Normal'}\n- Duration: ${stop.duration} minutes\n- Work: ${stop.work}`),'','## Review flags',...packet.flags.map(v => `- ${v}`),'','## Source snippet',packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildRoute();
-    cardsEl.innerHTML = [
-      ['Stops', String(packet.stops.length)],
-      ['Drive buffer', `${packet.totals.drive}m`],
-      ['Work', `${packet.totals.work}m`],
-      ['Flags', String(packet.flags.length)],
-      ['Boundary', 'Draft-only']
-    ].map(([label, value]) => `<article><span>${escRoute(label)}</span><strong>${escRoute(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-route-planner-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 20 Intake Form Builder bridge: draft-only intake form spec.
-(() => {
-  const section = document.getElementById('intake-form-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('intakeFormCards');
-  const textEl = document.getElementById('intakeFormText');
-  const copyBtn = document.getElementById('copyIntakeForm');
-  const downloadBtn = document.getElementById('downloadIntakeForm');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escForm = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'intakeFormText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1700);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1700);
+    // Packaging options.
+    const flatTotal = target;
+    const months = Math.max(1, Math.ceil(proofMonths));
+    const monthlyFee = (target * 1.1) / months;
+    const monthlyTotal = monthlyFee * months;
+    const continuation = hasValue
+      ? Math.max(s.weeklyHours * WEEKS_PER_MONTH * s.hourlyRate * 1.4, monthlyValue * 0.12)
+      : s.weeklyHours * WEEKS_PER_MONTH * s.hourlyRate * 1.4;
+    const perfBase = floor * 0.6;
+    const perfShare = Math.min(45, Math.max(10, Math.round(s.valueShare * 1.4)));
+    const perfExpected = perfBase + proofValue * (perfShare / 100);
+    const perfUpside = perfBase + proofValue * 1.3 * (perfShare / 100);
+
+    return {
+      proofMonths, missed, recovered, monthlyValue, proofValue, horizonValue,
+      effortHours, effortCost, floor, mults,
+      anchor: base.anchor, adjusted: base.adjusted,
+      target, low, high, buyerRoi, hasValue, hasModel, scenarios,
+      packaging: {
+        flat: { total: flatTotal },
+        monthly: { months, fee: monthlyFee, total: monthlyTotal, continuation },
+        performance: { base: perfBase, share: perfShare, expected: perfExpected, downside: perfBase, upside: perfUpside },
+      },
+    };
   }
-  function inferQuestions(output){
-    const base = [
-      ['Contact name and best callback', 'short-text', 'Contact', true, 'Name, phone, and best time to respond.'],
-      ['Service location or account context', 'short-text', 'Contact', true, 'Enough context to route the request; do not ask for unnecessary IDs.'],
-      ['What should we help with?', 'long-text', 'Job details', true, 'Let the requester explain the need in plain words.']
+
+  function healthChecks(s, m) {
+    const items = [];
+    if (!m.hasModel) {
+      items.push({ level: 'warn', text: 'No inputs yet — enter the value model and delivery effort to check deal health.' });
+      return items;
+    }
+    if (m.hasValue && m.floor > m.adjusted) {
+      items.push({ level: 'bad', text: `Cost floor (${money(m.floor)}) exceeds the adjusted value anchor (${money(m.adjusted)}). Shrink scope, shorten the window, or raise the capture share — otherwise you are selling hours, not value.` });
+    }
+    if (m.buyerRoi > 0 && m.buyerRoi < 3) {
+      items.push({ level: 'warn', text: `Buyer ROI at target is ${m.buyerRoi.toFixed(1)}x. Below ~3x, buyers push back — strengthen the value model or lower the capture share.` });
+    }
+    if (!m.hasValue && m.effortHours > 0) {
+      items.push({ level: 'warn', text: 'Only effort is filled in — the price is cost-based. Add the value model so you can defend a value-based number.' });
+    }
+    if (s.recoveryRate > 60) {
+      items.push({ level: 'warn', text: `A ${s.recoveryRate}% recovery rate is rarely defensible in a first pilot. Consider quoting 20–40% and letting results argue upward.` });
+    }
+    if (s.proofWeeks > 12) {
+      items.push({ level: 'warn', text: `A ${s.proofWeeks}-week proof window is long for a pilot. Phase it: prove one lane in 4–8 weeks, then extend.` });
+    }
+    if (m.effortHours > 80) {
+      items.push({ level: 'warn', text: `${fmtNum(m.effortHours)} delivery hours is heavier than a pilot — this is a project. Split it or reprice as one.` });
+    }
+    if (items.length === 0) {
+      items.push({ level: 'ok', text: 'No red flags with the current assumptions. The range is defensible as drafted.' });
+    }
+    return items;
+  }
+
+  function breakdownSteps(s, m) {
+    const steps = [
+      { label: 'Missed opportunities / mo', formula: `${fmtNum(s.monthlyLeads)} leads x ${s.leakRate}% leak`, result: `${fmtNum(m.missed)} / mo` },
+      { label: 'Recovered opportunities / mo', formula: `${fmtNum(m.missed)} x ${s.recoveryRate}% recovery`, result: `${fmtNum(m.recovered)} / mo` },
+      { label: 'Recovered value / mo', formula: `${fmtNum(m.recovered)} x ${money(s.avgValue)} avg`, result: money(m.monthlyValue) },
+      { label: 'Proof-window value', formula: `${money(m.monthlyValue)} x ${m.proofMonths.toFixed(2)} mo (${s.proofWeeks} wks)`, result: money(m.proofValue) },
+      { label: 'Value horizon', formula: `${money(m.monthlyValue)} x ${s.horizon} mo horizon`, result: money(m.horizonValue) },
+      { label: 'Value anchor', formula: `${money(m.horizonValue)} x ${s.valueShare}% capture`, result: money(m.anchor) },
+      { label: 'Sensitivity adjustment', formula: `x${m.mults.risk.toFixed(2)} risk x${m.mults.clarity.toFixed(2)} proof x${m.mults.fit.toFixed(2)} fit`, result: money(m.adjusted) },
+      { label: 'Delivery cost', formula: `${fmtNum(m.effortHours)} h x ${money(s.hourlyRate)}/h`, result: money(m.effortCost) },
+      { label: 'Cost floor', formula: `${money(m.effortCost)} x ${FLOOR_MARGIN} margin (min ${money(MIN_FLOOR)})`, result: money(m.floor) },
+      { label: 'Recommended target', formula: 'max(cost floor, adjusted anchor)', result: money(round25(m.target)), key: true },
     ];
-    if(/urgent|risk|critical|emergency|stale|overdue/i.test(output)) base.push(['How urgent is this request?', 'select', 'Urgency', true, 'Emergency | Today | This week | Planning ahead']);
-    if(/proof|screenshot|photo|evidence|result/i.test(output)) base.push(['What proof or files are available?', 'long-text', 'Proof / files', false, 'Describe evidence; do not upload sensitive material here.']);
-    if(/price|quote|invoice|cash|revenue|roi|cost/i.test(output)) base.push(['What value, quote, or budget context matters?', 'short-text', 'Commercial context', false, 'Keep estimates draft-only until reviewed.']);
-    if(/meeting|call|follow|schedule|route|dispatch|appointment/i.test(output)) base.push(['Preferred timing or next appointment window', 'checkboxes', 'Scheduling', false, 'Morning | Midday | Afternoon | Flexible']);
-    base.push(['Consent to be contacted about this request', 'select', 'Consent', true, 'Yes, contact me about this request | No, do not contact me']);
-    return base.map((row,index) => ({order:index+1,label:row[0],type:row[1],section:row[2],required:row[3],helper:row[4]}));
+    return steps;
   }
-  function buildSpec(){
-    const sourceApp = appName();
-    const output = currentOutput();
-    const questions = inferQuestions(output);
-    const flags = [];
-    if(/password|secret|token|api key|credit card|ssn|social security/i.test(output)) flags.push('Sensitive-data wording detected. Remove secret/payment/SSN/password questions before use.');
-    if(/send|publish|customer|crm|webhook|public|dispatch/i.test(output)) flags.push('Public/customer/action wording detected. Keep this as a draft spec until approved.');
-    if(!/review|approve|proof|check|confirm/i.test(output)) flags.push('Add explicit human review/proof confirmation before publishing the form.');
-    return { sourceApp, formName:`${sourceApp} intake draft`, channel:'Draft local form spec', questions, flags:flags.length ? flags : ['No blocking draft flags detected. Privacy review still required.'], privacyRule:'Do not collect secrets, payment cards, SSNs, medical data, or unnecessary IDs.', sourceSnippet:output, generatedAt:new Date().toISOString() };
+
+  // ---------------------------------------------------------------- formatting
+
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
-  function markdown(spec){
-    return ['# Intake Form Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only form spec. Do not publish or collect customer submissions until privacy/proof review is complete.','',`Source app: ${spec.sourceApp}`,`Form name: ${spec.formName}`,'','## Questions',...spec.questions.map(q => `### ${q.order}. ${q.label}\n- Type: ${q.type}\n- Section: ${q.section}\n- Required: ${q.required ? 'yes' : 'no'}\n- Helper/choices: ${q.helper}`),'','## Privacy rule',spec.privacyRule,'','## Review flags',...spec.flags.map(v => `- ${v}`),'','## Source snippet',spec.sourceSnippet].join('\n');
+  function money(n) {
+    const safe = Number.isFinite(n) ? n : 0;
+    return safe.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   }
-  function render(){
-    const spec = buildSpec();
-    const required = spec.questions.filter(q => q.required).length;
-    cardsEl.innerHTML = [
-      ['Questions', String(spec.questions.length)],
-      ['Required', String(required)],
-      ['Flags', String(spec.flags.length)],
-      ['Channel', 'Draft spec'],
-      ['Boundary', 'No publish']
-    ].map(([label, value]) => `<article><span>${escForm(label)}</span><strong>${escForm(value)}</strong></article>`).join('');
-    textEl.value = markdown(spec);
-    return spec;
+  function round25(n) { return Math.round(n / ROUND_TO) * ROUND_TO; }
+  function fmtNum(n) {
+    const safe = Number.isFinite(n) ? n : 0;
+    return safe.toLocaleString('en-US', { maximumFractionDigits: 1 });
   }
-  function download(spec){
-    const blob = new Blob([JSON.stringify({ ...spec, markdown: markdown(spec) }, null, 2)], {type:'application/json'});
+  function mult(n) { return `x${n.toFixed(2)}`; }
+
+  // ------------------------------------------------------------------- render
+
+  function bindInputs() {
+    for (const k of Object.keys(TEXT_FIELDS)) $(k).value = state[k];
+    for (const k of Object.keys(NUM_FIELDS)) $(k).value = state[k];
+    for (const k of Object.keys(SLIDER_FIELDS)) $(k).value = state[k];
+  }
+
+  function renderStats(m) {
+    $('statTarget').textContent = m.hasModel ? money(round25(m.target)) : '—';
+    $('statRange').textContent = m.hasModel ? `${money(round25(m.low))}–${money(round25(m.high))}` : '—';
+    $('statMonthly').textContent = m.hasValue ? money(m.monthlyValue) : '—';
+    $('statRoi').textContent = m.buyerRoi > 0 ? `${m.buyerRoi.toFixed(1)}x` : '—';
+  }
+
+  function renderLevers(m) {
+    $('valueShareOut').textContent = `${state.valueShare}%`;
+    $('horizonOut').textContent = `${state.horizon} mo`;
+    $('riskOut').textContent = String(state.risk);
+    $('proofClarityOut').textContent = String(state.proofClarity);
+    $('fitOut').textContent = String(state.fit);
+    $('valueShareChip').textContent = m.hasValue ? `${money(m.anchor)} anchor` : '—';
+    $('horizonChip').textContent = m.hasValue ? `${money(m.horizonValue)} value` : '—';
+    $('riskChip').textContent = mult(m.mults.risk);
+    $('proofClarityChip').textContent = mult(m.mults.clarity);
+    $('fitChip').textContent = mult(m.mults.fit);
+  }
+
+  function renderEffort(m) {
+    $('effortReadout').innerHTML = m.effortHours > 0
+      ? `Total effort <strong>${esc(fmtNum(m.effortHours))} h</strong> &middot; delivery cost <strong>${esc(money(m.effortCost))}</strong> &middot; walk-away floor <strong>${esc(money(round25(m.floor)))}</strong>`
+      : 'Enter hours to compute your delivery cost and walk-away floor.';
+  }
+
+  function renderBreakdown(m) {
+    const empty = $('breakdownEmpty');
+    const table = $('breakdownTable');
+    if (!m.hasModel) {
+      empty.hidden = false;
+      table.style.display = 'none';
+      $('breakdownBody').innerHTML = '';
+      return;
+    }
+    empty.hidden = true;
+    table.style.display = '';
+    $('breakdownBody').innerHTML = breakdownSteps(state, m).map((st) => `
+      <tr${st.key ? ' class="key-row"' : ''}>
+        <td>${esc(st.label)}</td>
+        <td class="formula">${esc(st.formula)}</td>
+        <td class="result">${esc(st.result)}</td>
+      </tr>`).join('');
+  }
+
+  function renderHealth(m) {
+    $('healthList').innerHTML = healthChecks(state, m)
+      .map((h) => `<li class="${h.level}">${esc(h.text)}</li>`).join('');
+  }
+
+  function renderRange(m) {
+    const viz = $('rangeViz');
+    const legend = $('rangeLegend');
+    if (!m.hasModel) {
+      viz.innerHTML = '<div class="track"></div>';
+      legend.innerHTML = '<span>Enter inputs to see the range</span>';
+      $('rangeCards').innerHTML = `
+        <article><span>Walk-away floor</span><strong>—</strong><p>Covers delivery cost + margin.</p></article>
+        <article class="hot"><span>Recommended target</span><strong>—</strong><p>Blend of value anchor and floor.</p></article>
+        <article><span>Stretch ceiling</span><strong>—</strong><p>Anchor for strong-fit negotiations.</p></article>`;
+      $('scenarioBody').innerHTML = '<tr><td colspan="4" class="floor-note">No value model yet.</td></tr>';
+      return;
+    }
+    const scale = Math.max(m.high * 1.15, 1);
+    const pct = (v) => `${Math.min(100, Math.max(0, (v / scale) * 100)).toFixed(1)}%`;
+    viz.innerHTML = `
+      <div class="track"></div>
+      <div class="band" style="left:${pct(m.low)};width:calc(${pct(m.high)} - ${pct(m.low)})"></div>
+      ${m.floor > 0 ? `<div class="marker floor" style="left:${pct(m.floor)}" title="Floor"></div>` : ''}
+      <div class="marker" style="left:${pct(m.target)}" title="Target"></div>`;
+    legend.innerHTML = [
+      m.floor > 0 ? `<span>Floor <b>${esc(money(round25(m.floor)))}</b></span>` : '',
+      `<span>Low <b>${esc(money(round25(m.low)))}</b></span>`,
+      `<span>Target <b>${esc(money(round25(m.target)))}</b></span>`,
+      `<span>High <b>${esc(money(round25(m.high)))}</b></span>`,
+    ].join('');
+    $('rangeCards').innerHTML = `
+      <article>
+        <span>Walk-away floor</span><strong>${esc(money(round25(m.floor || m.low)))}</strong>
+        <p>Delivery cost + ${Math.round((FLOOR_MARGIN - 1) * 100)}% margin. Below this, decline politely.</p>
+      </article>
+      <article class="hot">
+        <span>Recommended target</span><strong>${esc(money(round25(m.target)))}</strong>
+        <p>Lead with this. It is ${esc(state.valueShare)}% of the ${esc(String(state.horizon))}-month value, adjusted for risk, proof, and fit.</p>
+      </article>
+      <article>
+        <span>Stretch ceiling</span><strong>${esc(money(round25(m.high)))}</strong>
+        <p>Anchor only when proof clarity and urgency are both high.</p>
+      </article>`;
+    $('scenarioBody').innerHTML = m.scenarios.map((sc) => `
+      <tr>
+        <td>${esc(sc.name)}</td>
+        <td>${esc(sc.rate.toFixed(0))}%</td>
+        <td>${esc(money(sc.monthlyValue))}</td>
+        <td>${esc(money(round25(sc.target)))}${sc.floorBound ? ' <span class="floor-note">(floor)</span>' : ''}</td>
+      </tr>`).join('');
+  }
+
+  function renderPackaging(m) {
+    const grid = $('packGrid');
+    if (!m.hasModel) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+        <p><strong>Nothing to package yet.</strong> Fill in the value model and effort above, and the three packaging options will be computed from the same defensible range.</p>
+      </div>`;
+      return;
+    }
+    const p = m.packaging;
+    grid.innerHTML = `
+      <article class="recommended">
+        <div class="pack-head"><h3>Flat pilot fee</h3><span class="pack-badge">Simplest to sell</span></div>
+        <div class="pack-price">${esc(money(round25(p.flat.total)))} <small>one-time</small></div>
+        <div class="pack-struct">50% to start &middot; 50% at proof review</div>
+        <div class="pack-rows">
+          <div><span class="k">Covers</span><span class="v">${esc(String(state.proofWeeks))}-week proof window</span></div>
+          <div><span class="k">Your risk</span><span class="v">Low — fee is committed</span></div>
+          <div><span class="k">Buyer risk</span><span class="v">Capped, known up front</span></div>
+        </div>
+        <p class="pack-note"><strong>Best when</strong> the buyer wants a fixed number and you trust your effort estimate. Watch out: no upside if results overshoot.</p>
+      </article>
+      <article>
+        <div class="pack-head"><h3>Monthly during proof</h3><span class="pack-badge">Cash-flow friendly</span></div>
+        <div class="pack-price">${esc(money(round25(p.monthly.fee)))} <small>/ mo x ${esc(String(p.monthly.months))}</small></div>
+        <div class="pack-struct">Total ${esc(money(round25(p.monthly.total)))} (+10% for pay-as-you-go)</div>
+        <div class="pack-rows">
+          <div><span class="k">Total vs flat</span><span class="v">${esc(money(round25(p.monthly.total - p.flat.total)))} more</span></div>
+          <div><span class="k">After proof</span><span class="v">${esc(money(round25(p.monthly.continuation)))} / mo suggested</span></div>
+          <div><span class="k">Buyer risk</span><span class="v">Can stop monthly</span></div>
+        </div>
+        <p class="pack-note"><strong>Best when</strong> the buyer is cash-tight or wants an easy exit. Watch out: they can cancel before proof completes.</p>
+      </article>
+      <article>
+        <div class="pack-head"><h3>Performance-based</h3><span class="pack-badge">Shared upside</span></div>
+        <div class="pack-price">${esc(money(round25(p.performance.base)))} <small>base + ${esc(String(p.performance.share))}% of recovered</small></div>
+        <div class="pack-struct">Base covers ~60% of your floor</div>
+        <div class="pack-rows">
+          <div><span class="k">Expected total</span><span class="v">${esc(money(round25(p.performance.expected)))}</span></div>
+          <div><span class="k">Downside (0 recovery)</span><span class="v">${esc(money(round25(p.performance.downside)))}</span></div>
+          <div><span class="k">Upside (+30%)</span><span class="v">${esc(money(round25(p.performance.upside)))}</span></div>
+        </div>
+        <p class="pack-note"><strong>Best when</strong> recovered value is cleanly measurable and attributable. Watch out: requires agreed measurement before the pilot starts.</p>
+      </article>`;
+  }
+
+  // ----------------------------------------------------------------- exports
+
+  function memoMarkdown(m) {
+    const s = state;
+    const p = m.packaging;
+    const lines = [];
+    lines.push(`# Pilot pricing memo — ${s.client || '[client name missing]'}`);
+    lines.push('');
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push('Status: DRAFT for human review. This memo does not create invoices, quotes, contracts, or customer communication.');
+    lines.push('');
+    lines.push('## Pilot');
+    lines.push(`- Client / pilot: ${s.client || '[missing]'}`);
+    lines.push(`- Workflow being fixed: ${s.workflow || '[missing]'}`);
+    lines.push(`- Proof window: ${s.proofWeeks} weeks (${m.proofMonths.toFixed(2)} months)`);
+    lines.push('');
+    lines.push('## Assumptions');
+    lines.push(`- Monthly leads / events: ${fmtNum(s.monthlyLeads)}`);
+    lines.push(`- Leak / miss rate: ${s.leakRate}%`);
+    lines.push(`- Average job value: ${money(s.avgValue)}`);
+    lines.push(`- Expected recovery rate: ${s.recoveryRate}%`);
+    lines.push(`- Delivery: ${s.setupHours} setup h + ${s.weeklyHours} h/wk x ${s.proofWeeks} wks @ ${money(s.hourlyRate)}/h`);
+    lines.push(`- Levers: ${s.valueShare}% capture, ${s.horizon}-mo horizon, risk ${s.risk}/10, proof clarity ${s.proofClarity}/10, fit ${s.fit}/10`);
+    lines.push('');
+    lines.push('## Formula breakdown');
+    lines.push('| Step | Calculation | Result |');
+    lines.push('| --- | --- | --- |');
+    for (const st of breakdownSteps(s, m)) {
+      lines.push(`| ${st.label} | ${st.formula} | ${st.result} |`);
+    }
+    lines.push('');
+    lines.push('## Recommended range');
+    lines.push(`- Walk-away floor: ${money(round25(m.floor || m.low))}`);
+    lines.push(`- Recommended target: ${money(round25(m.target))}`);
+    lines.push(`- Stretch ceiling: ${money(round25(m.high))}`);
+    lines.push(`- Buyer ROI at target (over ${s.horizon}-mo horizon): ${m.buyerRoi > 0 ? m.buyerRoi.toFixed(1) + 'x' : 'n/a'}`);
+    lines.push('');
+    lines.push('## Packaging options');
+    lines.push(`1. Flat pilot fee — ${money(round25(p.flat.total))} one-time (50% start / 50% at proof review). Simplest; no upside share.`);
+    lines.push(`2. Monthly during proof — ${money(round25(p.monthly.fee))}/mo x ${p.monthly.months} (total ${money(round25(p.monthly.total))}, +10% flexibility premium). Suggested continuation after proof: ${money(round25(p.monthly.continuation))}/mo.`);
+    lines.push(`3. Performance-based — ${money(round25(p.performance.base))} base + ${p.performance.share}% of measured recovered value. Expected ${money(round25(p.performance.expected))}; downside ${money(round25(p.performance.downside))}; upside ${money(round25(p.performance.upside))}. Requires agreed measurement.`);
+    lines.push('');
+    lines.push('## Sensitivity (recovery rate +/-30%)');
+    for (const sc of m.scenarios) {
+      lines.push(`- ${sc.name}: ${sc.rate.toFixed(0)}% recovery -> ${money(sc.monthlyValue)}/mo -> target ${money(round25(sc.target))}${sc.floorBound ? ' (floor-bound)' : ''}`);
+    }
+    lines.push('');
+    lines.push('## Deal health');
+    for (const h of healthChecks(s, m)) {
+      lines.push(`- [${h.level.toUpperCase()}] ${h.text}`);
+    }
+    lines.push('');
+    lines.push('## Guardrail');
+    lines.push('Human review required before sharing. Re-check assumptions, scope, proof window, measurement plan, payment terms, and claims. Never promise recovered value as guaranteed revenue.');
+    return lines.join('\n');
+  }
+
+  function csvExport(m) {
+    const s = state;
+    const rows = [
+      ['field', 'value'],
+      ['client', s.client], ['workflow', s.workflow],
+      ['monthly_leads', s.monthlyLeads], ['leak_rate_pct', s.leakRate],
+      ['avg_value_usd', s.avgValue], ['recovery_rate_pct', s.recoveryRate],
+      ['proof_weeks', s.proofWeeks], ['setup_hours', s.setupHours],
+      ['weekly_hours', s.weeklyHours], ['hourly_rate_usd', s.hourlyRate],
+      ['value_capture_pct', s.valueShare], ['value_horizon_months', s.horizon],
+      ['risk_1_10', s.risk], ['proof_clarity_1_10', s.proofClarity], ['strategic_fit_1_10', s.fit],
+      ['recovered_value_per_month_usd', Math.round(m.monthlyValue)],
+      ['proof_window_value_usd', Math.round(m.proofValue)],
+      ['value_anchor_usd', Math.round(m.anchor)],
+      ['effort_cost_usd', Math.round(m.effortCost)],
+      ['cost_floor_usd', round25(m.floor)],
+      ['price_low_usd', round25(m.low)], ['price_target_usd', round25(m.target)], ['price_high_usd', round25(m.high)],
+      ['buyer_roi_x', m.buyerRoi.toFixed(2)],
+      ['pack_flat_total_usd', round25(m.packaging.flat.total)],
+      ['pack_monthly_fee_usd', round25(m.packaging.monthly.fee)],
+      ['pack_perf_base_usd', round25(m.packaging.performance.base)],
+      ['pack_perf_share_pct', m.packaging.performance.share],
+      ['status', 'draft-only human review required'],
+    ];
+    return rows.map((r) => r.map((c) => `"${String(c ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
+  }
+
+  function renderPrintSheet(m) {
+    const s = state;
+    const p = m.packaging;
+    const rows = breakdownSteps(s, m).map((st) =>
+      `<tr><td>${esc(st.label)}</td><td>${esc(st.formula)}</td><td>${esc(st.result)}</td></tr>`).join('');
+    $('printSheet').innerHTML = `
+      <h1>Pilot pricing memo — ${esc(s.client || '[client name missing]')}</h1>
+      <p class="muted">Generated ${esc(new Date().toLocaleString())} · DRAFT for human review · No invoices, contracts, or sends were created.</p>
+      <h2>Pilot</h2>
+      <p>Workflow: ${esc(s.workflow || '[missing]')} · Proof window: ${esc(String(s.proofWeeks))} weeks</p>
+      <h2>Formula breakdown</h2>
+      <table><thead><tr><th>Step</th><th>Calculation</th><th>Result</th></tr></thead><tbody>${rows}</tbody></table>
+      <h2>Recommended range</h2>
+      <ul>
+        <li>Walk-away floor: ${esc(money(round25(m.floor || m.low)))}</li>
+        <li>Recommended target: ${esc(money(round25(m.target)))}</li>
+        <li>Stretch ceiling: ${esc(money(round25(m.high)))}</li>
+        <li>Buyer ROI at target: ${esc(m.buyerRoi > 0 ? m.buyerRoi.toFixed(1) + 'x' : 'n/a')}</li>
+      </ul>
+      <h2>Packaging options</h2>
+      <ul>
+        <li>Flat pilot fee: ${esc(money(round25(p.flat.total)))} one-time (50/50 split)</li>
+        <li>Monthly during proof: ${esc(money(round25(p.monthly.fee)))}/mo x ${esc(String(p.monthly.months))} — total ${esc(money(round25(p.monthly.total)))}; continuation ${esc(money(round25(p.monthly.continuation)))}/mo</li>
+        <li>Performance: ${esc(money(round25(p.performance.base)))} base + ${esc(String(p.performance.share))}% of measured recovered value (expected ${esc(money(round25(p.performance.expected)))})</li>
+      </ul>
+      <h2>Deal health</h2>
+      <ul>${healthChecks(s, m).map((h) => `<li>[${esc(h.level.toUpperCase())}] ${esc(h.text)}</li>`).join('')}</ul>
+      <h2>Guardrail</h2>
+      <p>Human review required before sharing. Never promise recovered value as guaranteed revenue.</p>`;
+  }
+
+  // -------------------------------------------------------------- render all
+
+  function renderAll() {
+    const m = computeModel(state);
+    renderStats(m);
+    renderLevers(m);
+    renderEffort(m);
+    renderBreakdown(m);
+    renderHealth(m);
+    renderRange(m);
+    renderPackaging(m);
+    $('memoPreview').value = memoMarkdown(m);
+    renderPrintSheet(m);
+    saveSoon();
+  }
+
+  // -------------------------------------------------------------------- theme
+
+  function applyTheme() {
+    document.documentElement.dataset.theme = state.theme;
+    const btn = $('themeToggle');
+    btn.textContent = state.theme === 'dark' ? '☾' : '☀';
+    btn.setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false');
+    btn.setAttribute('aria-label', state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+  }
+
+  // -------------------------------------------------------------------- toast
+
+  let toastTimer = null;
+  function toast(msg, opts = {}) {
+    const el = $('toast');
+    el.innerHTML = '';
+    const span = document.createElement('span');
+    span.textContent = msg;
+    el.appendChild(span);
+    if (opts.actionLabel && typeof opts.onAction === 'function') {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-primary';
+      btn.textContent = opts.actionLabel;
+      btn.addEventListener('click', () => {
+        hideToast();
+        opts.onAction();
+      });
+      el.appendChild(btn);
+    }
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, opts.duration ?? (opts.actionLabel ? 7000 : 2400));
+  }
+  function hideToast() {
+    $('toast').classList.remove('show');
+  }
+
+  // -------------------------------------------------------------- help modal
+
+  let lastFocus = null;
+  function openHelp() {
+    lastFocus = document.activeElement;
+    const modal = $('helpModal');
+    if (typeof modal.showModal === 'function') modal.showModal();
+    else modal.setAttribute('open', '');
+    $('helpClose').focus();
+  }
+  function closeHelp() {
+    const modal = $('helpModal');
+    if (typeof modal.close === 'function' && modal.open) modal.close();
+    else modal.removeAttribute('open');
+    if (lastFocus && typeof lastFocus.focus === 'function') lastFocus.focus();
+  }
+
+  // ------------------------------------------------------------ file helpers
+
+  function download(name, text, type) {
+    const blob = new Blob([text], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${spec.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-intake-form-bridge.json`;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(url);
   }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
+  function copyText(text, okMsg) {
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => toast(okMsg))
+        .catch(() => fallbackCopy());
+    } else fallbackCopy();
+    function fallbackCopy() {
+      const ta = $('memoPreview');
+      ta.focus();
+      ta.select();
+      toast('Clipboard blocked — memo selected, press Ctrl/Cmd+C');
+    }
+  }
+
+  // ------------------------------------------------------------ event wiring
+
+  function readInputsIntoState() {
+    for (const [k, max] of Object.entries(TEXT_FIELDS)) {
+      state[k] = $(k).value.slice(0, max);
+    }
+    for (const [k, spec] of Object.entries(NUM_FIELDS)) {
+      const el = $(k);
+      const raw = el.value;
+      if (raw === '') { state[k] = spec.min; el.classList.remove('invalid'); continue; }
+      const n = Number(raw);
+      const clamped = clampNum(raw, spec);
+      state[k] = clamped;
+      el.classList.toggle('invalid', !Number.isFinite(n) || n < spec.min || n > spec.max);
+    }
+    for (const [k, spec] of Object.entries(SLIDER_FIELDS)) {
+      state[k] = Math.round(clampNum($(k).value, spec));
+    }
+  }
+
+  function onFieldInput(e) {
+    const id = e.target && e.target.id;
+    if (!id) return;
+    if (id in TEXT_FIELDS || id in NUM_FIELDS || id in SLIDER_FIELDS) {
+      readInputsIntoState();
+      renderAll();
+    }
+  }
+
+  function onNumberBlur(e) {
+    const id = e.target && e.target.id;
+    if (id in NUM_FIELDS) {
+      e.target.value = state[id];
+      e.target.classList.remove('invalid');
+      renderAll();
+    }
+  }
+
+  function loadDemo() {
+    const keep = { theme: state.theme, seenGuide: state.seenGuide };
+    state = normalize({ ...DEMO, ...keep });
+    bindInputs();
+    renderAll();
+    saveNow();
+    toast('Demo pilot loaded — a plumbing missed-call recovery scenario');
+  }
+
+  function resetAll() {
+    if (!window.confirm('Reset the calculator? Your current inputs will be cleared (you can undo for a few seconds).')) return;
+    const snapshot = JSON.stringify(state);
+    const keep = { theme: state.theme, seenGuide: state.seenGuide };
+    state = { ...defaultState(), ...keep };
+    bindInputs();
+    renderAll();
+    saveNow();
+    toast('Calculator reset', {
+      actionLabel: 'Undo',
+      onAction: () => {
+        state = normalize(JSON.parse(snapshot));
+        bindInputs();
+        renderAll();
+        saveNow();
+        toast('Inputs restored');
+      },
+    });
+  }
+
+  function importJson(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        const incoming = parsed && typeof parsed === 'object' && parsed.state ? parsed.state : parsed;
+        const keep = { theme: state.theme, seenGuide: state.seenGuide };
+        state = normalize({ ...incoming, ...keep });
+        bindInputs();
+        renderAll();
+        saveNow();
+        toast('Pricing scenario imported');
+      } catch {
+        toast('Import failed — not a valid JSON export');
+      }
+    };
+    reader.onerror = () => toast('Import failed — could not read the file');
+    reader.readAsText(file);
+  }
+
+  function wireEvents() {
+    const main = $('main');
+    main.addEventListener('input', onFieldInput);
+    main.addEventListener('blur', onNumberBlur, true);
+
+    $('themeToggle').addEventListener('click', () => {
+      state.theme = state.theme === 'dark' ? 'light' : 'dark';
+      applyTheme();
+      saveNow();
+      toast(`${state.theme === 'dark' ? 'Dark' : 'Light'} theme saved`);
+    });
+
+    $('demoBtn').addEventListener('click', loadDemo);
+    $('helpBtn').addEventListener('click', openHelp);
+    $('helpClose').addEventListener('click', closeHelp);
+    $('helpModal').addEventListener('cancel', (e) => {
+      e.preventDefault();
+      closeHelp();
+    });
+    $('helpModal').addEventListener('click', (e) => {
+      if (e.target === $('helpModal')) closeHelp();
+    });
+
+    $('copyMemoBtn').addEventListener('click', () => copyText($('memoPreview').value, 'Pricing memo copied as Markdown'));
+
+    $('downloadJsonBtn').addEventListener('click', () => {
+      const m = computeModel(state);
+      const payload = {
+        app: 'pilot-pricing-calculator',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        safety: 'draft-only, human review required',
+        state: { ...state },
+        derived: {
+          monthlyValue: Math.round(m.monthlyValue),
+          proofValue: Math.round(m.proofValue),
+          floor: round25(m.floor),
+          low: round25(m.low),
+          target: round25(m.target),
+          high: round25(m.high),
+          buyerRoi: Number(m.buyerRoi.toFixed(2)),
+        },
+        memo: memoMarkdown(m),
+      };
+      download('pilot-pricing-calculator.json', JSON.stringify(payload, null, 2), 'application/json');
+      toast('JSON downloaded');
+    });
+
+    $('downloadCsvBtn').addEventListener('click', () => {
+      download('pilot-pricing-calculator.csv', csvExport(computeModel(state)), 'text/csv');
+      toast('CSV downloaded');
+    });
+
+    $('importBtn').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) importJson(file);
+      e.target.value = '';
+    });
+
+    $('printBtn').addEventListener('click', () => window.print());
+    $('resetBtn').addEventListener('click', resetAll);
+
+    document.addEventListener('keydown', (e) => {
+      const tag = (e.target && e.target.tagName) || '';
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if (e.key === '?' && !typing) {
+        e.preventDefault();
+        openHelp();
+      } else if (e.key === 'Escape' && $('helpModal').open) {
+        closeHelp();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        copyText($('memoPreview').value, 'Pricing memo copied as Markdown');
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------- init
+
+  function init() {
+    applyTheme();
+    bindInputs();
+    renderAll();
+    wireEvents();
+    if (!state.seenGuide) {
+      state.seenGuide = true;
+      saveNow();
+      openHelp();
+    }
+  }
+
+  init();
+})();
