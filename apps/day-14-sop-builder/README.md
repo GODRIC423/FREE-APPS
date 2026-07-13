@@ -1,12 +1,12 @@
 # SOP Builder
 
-Day 14 of the 30 App Daily Ritual.
+Write repeatable operating procedures — trigger, owner, inputs, steps, quality checks, and exception paths — entirely in your browser.
 
-This public copy is a **static, local-first browser app**. It contains only:
-
-- `index.html`
-- `styles.css`
-- `app.js`
+- **Multi-SOP library** with per-procedure completeness scores, duplicate, delete (with undo), and JSON import/export.
+- **Reorderable step editor**: drag or arrow-key steps into order, each with its own owner, tool, and duration; runtime is summed live.
+- **Quality-check checklist and exception paths** ("if X, do Y, escalate to Z") so the SOP is safe to delegate.
+- **Completeness score (0–100%)** across Basics / Steps / Quality checks / Exceptions, with a "Fix next" list.
+- **Printable SOP document**, Markdown copy, JSON library download, and steps CSV — all drafts for human review.
 
 ## Run
 
@@ -16,10 +16,13 @@ Open `index.html` directly, or serve the folder locally:
 python3 -m http.server 8000
 ```
 
-Then open the matching `/apps/day-14-sop-builder/` path in your browser.
+Then open `/apps/day-14-sop-builder/` in your browser.
+
+See **[GUIDE.md](./GUIDE.md)** for a full step-by-step walkthrough.
 
 ## Security boundary
 
-- No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- Static, local-first app: only `index.html`, `styles.css`, `app.js`. No build step, no CDNs, no fetch/XHR, no fonts, no analytics.
+- No API keys, tokens, `.env` files, databases, accounts, or private local state are included.
+- No backend, shell, GitHub, CRM, webhook, payment, or account-writing access is included.
+- All data stays in this browser's `localStorage`. Outputs are draft/local artifacts and should be human-reviewed before customer-facing or public use.
