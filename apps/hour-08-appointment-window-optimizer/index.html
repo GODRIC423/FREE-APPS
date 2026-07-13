@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Appointment Window Optimizer</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 08 · Appointment control desk</p>
+        <h1>Appointment Window Optimizer</h1>
+        <p class="lede">Choose pickup and delivery appointment windows that protect deadhead, dwell, driver clock, service risk, and margin before a broker quotes or tenders freight. Local mock/demo data only.</p>
+        <div class="actions">
+          <button id="loadDemo">Load demo windows</button>
+          <button id="addScenario">Add scenario</button>
+          <button id="copyBrief">Copy broker brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="downloadMarkdown" class="secondary">Export Markdown</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card"><span>Best appointment score</span><strong id="bestScore">0%</strong><small id="bestLabel">Waiting for scenarios</small></aside>
+    </header>
+
+    <section class="control-strip" aria-label="Appointment controls">
+      <label>Driver day hours<input id="driverDayHours" type="number" min="1" step="0.5" value="10"></label>
+      <label>Deadhead cap miles<input id="deadheadCap" type="number" min="0" value="125"></label>
+      <label>Dwell target hours<input id="dwellTarget" type="number" min="0" step="0.25" value="2"></label>
+      <label>Service buffer hours<input id="serviceBuffer" type="number" min="0" step="0.25" value="1.5"></label>
+      <label>Late penalty $/hr<input id="latePenaltyHourly" type="number" min="0" value="95"></label>
+      <label>Planning stance<select id="planningStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="opportunistic">opportunistic</option></select></label>
+      <p class="boundary"><b>Safety boundary:</b> mock/local optimizer only. It does not reserve appointments, contact shippers/receivers/carriers, post loads, dispatch, tender freight, write TMS/CRM/EDI, use credentials, spend money, or send customer-facing communication.</p>
+    </section>
+
+    <section class="workspace">
+      <section class="panel edit-panel">
+        <div class="panel-head"><h2>Scenario bench</h2><span id="scenarioCount">0 scenarios</span></div>
+        <div id="scenarioRows" class="scenario-list"></div>
+      </section>
+      <aside class="panel brief-panel">
+        <h2>Broker appointment brief</h2>
+        <textarea id="brief" readonly></textarea>
+        <p class="boundary"><b>Draft-only:</b> use this to prepare human appointment review. No appointment is booked or changed from this static app.</p>
+      </aside>
+    </section>
+
+    <section class="panel result-panel" aria-label="Window ranking">
+      <div class="panel-head"><h2>Window ranking</h2><span id="rankingSummary">0 windows checked</span></div>
+      <div id="rankingRows" class="result-grid"></div>
+    </section>
+
+    <section class="panel result-panel" aria-label="Facility and driver pressure">
+      <div class="panel-head"><h2>Pressure audit</h2><span id="pressureSummary">0 checks</span></div>
+      <div id="pressureRows" class="result-grid"></div>
+    </section>
+
+
+    <section class="panel result-panel" aria-label="Appointment document checklist">
+      <div class="panel-head"><h2>Appointment document checklist</h2><span id="appointmentDocSummary">0 scenarios checked</span></div>
+      <div id="appointmentDocRows" class="result-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

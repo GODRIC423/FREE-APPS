@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-06-28T18:29:00.719727+00:00",
+  "generated_at": "2026-07-13T20:17:56.898389+00:00",
   "results": [
     {
-      "day": 1,
+      "series": "30-app-daily-ritual",
       "slug": "day-01-pilot-forge",
-      "title": "Pilot Forge",
+      "title": "Day 01 \u2014 Pilot Forge",
       "status": "clean",
       "notes": [],
       "files": [
@@ -21,9 +21,9 @@
       }
     },
     {
-      "day": 2,
+      "series": "30-app-daily-ritual",
       "slug": "day-02-lead-leak-radar",
-      "title": "Lead Leak Radar",
+      "title": "Day 02 \u2014 Lead Leak Radar",
       "status": "clean",
       "notes": [],
       "files": [
@@ -40,9 +40,9 @@
       }
     },
     {
-      "day": 3,
+      "series": "30-app-daily-ritual",
       "slug": "day-03-owner-report-studio",
-      "title": "Owner Report Studio",
+      "title": "Day 03 \u2014 Owner Report Studio",
       "status": "clean",
       "notes": [],
       "files": [
@@ -59,9 +59,9 @@
       }
     },
     {
-      "day": 4,
+      "series": "30-app-daily-ritual",
       "slug": "day-04-approval-gate-desk",
-      "title": "Approval Gate Desk",
+      "title": "Day 04 \u2014 Approval Gate Desk",
       "status": "clean",
       "notes": [],
       "files": [
@@ -78,9 +78,9 @@
       }
     },
     {
-      "day": 5,
+      "series": "30-app-daily-ritual",
       "slug": "day-05-quote-chase-board",
-      "title": "Quote Chase Board",
+      "title": "Day 05 \u2014 Quote Chase Board",
       "status": "clean",
       "notes": [],
       "files": [
@@ -97,9 +97,9 @@
       }
     },
     {
-      "day": 6,
+      "series": "30-app-daily-ritual",
       "slug": "day-06-review-request-composer",
-      "title": "Review Request Composer",
+      "title": "Day 06 \u2014 Review Request Composer",
       "status": "clean",
       "notes": [],
       "files": [
@@ -116,9 +116,9 @@
       }
     },
     {
-      "day": 7,
+      "series": "30-app-daily-ritual",
       "slug": "day-07-technician-brief-builder",
-      "title": "Technician Brief Builder",
+      "title": "Day 07 \u2014 Technician Brief Builder",
       "status": "clean",
       "notes": [],
       "files": [
@@ -135,9 +135,9 @@
       }
     },
     {
-      "day": 8,
+      "series": "30-app-daily-ritual",
       "slug": "day-08-service-triage-flow",
-      "title": "Service Triage Flow",
+      "title": "Day 08 \u2014 Service Triage Flow",
       "status": "clean",
       "notes": [],
       "files": [
@@ -154,9 +154,9 @@
       }
     },
     {
-      "day": 9,
+      "series": "30-app-daily-ritual",
       "slug": "day-09-warm-outreach-lab",
-      "title": "Warm Outreach Lab",
+      "title": "Day 09 \u2014 Warm Outreach Lab",
       "status": "clean",
       "notes": [],
       "files": [
@@ -173,9 +173,9 @@
       }
     },
     {
-      "day": 10,
+      "series": "30-app-daily-ritual",
       "slug": "day-10-pilot-pricing-calculator",
-      "title": "Pilot Pricing Calculator",
+      "title": "Day 10 \u2014 Pilot Pricing Calculator",
       "status": "clean",
       "notes": [],
       "files": [
@@ -192,9 +192,9 @@
       }
     },
     {
-      "day": 11,
+      "series": "30-app-daily-ritual",
       "slug": "day-11-local-biz-snapshot",
-      "title": "Local Biz Snapshot",
+      "title": "Day 11 \u2014 Local Biz Snapshot",
       "status": "clean",
       "notes": [],
       "files": [
@@ -211,9 +211,9 @@
       }
     },
     {
-      "day": 12,
+      "series": "30-app-daily-ritual",
       "slug": "day-12-script-rehearsal-room",
-      "title": "Script Rehearsal Room",
+      "title": "Day 12 \u2014 Script Rehearsal Room",
       "status": "clean",
       "notes": [],
       "files": [
@@ -230,9 +230,9 @@
       }
     },
     {
-      "day": 13,
+      "series": "30-app-daily-ritual",
       "slug": "day-13-proof-vault",
-      "title": "Proof Vault",
+      "title": "Day 13 \u2014 Proof Vault",
       "status": "clean",
       "notes": [],
       "files": [
@@ -249,9 +249,9 @@
       }
     },
     {
-      "day": 14,
+      "series": "30-app-daily-ritual",
       "slug": "day-14-sop-builder",
-      "title": "SOP Builder",
+      "title": "Day 14 \u2014 SOP Builder",
       "status": "clean",
       "notes": [],
       "files": [
@@ -268,9 +268,9 @@
       }
     },
     {
-      "day": 15,
+      "series": "30-app-daily-ritual",
       "slug": "day-15-daily-cash-board",
-      "title": "Daily Cash Board",
+      "title": "Day 15 \u2014 Daily Cash Board",
       "status": "clean",
       "notes": [],
       "files": [
@@ -287,9 +287,9 @@
       }
     },
     {
-      "day": 16,
+      "series": "30-app-daily-ritual",
       "slug": "day-16-meeting-follow-up-kit",
-      "title": "Meeting Follow-up Kit",
+      "title": "Day 16 \u2014 Meeting Follow Up Kit",
       "status": "clean",
       "notes": [],
       "files": [
@@ -306,9 +306,9 @@
       }
     },
     {
-      "day": 17,
+      "series": "30-app-daily-ritual",
       "slug": "day-17-credential-handoff-checklist",
-      "title": "Credential Handoff Checklist",
+      "title": "Day 17 \u2014 Credential Handoff Checklist",
       "status": "clean",
       "notes": [],
       "files": [
@@ -325,9 +325,9 @@
       }
     },
     {
-      "day": 18,
+      "series": "30-app-daily-ritual",
       "slug": "day-18-content-repurposer",
-      "title": "Content Repurposer",
+      "title": "Day 18 \u2014 Content Repurposer",
       "status": "clean",
       "notes": [],
       "files": [
@@ -344,9 +344,9 @@
       }
     },
     {
-      "day": 19,
+      "series": "30-app-daily-ritual",
       "slug": "day-19-home-service-route-planner",
-      "title": "Home Service Route Planner",
+      "title": "Day 19 \u2014 Home Service Route Planner",
       "status": "clean",
       "notes": [],
       "files": [
@@ -363,9 +363,9 @@
       }
     },
     {
-      "day": 20,
+      "series": "30-app-daily-ritual",
       "slug": "day-20-intake-form-builder",
-      "title": "Intake Form Builder",
+      "title": "Day 20 \u2014 Intake Form Builder",
       "status": "clean",
       "notes": [],
       "files": [
@@ -380,6 +380,209 @@
         "apps/day-20-intake-form-builder/styles.css": "7dc670643676a448",
         "apps/day-20-intake-form-builder/app.js": "4035f0d33916fc6c"
       }
+    },
+    {
+      "hour": 1,
+      "slug": "hour-01-loadboard-signal-console",
+      "title": "Loadboard Signal Console",
+      "purpose": "Score aggregated loadboard rows for backhaul fit, margin quality, deadhead risk, and monetizable brokerage action.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-01-loadboard-signal-console/index.html",
+        "apps/hour-01-loadboard-signal-console/styles.css",
+        "apps/hour-01-loadboard-signal-console/app.js",
+        "apps/hour-01-loadboard-signal-console/README.md"
+      ],
+      "hashes": {
+        "apps/hour-01-loadboard-signal-console/index.html": "b4e5d68694b11d7e",
+        "apps/hour-01-loadboard-signal-console/styles.css": "2bd54090871ebda8",
+        "apps/hour-01-loadboard-signal-console/app.js": "9e6d21cc42992fab",
+        "apps/hour-01-loadboard-signal-console/README.md": "e84c1b25c517bc8b"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-01-loadboard-signal-console/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 2,
+      "slug": "hour-02-backhaul-pairing-optimizer",
+      "title": "Backhaul Pairing Optimizer",
+      "purpose": "Pair outbound and return loads into profitable loops with dwell, miles, and pickup-window constraints.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-02-backhaul-pairing-optimizer/index.html",
+        "apps/hour-02-backhaul-pairing-optimizer/styles.css",
+        "apps/hour-02-backhaul-pairing-optimizer/app.js",
+        "apps/hour-02-backhaul-pairing-optimizer/README.md"
+      ],
+      "hashes": {
+        "apps/hour-02-backhaul-pairing-optimizer/index.html": "4d723ccc7a5e8ff4",
+        "apps/hour-02-backhaul-pairing-optimizer/styles.css": "4c6148ee33e87471",
+        "apps/hour-02-backhaul-pairing-optimizer/app.js": "5bd5bdba5a60427e",
+        "apps/hour-02-backhaul-pairing-optimizer/README.md": "af3829304ca8420e"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-02-backhaul-pairing-optimizer/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 3,
+      "slug": "hour-03-lane-margin-simulator",
+      "title": "Lane Margin Simulator",
+      "purpose": "Model buy/sell rates, fuel, accessorials, risk buffers, and target margin by lane and equipment.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-03-lane-margin-simulator/index.html",
+        "apps/hour-03-lane-margin-simulator/styles.css",
+        "apps/hour-03-lane-margin-simulator/app.js",
+        "apps/hour-03-lane-margin-simulator/README.md"
+      ],
+      "hashes": {
+        "apps/hour-03-lane-margin-simulator/index.html": "2584be1ca76e1b7b",
+        "apps/hour-03-lane-margin-simulator/styles.css": "bc6a247770bd55a6",
+        "apps/hour-03-lane-margin-simulator/app.js": "f7802355cf5589fb",
+        "apps/hour-03-lane-margin-simulator/README.md": "1afd02957616f5ea"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-03-lane-margin-simulator/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 4,
+      "slug": "hour-04-carrier-vetting-radar",
+      "title": "Carrier Vetting Radar",
+      "purpose": "Rank carriers by lane fit, safety, insurance, tracking, fraud flags, and approval status.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-04-carrier-vetting-radar/index.html",
+        "apps/hour-04-carrier-vetting-radar/styles.css",
+        "apps/hour-04-carrier-vetting-radar/app.js",
+        "apps/hour-04-carrier-vetting-radar/README.md"
+      ],
+      "hashes": {
+        "apps/hour-04-carrier-vetting-radar/index.html": "60530a033127e1db",
+        "apps/hour-04-carrier-vetting-radar/styles.css": "1879bbc86bbbed63",
+        "apps/hour-04-carrier-vetting-radar/app.js": "42aff208c0a0e769",
+        "apps/hour-04-carrier-vetting-radar/README.md": "280efe3876ada359"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-04-carrier-vetting-radar/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 5,
+      "slug": "hour-05-tender-packet-builder",
+      "title": "Tender Packet Builder",
+      "purpose": "Generate broker-ready tender packets with load facts, requirements, caveats, and approval gates.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-05-tender-packet-builder/index.html",
+        "apps/hour-05-tender-packet-builder/styles.css",
+        "apps/hour-05-tender-packet-builder/app.js",
+        "apps/hour-05-tender-packet-builder/README.md"
+      ],
+      "hashes": {
+        "apps/hour-05-tender-packet-builder/index.html": "fccb20906f701a65",
+        "apps/hour-05-tender-packet-builder/styles.css": "0dfebb7cc9c4335c",
+        "apps/hour-05-tender-packet-builder/app.js": "30aa0327d20c97ad",
+        "apps/hour-05-tender-packet-builder/README.md": "e049c835e0043565"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-05-tender-packet-builder/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 6,
+      "slug": "hour-06-load-lifecycle-command-board",
+      "title": "Load Lifecycle Command Board",
+      "purpose": "Track loads from posted to covered, dispatched, picked, delivered, POD, invoice, and paid.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-06-load-lifecycle-command-board/index.html",
+        "apps/hour-06-load-lifecycle-command-board/styles.css",
+        "apps/hour-06-load-lifecycle-command-board/app.js",
+        "apps/hour-06-load-lifecycle-command-board/README.md"
+      ],
+      "hashes": {
+        "apps/hour-06-load-lifecycle-command-board/index.html": "2f19544d42cb8d73",
+        "apps/hour-06-load-lifecycle-command-board/styles.css": "81aa1d838e6f24a0",
+        "apps/hour-06-load-lifecycle-command-board/app.js": "6d628c13c69ca144",
+        "apps/hour-06-load-lifecycle-command-board/README.md": "cf4771e1e9492df0"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-06-load-lifecycle-command-board/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 7,
+      "slug": "hour-07-detention-risk-calculator",
+      "title": "Detention Risk Calculator",
+      "purpose": "Estimate detention exposure from shipper/receiver history, appointment windows, dwell signals, and contract terms.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-07-detention-risk-calculator/index.html",
+        "apps/hour-07-detention-risk-calculator/styles.css",
+        "apps/hour-07-detention-risk-calculator/app.js",
+        "apps/hour-07-detention-risk-calculator/README.md"
+      ],
+      "hashes": {
+        "apps/hour-07-detention-risk-calculator/index.html": "84804a561eb10605",
+        "apps/hour-07-detention-risk-calculator/styles.css": "494c160beb1ecb88",
+        "apps/hour-07-detention-risk-calculator/app.js": "53db13f0e190f31e",
+        "apps/hour-07-detention-risk-calculator/README.md": "b3fbf9adca09add4"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-07-detention-risk-calculator/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 8,
+      "slug": "hour-08-appointment-window-optimizer",
+      "title": "Appointment Window Optimizer",
+      "purpose": "Choose pickup and delivery appointment windows that minimize deadhead, dwell, service failures, and empty time.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-08-appointment-window-optimizer/index.html",
+        "apps/hour-08-appointment-window-optimizer/styles.css",
+        "apps/hour-08-appointment-window-optimizer/app.js",
+        "apps/hour-08-appointment-window-optimizer/README.md"
+      ],
+      "hashes": {
+        "apps/hour-08-appointment-window-optimizer/index.html": "8f5e516052854f54",
+        "apps/hour-08-appointment-window-optimizer/styles.css": "4161abe9f2b9ea9c",
+        "apps/hour-08-appointment-window-optimizer/app.js": "6cf235390b5180b7",
+        "apps/hour-08-appointment-window-optimizer/README.md": "7a1869b8c7656f67"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-08-appointment-window-optimizer/",
+      "series": "backhaul-30-hour-build-stack"
+    },
+    {
+      "hour": 9,
+      "slug": "hour-09-document-compliance-vault",
+      "title": "Document Compliance Vault",
+      "purpose": "Organize rate cons, PODs, BOLs, COIs, W9s, carrier packets, and missing-document queues.",
+      "status": "clean",
+      "notes": [],
+      "files": [
+        "apps/hour-09-document-compliance-vault/index.html",
+        "apps/hour-09-document-compliance-vault/styles.css",
+        "apps/hour-09-document-compliance-vault/app.js",
+        "apps/hour-09-document-compliance-vault/README.md"
+      ],
+      "hashes": {
+        "apps/hour-09-document-compliance-vault/index.html": "c6f5c9414fb7bf72",
+        "apps/hour-09-document-compliance-vault/styles.css": "ac72defc637b9ccc",
+        "apps/hour-09-document-compliance-vault/app.js": "71225adcbd040086",
+        "apps/hour-09-document-compliance-vault/README.md": "f80627983c4e680c"
+      },
+      "pages_url": "https://godric423.github.io/FREE-APPS/apps/hour-09-document-compliance-vault/",
+      "series": "backhaul-30-hour-build-stack"
     }
-  ]
+  ],
+  "summary": {
+    "apps_processed": 29,
+    "clean": 29,
+    "blocked": 0
+  }
 }

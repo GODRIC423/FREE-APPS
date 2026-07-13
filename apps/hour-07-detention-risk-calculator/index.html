@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Detention Risk Calculator</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="detention-shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 07 · Detention exposure desk</p>
+        <h1>Detention Risk Calculator</h1>
+        <p class="lede">Estimate detention exposure from mock shipper/receiver history, appointment windows, dwell signals, facility notes, and contract terms before a broker quotes or tenders a load. Local demo data only.</p>
+        <div class="actions" aria-label="Primary actions">
+          <button id="loadDemo">Load demo cases</button>
+          <button id="addCase">Add case</button>
+          <button id="copyBrief">Copy detention brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="downloadMarkdown" class="secondary">Export Markdown</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card"><span>Reserve exposure</span><strong id="exposureTotal">$0</strong><small id="exposureLabel">Waiting for cases</small></aside>
+    </header>
+
+    <section class="control-strip" aria-label="Detention controls">
+      <label>Free hours<input id="freeHours" type="number" min="0" step="0.25" value="2"></label>
+      <label>Detention bill rate / hr<input id="billRate" type="number" min="0" value="85"></label>
+      <label>Broker reserve %<input id="reservePct" type="number" min="0" value="70"></label>
+      <label>Appointment grace min<input id="graceMinutes" type="number" min="0" value="45"></label>
+      <label>Risk stance<select id="riskStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="shipper-friendly">shipper-friendly</option></select></label>
+      <label>Review threshold<input id="reviewThreshold" type="number" min="0" max="100" value="62"></label>
+      <p class="boundary"><b>Safety boundary:</b> mock/local calculator only. It does not contact facilities, carriers, customers, loadboards, TMS/CRM, EDI/API endpoints, use credentials, or create invoices/charges.</p>
+    </section>
+
+    <section class="workspace">
+      <section class="panel edit-panel">
+        <div class="panel-head"><h2>Detention case bench</h2><span id="caseCount">0 cases</span></div>
+        <div id="caseRows" class="case-list"></div>
+      </section>
+      <aside class="panel brief-panel">
+        <h2>Broker detention brief</h2>
+        <textarea id="brief" readonly></textarea>
+        <p class="boundary"><b>Draft-only:</b> the brief is for human review before quoting, tendering, accessorial requests, or customer/carrier communication.</p>
+      </aside>
+    </section>
+
+    <section class="panel result-panel" aria-label="Detention risk ranking">
+      <div class="panel-head"><h2>Detention risk ranking</h2><span id="riskSummary">0 cases checked</span></div>
+      <div id="riskRows" class="result-grid"></div>
+    </section>
+
+    <section class="panel result-panel" aria-label="Facility profile audit">
+      <div class="panel-head"><h2>Facility profile audit</h2><span id="facilitySummary">0 facilities</span></div>
+      <div id="facilityRows" class="result-grid"></div>
+    </section>
+
+
+    <section class="panel result-panel" aria-label="Appointment recovery playbook">
+      <div class="panel-head"><h2>Appointment recovery playbook</h2><span id="appointmentRecoverySummary">0 cases checked</span></div>
+      <div id="appointmentRecoveryRows" class="result-grid"></div>
+    </section>
+
+
+    <section class="panel result-panel" aria-label="Detention proof packet audit">
+      <div class="panel-head"><h2>Detention proof packet audit</h2><span id="detentionProofSummary">0 cases checked</span></div>
+      <div id="detentionProofRows" class="result-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

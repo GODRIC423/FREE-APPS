@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tender Packet Builder</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="packet-shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 05 · Broker tender packet bench</p>
+        <h1>Tender Packet Builder</h1>
+        <p class="lede">Generate a broker-ready tender packet from load facts, requirements, caveats, rate guardrails, and approval gates. Local mock/demo data only — no posting, no tendering, no carrier/customer contact, no TMS/CRM/EDI writes, no credentials, and no spend.</p>
+        <div class="actions" aria-label="Primary actions">
+          <button id="loadDemo">Load demo packet</button>
+          <button id="addRequirement">Add requirement</button>
+          <button id="addCaveat">Add caveat</button>
+          <button id="copyPacket">Copy packet</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadMarkdown" class="secondary">Export Markdown</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card">
+        <span>Packet readiness</span>
+        <strong id="readinessScore">0%</strong>
+        <small id="readinessLabel">Waiting for load facts</small>
+      </aside>
+    </header>
+
+    <section class="control-strip" aria-label="Tender packet controls">
+      <label>Approval stance<select id="approvalStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="opportunistic">opportunistic</option></select></label>
+      <label>Minimum margin %<input id="minMargin" type="number" min="0" value="15"></label>
+      <label>Minimum ready carriers<input id="minReadyCarriers" type="number" min="0" value="2"></label>
+      <label>Packet expires hours<input id="expiresHours" type="number" min="1" value="6"></label>
+      <label>Require docs<select id="requireDocs"><option value="yes">yes</option><option value="no">no</option></select></label>
+      <label>Human approval<select id="humanApproval"><option value="required">required</option><option value="draft-only">draft-only</option></select></label>
+      <label>Post-tender stage focus<select id="postTenderFocus"><option value="all">all</option><option value="covered">covered</option><option value="dispatched">dispatched</option><option value="picked">picked</option><option value="delivered">delivered</option><option value="pod">pod</option><option value="invoice">invoice</option><option value="paid">paid</option></select></label>
+      <label>Detention clause strictness<select id="detentionClauseStrictness"><option value="balanced">balanced</option><option value="strict">strict</option><option value="light">light</option></select></label>
+    </section>
+
+    <section class="workspace">
+      <section class="panel form-panel">
+        <div class="panel-head"><h2>Load facts</h2><span id="loadIdLabel">TP-5001</span></div>
+        <div class="load-grid">
+          <label>Load ID<input id="loadId" value="TP-5001"></label>
+          <label>Customer<input id="customer" value="Blue River Foods"></label>
+          <label>Origin<input id="origin" value="Chicago, IL"></label>
+          <label>Destination<input id="destination" value="Atlanta, GA"></label>
+          <label>Equipment<select id="equipment"><option>Dry Van</option><option>Reefer</option><option>Flatbed</option><option>Power Only</option></select></label>
+          <label>Commodity<input id="commodity" value="Packaged retail goods"></label>
+          <label>Weight lbs<input id="weight" type="number" value="42000"></label>
+          <label>Miles<input id="miles" type="number" value="716"></label>
+          <label>Pickup window<input id="pickupWindow" value="2026-07-14 08:00-12:00"></label>
+          <label>Delivery window<input id="deliveryWindow" value="2026-07-15 09:00-14:00"></label>
+          <label>Sell price<input id="sellPrice" type="number" value="2525"></label>
+          <label>Target buy<input id="targetBuy" type="number" value="2075"></label>
+          <label>Ready carriers<input id="readyCarriers" type="number" value="3"></label>
+          <label>Insurance required $M<input id="insuranceRequired" type="number" step="0.1" value="1.0"></label>
+          <label class="wide">Facility notes<input id="facilityNotes" value="Driver must call check-in desk 30 minutes before arrival; seal photos required."></label>
+          <label class="wide">Broker caveat summary<input id="brokerCaveat" value="Draft packet only; verify appointment, carrier packet, insurance, and customer approval before any tender."></label>
+        </div>
+      </section>
+
+      <section class="panel list-panel">
+        <div class="panel-head"><h2>Requirements</h2><span id="requirementCount">0</span></div>
+        <div id="requirementRows" class="item-list"></div>
+      </section>
+
+      <section class="panel list-panel">
+        <div class="panel-head"><h2>Caveats & gates</h2><span id="caveatCount">0</span></div>
+        <div id="caveatRows" class="item-list"></div>
+      </section>
+
+      <aside class="panel packet-panel">
+        <h2>Tender packet draft</h2>
+        <textarea id="packet" readonly></textarea>
+        <p class="boundary"><b>Draft-only boundary:</b> this tool creates local packet text only. It does not send tenders, post loads, contact carriers/customers, use live loadboards, write TMS/CRM/EDI, use credentials, spend money, or approve operational action.</p>
+      </aside>
+    </section>
+
+    <section class="panel audit-panel" aria-label="Approval gate audit">
+      <div class="panel-head"><h2>Approval gate audit</h2><span id="gateSummary">0 gates</span></div>
+      <div id="gateRows" class="audit-grid"></div>
+    </section>
+
+    <section class="panel audit-panel" aria-label="Packet assembly checklist">
+      <div class="panel-head"><h2>Packet assembly checklist</h2><span id="checkSummary">0 checks</span></div>
+      <div id="checkRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Post-tender lifecycle checklist">
+      <div class="panel-head"><h2>Post-tender lifecycle checklist</h2><span id="postTenderSummary">0 stages</span></div>
+      <div id="postTenderRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Detention clause checklist">
+      <div class="panel-head"><h2>Detention clause checklist</h2><span id="detentionClauseSummary">0 checks</span></div>
+      <div id="detentionClauseRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Appointment confirmation checklist">
+      <div class="panel-head"><h2>Appointment confirmation checklist</h2><span id="appointmentChecklistSummary">0 checks</span></div>
+      <div id="appointmentChecklistRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Document attachment manifest">
+      <div class="panel-head"><h2>Document attachment manifest</h2><span id="docManifestSummary">0 document checks</span></div>
+      <div id="docManifestRows" class="audit-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

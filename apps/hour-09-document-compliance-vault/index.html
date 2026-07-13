@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Document Compliance Vault</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 09 · Document control room</p>
+        <h1>Document Compliance Vault</h1>
+        <p class="lede">Organize mock rate cons, PODs, BOLs, COIs, W9s, carrier packets, and missing-document queues before brokerage work leaks margin or stalls cash. Local demo data only; no file upload and no external systems.</p>
+        <div class="actions">
+          <button id="loadDemo">Load demo vault</button>
+          <button id="addDoc">Add document</button>
+          <button id="copyBrief">Copy compliance brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="downloadMarkdown" class="secondary">Export Markdown</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card"><span>Vault readiness</span><strong id="vaultScore">0%</strong><small id="vaultLabel">Waiting for documents</small></aside>
+    </header>
+
+    <section class="control-strip" aria-label="Document controls">
+      <label>Missing doc penalty<input id="missingPenalty" type="number" min="1" value="18"></label>
+      <label>Expiring soon days<input id="expiringSoonDays" type="number" min="1" value="14"></label>
+      <label>POD chase hours<input id="podChaseHours" type="number" min="1" value="24"></label>
+      <label>COI min insurance $<input id="coiMinInsurance" type="number" min="0" step="10000" value="1000000"></label>
+      <label>Review stance<select id="reviewStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="cash-first">cash-first</option></select></label>
+      <p class="boundary"><b>Safety boundary:</b> static local prototype using mock records. It does not upload/read real documents, scrape loadboards, contact carriers/customers, post loads, tender, dispatch, bill, write TMS/CRM/EDI, use credentials, spend money, or publish anything.</p>
+    </section>
+
+    <section class="workspace">
+      <section class="panel edit-panel">
+        <div class="panel-head"><h2>Document bench</h2><span id="docCount">0 records</span></div>
+        <div id="docRows" class="doc-list"></div>
+      </section>
+      <aside class="panel brief-panel">
+        <h2>Compliance brief</h2>
+        <textarea id="brief" readonly></textarea>
+        <p class="boundary"><b>Draft-only:</b> use this as a broker/admin review list. A human must verify real documents in the approved system of record.</p>
+      </aside>
+    </section>
+
+    <section class="panel result-panel" aria-label="Missing document queue">
+      <div class="panel-head"><h2>Missing document queue</h2><span id="missingSummary">0 gaps</span></div>
+      <div id="missingRows" class="result-grid"></div>
+    </section>
+
+    <section class="panel result-panel" aria-label="Compliance scorecards">
+      <div class="panel-head"><h2>Compliance scorecards</h2><span id="scoreSummary">0 checks</span></div>
+      <div id="scoreRows" class="result-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

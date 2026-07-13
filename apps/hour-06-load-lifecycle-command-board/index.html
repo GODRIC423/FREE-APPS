@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Load Lifecycle Command Board</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="lifecycle-shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 06 · Brokerage load lifecycle ops</p>
+        <h1>Load Lifecycle Command Board</h1>
+        <p class="lede">Track mock/demo loads from posted to covered, dispatched, picked, delivered, POD, invoice, and paid. It turns a brokerage status board into lifecycle risk, document/cash blockers, and next-action briefs — still local and draft-only.</p>
+        <div class="actions" aria-label="Primary actions">
+          <button id="loadDemo">Load demo board</button>
+          <button id="addLoad">Add load</button>
+          <button id="copyBrief">Copy lifecycle brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="downloadMarkdown" class="secondary">Export Markdown</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card">
+        <span>Lifecycle health</span>
+        <strong id="healthScore">0%</strong>
+        <small id="healthLabel">Waiting for loads</small>
+      </aside>
+    </header>
+
+    <section class="control-strip" aria-label="Lifecycle controls">
+      <label>Stage focus<select id="stageFocus"><option value="all">all</option><option value="posted">posted</option><option value="covered">covered</option><option value="dispatched">dispatched</option><option value="picked">picked</option><option value="delivered">delivered</option><option value="pod">pod</option><option value="invoiced">invoiced</option><option value="paid">paid</option></select></label>
+      <label>Urgency stance<select id="urgencyStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="cash-first">cash-first</option></select></label>
+      <label>Pickup SLA hours<input id="pickupSlaHours" type="number" min="1" value="18"></label>
+      <label>POD SLA hours<input id="podSlaHours" type="number" min="1" value="24"></label>
+      <label>Invoice SLA hours<input id="invoiceSlaHours" type="number" min="1" value="12"></label>
+      <label>Paid target days<input id="paidTargetDays" type="number" min="1" value="30"></label>
+      <label>Detention escalation hours<input id="detentionEscalationHours" type="number" min="1" value="3"></label>
+      <p class="boundary"><b>Safety boundary:</b> local mock/demo board only. No live loadboard scraping, carrier/customer contact, dispatching, tendering, TMS/CRM/EDI write, credential use, spend, or public action.</p>
+    </section>
+
+    <section class="workspace">
+      <section class="panel edit-panel">
+        <div class="panel-head"><h2>Load bench</h2><span id="loadCount">0 loads</span></div>
+        <div id="loadRows" class="load-list"></div>
+      </section>
+      <aside class="panel brief-panel">
+        <h2>Lifecycle action brief</h2>
+        <textarea id="brief" readonly></textarea>
+        <p class="boundary"><b>Draft-only:</b> the brief is for human broker review. It does not update systems or trigger operational action.</p>
+      </aside>
+    </section>
+
+    <section class="panel board-panel" aria-label="Lifecycle stage board">
+      <div class="panel-head"><h2>Stage command board</h2><span id="boardSummary">0 stages</span></div>
+      <div id="stageBoard" class="stage-board"></div>
+    </section>
+
+    <section class="panel audit-panel" aria-label="Exception audit">
+      <div class="panel-head"><h2>Lifecycle exception audit</h2><span id="exceptionSummary">0 exceptions</span></div>
+      <div id="exceptionRows" class="audit-grid"></div>
+    </section>
+
+    <section class="panel audit-panel" aria-label="Cash and document clock">
+      <div class="panel-head"><h2>Cash & document clock</h2><span id="cashSummary">0 blockers</span></div>
+      <div id="cashRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Detention escalation clock">
+      <div class="panel-head"><h2>Detention escalation clock</h2><span id="detentionEscalationSummary">0 loads checked</span></div>
+      <div id="detentionEscalationRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Appointment miss triage">
+      <div class="panel-head"><h2>Appointment miss triage</h2><span id="appointmentMissSummary">0 loads checked</span></div>
+      <div id="appointmentMissRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="POD invoice document chase">
+      <div class="panel-head"><h2>POD invoice document chase</h2><span id="podChaseSummary">0 loads checked</span></div>
+      <div id="podChaseRows" class="audit-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
