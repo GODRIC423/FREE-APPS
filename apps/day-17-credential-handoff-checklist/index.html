@@ -1,156 +1,291 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
   <title>Credential Handoff Checklist</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css">
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('fable-remake:day-17-credential-handoff-checklist:v1');
+        var theme = raw ? (JSON.parse(raw).ui || {}).theme : null;
+        if (theme !== 'dark' && theme !== 'light') {
+          theme = (window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+        }
+        document.documentElement.dataset.theme = theme;
+      } catch (e) { /* keep default */ }
+    })();
+  </script>
 </head>
 <body>
-  <main class="custody-console">
-    <header class="vault-header" aria-label="Credential Handoff Checklist header">
-      <div class="vault-door" aria-hidden="true"><span></span><i></i><b></b></div>
-      <section class="header-copy">
-        <p class="kicker">Day 17 · Credential Handoff Checklist</p>
-        <h1>Move access safely without ever writing the secret into the app.</h1>
-        <p class="lede">A local-first custody checkpoint for access owners, storage locations, MFA, rotation, and revocation. It tracks metadata only — no passwords, tokens, seed phrases, private keys, or API keys.</p>
-      </section>
-      <nav class="header-actions" aria-label="App controls">
-        <button id="loadDemo" type="button">Load demo</button>
-        <button id="addItem" type="button">Add access item</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </nav>
-    </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-    <section class="warning-strip" aria-label="No secret warning">
-      <strong>No-secret workspace:</strong> capture system names, owners, storage references, MFA/revocation checks, and rotation dates only. If a real secret needs handoff, use an approved password manager or encrypted channel outside this static app.
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">CH</span>
+      <div class="brand-text">
+        <strong>Credential Handoff Checklist</strong>
+        <span>Access custody tracker — metadata only, never secrets · <a href="../../index.html">← All apps</a></span>
+      </div>
+    </div>
+    <nav class="header-nav" aria-label="App controls">
+      <button id="btnDemo" class="btn" type="button">Load demo</button>
+      <button id="btnHelp" class="btn" type="button" aria-haspopup="dialog">How to use</button>
+      <button id="btnTheme" class="btn" type="button" aria-pressed="false" aria-label="Toggle color theme">Theme</button>
+    </nav>
+  </header>
+
+  <main id="main" class="shell">
+
+    <section class="notice" role="note" aria-label="No-secret rule">
+      <strong>No-secret workspace.</strong> Track systems, owners, MFA status, rotation dates, and <em>where</em> credentials live — never the credentials themselves. A hard lint blocks anything password-shaped from being saved. Real secret exchange belongs in a password manager or encrypted channel, not here.
     </section>
 
-    <section class="status-strip" aria-label="Custody status strip">
-      <article><span>Items</span><strong id="metricItems">0</strong></article>
-      <article><span>Ready</span><strong id="metricReady">0</strong></article>
-      <article><span>Risk flags</span><strong id="metricRisks">0</strong></article>
-      <article><span>Next rotation</span><strong id="metricNext">None</strong></article>
+    <section class="stat-strip" aria-label="Custody metrics" aria-live="polite">
+      <article class="stat">
+        <strong id="statSystems">0</strong>
+        <span>systems tracked</span>
+      </article>
+      <article class="stat">
+        <strong><span id="statHealth">0</span><small id="statHealthGrade" class="grade-chip">–</small></strong>
+        <span>custody health</span>
+      </article>
+      <article class="stat">
+        <strong id="statFlags">0</strong>
+        <span id="statFlagsDetail">open risk flags</span>
+      </article>
+      <article class="stat">
+        <strong id="statOverdue">0</strong>
+        <span id="statOverdueDetail">rotations overdue</span>
+      </article>
     </section>
 
-    <section class="checkpoint-grid">
-      <section class="panel intake-panel" aria-label="Access item editor">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Access item</p><h2>Inventory metadata, not secrets.</h2></div></div>
+    <div class="grid-2">
+
+      <section class="panel" aria-labelledby="editorTitle">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">01 · Inventory</p>
+            <h2 id="editorTitle">Add a system</h2>
+          </div>
+          <button id="btnNewItem" class="btn btn-ghost" type="button">+ New</button>
+        </div>
+
         <div class="form-grid">
-          <label>System / vendor<input id="systemName" maxlength="120" placeholder="Booking platform" /></label>
-          <label>Access type<select id="accessType"><option>Admin login</option><option>API key</option><option>Shared inbox</option><option>Domain/DNS</option><option>Payment portal</option><option>Database</option><option>Social account</option><option>Other</option></select></label>
-          <label>Primary owner<input id="owner" maxlength="80" placeholder="Brian" /></label>
-          <label>Backup owner<input id="backupOwner" maxlength="80" placeholder="Ops lead" /></label>
-          <label>Storage reference<input id="storageRef" maxlength="160" placeholder="Password manager item name — no secret value" /></label>
-          <label>Access level<select id="accessLevel"><option>Viewer</option><option>Editor</option><option>Admin</option><option>Billing</option><option>Owner</option></select></label>
-          <label>Rotation date<input id="rotationDate" type="date" /></label>
-          <label>Handoff status<select id="status"><option value="intake">Intake</option><option value="verify">Verify</option><option value="handoff">Handoff ready</option><option value="revoke">Revoke / remove</option></select></label>
+          <label class="field">
+            <span>System / vendor <em class="req" aria-hidden="true">*</em></span>
+            <input id="fSystem" maxlength="120" autocomplete="off" placeholder="e.g. Domain registrar">
+            <small id="errSystem" class="field-err" hidden>System name is required.</small>
+          </label>
+          <label class="field">
+            <span>Access type</span>
+            <select id="fType">
+              <option>Admin login</option>
+              <option>API key</option>
+              <option>Shared inbox</option>
+              <option>Domain/DNS</option>
+              <option>Payment portal</option>
+              <option>Database</option>
+              <option>Cloud console</option>
+              <option>Social account</option>
+              <option>SSO / IdP</option>
+              <option>Other</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Access level</span>
+            <select id="fLevel">
+              <option>Viewer</option>
+              <option>Editor</option>
+              <option>Admin</option>
+              <option>Billing</option>
+              <option>Owner</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>MFA status</span>
+            <select id="fMfa">
+              <option value="enforced">MFA enforced</option>
+              <option value="enabled">MFA enabled</option>
+              <option value="none">No MFA</option>
+              <option value="na">MFA not available</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Primary owner <em class="req" aria-hidden="true">*</em></span>
+            <input id="fOwner" maxlength="80" autocomplete="off" placeholder="Who holds this today">
+            <small id="errOwner" class="field-err" hidden>Primary owner is required.</small>
+          </label>
+          <label class="field">
+            <span>Backup owner</span>
+            <input id="fBackup" maxlength="80" autocomplete="off" placeholder="Second person who can act">
+          </label>
+          <label class="field wide">
+            <span>Where the credential lives (reference only)</span>
+            <input id="fStorage" maxlength="160" autocomplete="off" placeholder='e.g. Password manager › "Registrar login" item — label only, never the value'>
+          </label>
+          <label class="field">
+            <span>Next rotation date</span>
+            <input id="fRotation" type="date">
+          </label>
+          <label class="field">
+            <span>Custody lane</span>
+            <select id="fStatus">
+              <option value="intake">Intake</option>
+              <option value="verify">Verify</option>
+              <option value="handoff">Handoff ready</option>
+              <option value="revoke">Revoke / remove</option>
+            </select>
+          </label>
         </div>
-        <div class="check-grid" aria-label="Control checks">
-          <label><input id="mfaEnabled" type="checkbox" /> MFA confirmed</label>
-          <label><input id="backupConfirmed" type="checkbox" /> Backup owner confirmed</label>
-          <label><input id="revokePath" type="checkbox" /> Revocation path known</label>
-          <label><input id="leastPrivilege" type="checkbox" /> Least privilege checked</label>
-          <label><input id="storageConfirmed" type="checkbox" /> Storage reference verified</label>
-          <label><input id="noSecretStored" type="checkbox" checked /> No secret value stored here</label>
-        </div>
-        <label class="wide">Notes / revocation instructions<textarea id="notes" maxlength="700" placeholder="Example: revoke from admin console > users > API keys. Do not paste the actual key."></textarea></label>
+
+        <fieldset class="check-grid">
+          <legend>Custody controls</legend>
+          <label><input id="cBackup" type="checkbox"> Backup owner confirmed</label>
+          <label><input id="cRevoke" type="checkbox"> Revocation path documented</label>
+          <label><input id="cLeastPriv" type="checkbox"> Least privilege reviewed</label>
+          <label><input id="cStorage" type="checkbox"> Storage reference verified</label>
+          <label><input id="cNoSecret" type="checkbox" checked> No secret value stored here</label>
+        </fieldset>
+
+        <label class="field wide">
+          <span>Notes / revocation instructions</span>
+          <textarea id="fNotes" maxlength="700" rows="3" placeholder="e.g. Revoke via admin console › Users › Remove. Do not paste the actual key."></textarea>
+        </label>
+
+        <div id="lintBox" class="lint-box" role="alert" hidden></div>
+
         <div class="editor-actions">
-          <button id="saveItem" type="button">Save checkpoint</button>
-          <button id="clearEditor" type="button" class="secondary">Clear editor</button>
+          <button id="btnSaveItem" class="btn-primary" type="button">Save system</button>
+          <button id="btnClearEditor" class="btn" type="button">Clear editor</button>
         </div>
       </section>
 
-      <aside class="panel risk-panel" aria-label="Risk scanner">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Risk gate</p><h2>Find the missing custody controls.</h2></div></div>
-        <div class="score-ring" aria-live="polite"><span id="readinessScore">0%</span><small>handoff readiness</small></div>
-        <div id="riskList" class="risk-list"></div>
-      </aside>
-    </section>
-
-    <section class="panel board-panel" aria-label="Custody checkpoint board">
-      <div class="panel-title"><span>03</span><div><p class="kicker">Custody board</p><h2>Access moves through intake, verify, handoff, and revoke.</h2></div></div>
-      <div id="custodyBoard" class="custody-board" aria-live="polite"></div>
-    </section>
-
-    <section class="output-grid">
-      <section class="panel packet-panel" aria-label="Credential handoff packet">
-        <div class="panel-title"><span>04</span><div><p class="kicker">Handoff packet</p><h2>Copy a safe checklist for the human handoff.</h2></div></div>
-        <textarea id="markdownOutput" readonly aria-label="Generated credential handoff checklist"></textarea>
+      <section class="panel" aria-labelledby="riskTitle">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">02 · Risk gate</p>
+            <h2 id="riskTitle">Custody health &amp; risk register</h2>
+          </div>
+        </div>
+        <div class="health-row">
+          <div id="healthRing" class="health-ring" role="img" aria-label="Custody health score">
+            <div class="health-ring-inner">
+              <span id="healthScore">0</span>
+              <small id="healthGrade">–</small>
+            </div>
+          </div>
+          <p id="healthHint" class="health-hint">Add systems to compute a custody health score. Owner and admin access counts double.</p>
+        </div>
+        <div id="riskList" class="risk-list" aria-live="polite"></div>
       </section>
-      <section class="panel export-panel" aria-label="Export actions">
-        <div class="panel-title"><span>05</span><div><p class="kicker">Export</p><h2>Share metadata only.</h2></div></div>
+    </div>
+
+    <section class="panel" aria-labelledby="boardTitle">
+      <div class="panel-head">
+        <div>
+          <p class="kicker">03 · Custody board</p>
+          <h2 id="boardTitle">Intake → Verify → Handoff → Revoke</h2>
+        </div>
+      </div>
+      <div id="board" class="board"></div>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel" aria-labelledby="offboardTitle">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">04 · Offboarding</p>
+            <h2 id="offboardTitle">Revocation runbook generator</h2>
+          </div>
+        </div>
+        <div class="offboard-controls">
+          <label class="field">
+            <span>Person leaving / handing off</span>
+            <select id="offboardPerson">
+              <option value="">— pick a person —</option>
+            </select>
+          </label>
+          <div class="runbook-progress" aria-hidden="false">
+            <div class="runbook-bar"><span id="runbookBar" style="width:0%"></span></div>
+            <small id="runbookPct" aria-live="polite">0% complete</small>
+          </div>
+        </div>
+        <p id="offboardSummary" class="offboard-summary" aria-live="polite"></p>
+        <div id="runbook" class="runbook"></div>
+        <div class="editor-actions">
+          <button id="btnCopyRunbook" class="btn" type="button">Copy runbook (Markdown)</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="exportTitle">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">05 · Export &amp; handoff</p>
+            <h2 id="exportTitle">Custody report — draft for human review</h2>
+          </div>
+        </div>
         <div class="export-actions">
-          <button id="copyMarkdown" type="button">Copy checklist</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-          <button id="downloadRevocation" type="button">Download revoke plan</button>
+          <button id="btnCopyReport" class="btn-primary" type="button">Copy custody report (Markdown)</button>
+          <button id="btnDownloadJson" class="btn" type="button">Download JSON</button>
+          <button id="btnImport" class="btn" type="button">Import JSON</button>
+          <button id="btnDownloadCsv" class="btn" type="button">Download CSV</button>
+          <button id="btnPrint" class="btn" type="button">Print report</button>
         </div>
         <div class="safe-card">
-          <h3>What belongs here</h3>
-          <p>System name, owner, backup owner, storage-item label, MFA status, rotation date, revocation path, and human approval notes.</p>
-          <h3>What never belongs here</h3>
-          <p>Raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment data.</p>
+          <h3>Belongs here</h3>
+          <p>System names, owners, backup owners, storage-item labels, MFA status, rotation dates, revocation steps.</p>
+          <h3>Never belongs here</h3>
+          <p>Passwords, tokens, API keys, cookies, private keys, seed phrases, recovery codes, customer PII, payment data. The lint blocks these — but it is a guardrail, not a guarantee.</p>
+        </div>
+        <div class="danger-zone">
+          <button id="btnReset" class="btn-danger" type="button">Reset all data</button>
         </div>
       </section>
-    </section>
+    </div>
 
-    <section class="guardrail" aria-label="Safety boundary">
-      <strong>Safety boundary:</strong> This static local app creates a metadata checklist only. It does not encrypt, store, reveal, validate, transmit, rotate, or revoke actual credentials. Real secret exchange must happen in a dedicated encrypted/password-manager workflow.
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    <section id="printReport" class="print-report" aria-hidden="true"></section>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <p>Local-first · No accounts · No tracking — data stays in this browser. All outputs are drafts for human review.</p>
+    <a href="../../index.html">← All apps</a>
+  </footer>
+
+  <dialog id="helpModal" class="help-modal" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">How to use this app</h2>
+      <button id="btnCloseHelp" class="btn btn-ghost" type="button" aria-label="Close help">✕</button>
+    </div>
+    <ol class="help-steps">
+      <li><strong>Load the demo</strong> (header button) to see a realistic small-team inventory, or start clean with <em>+ New</em>.</li>
+      <li><strong>Add each system</strong> someone can log into: name, access type and level, primary and backup owner, MFA status, and <em>where the credential lives</em> — the password-manager item label only, never the value. A hard lint blocks anything password-shaped.</li>
+      <li><strong>Set a rotation date</strong> and tick the custody controls you have actually verified. Unchecked controls become risk flags.</li>
+      <li><strong>Watch the risk register</strong> — it lists every gap (no MFA, no backup owner, stale rotation, undocumented revocation) ranked by severity, and rolls them into a 0–100 custody health score.</li>
+      <li><strong>Move systems across the board</strong>: Intake → Verify → Handoff ready → Revoke / remove, as custody is confirmed.</li>
+      <li><strong>Generate an offboarding runbook</strong>: pick the person leaving, get an ordered revoke/rotate/reassign/verify checklist for every system they touch, highest privilege first. Tick steps as you complete them.</li>
+      <li><strong>Export</strong> the custody report as Markdown, JSON, CSV, or print — all metadata-only drafts that require human review and approval before real use.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="help-keys">
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the custody report (Markdown)</td></tr>
+      </tbody>
+    </table>
+    <p class="help-boundary">Boundary: this app never stores, encrypts, transmits, rotates, or revokes real credentials. It tracks custody metadata so humans can do those things safely elsewhere.</p>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button id="toastUndo" class="btn btn-ghost" type="button" hidden>Undo</button>
+  </div>
+
+  <input id="importFile" type="file" accept="application/json,.json" hidden>
+
   <script src="./app.js"></script>
 </body>
 </html>

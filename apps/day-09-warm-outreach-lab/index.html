@@ -1,289 +1,270 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Warm Outreach Lab — draft human-reviewed warm outreach to local businesses: noticed issue, proof point, low-pressure ask." />
   <title>Warm Outreach Lab</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="lab-shell">
-    <header class="lab-hero" aria-label="Warm Outreach Lab header">
-      <div class="lab-mark" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div>
-        <p class="kicker">Day 09 · Warm Outreach Lab</p>
-        <h1>Mix outreach that sounds human before anyone sends it.</h1>
-        <p class="lede">A local-first drafting bench for prospect notes, proof, constraints, and tone. It produces plain-spoken outreach variants and a review packet — draft-only, no sending, no CRM writes, no cloud calls.</p>
-      </div>
-      <div class="hero-actions">
-        <button id="loadDemo" type="button">Load demo</button>
-        <button id="clearLab" type="button">Clear bench</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </div>
-    </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-    <section class="bench-metrics" aria-label="Outreach readiness metrics">
-      <article><span>Warmth</span><strong id="metricWarmth">-</strong></article>
-      <article><span>Proof</span><strong id="metricProof">-</strong></article>
-      <article><span>Ask size</span><strong id="metricAsk">-</strong></article>
-      <article><span>Safety</span><strong>Draft only</strong></article>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">WO</span>
+      <div class="brand-text">
+        <p class="brand-name">Warm Outreach Lab</p>
+        <p class="brand-tag">Noticed issue · proof point · low-pressure ask — drafted here, sent by a human</p>
+      </div>
+    </div>
+    <nav class="header-actions" aria-label="App actions">
+      <a class="btn btn-ghost back-link" href="../../index.html">&#8592; All apps</a>
+      <button id="loadDemoBtn" type="button" class="btn">Load demo</button>
+      <button id="resetBtn" type="button" class="btn">Reset</button>
+      <button id="helpBtn" type="button" class="btn">How to use</button>
+      <button id="themeToggle" type="button" class="btn" aria-pressed="false" aria-label="Toggle color theme">Theme</button>
+    </nav>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="stat-strip" aria-label="Pipeline stats" aria-live="polite">
+      <article class="stat"><strong id="statProspects">0</strong><span>Prospects</span></article>
+      <article class="stat"><strong id="statReady">0</strong><span>Send-ready drafts</span></article>
+      <article class="stat"><strong id="statDue">0</strong><span>Touches due</span></article>
+      <article class="stat"><strong id="statReply">&ndash;</strong><span>Reply rate</span></article>
     </section>
 
-    <section class="lab-grid">
-      <section class="panel note-pad" aria-label="Prospect notes">
-        <div class="panel-head"><span>01</span><div><p class="kicker">Raw notes</p><h2>Who is this for?</h2></div></div>
-        <div class="form-stack">
-          <label>Prospect / business
-            <input id="prospect" maxlength="90" />
-          </label>
-          <label>Industry / local context
-            <input id="context" maxlength="120" />
-          </label>
-          <label>What you noticed
-            <textarea id="observed" maxlength="520"></textarea>
-          </label>
-          <label>Relevant proof / credibility
-            <textarea id="proof" maxlength="420"></textarea>
-          </label>
-          <label>Constraints / promises to avoid
-            <textarea id="constraints" maxlength="420"></textarea>
-          </label>
+    <div class="layout">
+      <section class="panel pipeline-panel" aria-labelledby="pipelineHeading">
+        <div class="panel-head">
+          <h2 id="pipelineHeading">Pipeline</h2>
+          <button id="addProspectBtn" type="button" class="btn btn-primary">+ New prospect</button>
         </div>
-      </section>
-
-      <aside class="panel mixer" aria-label="Outreach mixer controls">
-        <div class="panel-head"><span>02</span><div><p class="kicker">Tone mixer</p><h2>Set the temperature</h2></div></div>
-        <label>Channel
-          <select id="channel">
-            <option>Email</option>
-            <option>LinkedIn DM</option>
-            <option>SMS draft</option>
-            <option>Voicemail notes</option>
-            <option>Call opener</option>
+        <label class="field compact">
+          <span>Filter by status</span>
+          <select id="statusFilter">
+            <option value="all">All statuses</option>
+            <option value="research">Researching</option>
+            <option value="draft">Drafting</option>
+            <option value="ready">Ready to send</option>
+            <option value="sent">Sent</option>
+            <option value="replied">Replied</option>
+            <option value="meeting">Meeting booked</option>
+            <option value="passed">Passed / not now</option>
           </select>
         </label>
-        <label>Warmth <output id="warmthOut">7</output>
-          <input id="warmth" type="range" min="1" max="10" />
-        </label>
-        <label>Directness <output id="directnessOut">6</output>
-          <input id="directness" type="range" min="1" max="10" />
-        </label>
-        <label>Proof weight <output id="proofWeightOut">6</output>
-          <input id="proofWeight" type="range" min="1" max="10" />
-        </label>
-        <div class="beaker-row" aria-hidden="true"><i></i><i></i><i></i></div>
-        <div id="recipeCards" class="recipe-cards" aria-live="polite"></div>
-      </aside>
-    </section>
+        <ul id="prospectList" class="prospect-list" aria-label="Prospect cards"></ul>
+      </section>
 
-    <section class="panel drafts-panel" aria-label="Generated outreach drafts">
-      <div class="panel-head wide">
-        <span>03</span>
-        <div><p class="kicker">Draft tray</p><h2>Review before using anywhere</h2></div>
-        <div class="hero-actions">
-          <button id="copyMarkdown" type="button">Copy packet</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-        </div>
-      </div>
-      <div id="draftCards" class="draft-cards" aria-live="polite"></div>
-      <textarea id="exportText" readonly aria-label="Generated warm outreach packet"></textarea>
-    </section>
-    <!-- DAY10_PILOT_PRICING_BRIDGE_START -->
-    <section id="pilot-pricing-bridge" class="pilot-pricing-bridge panel" aria-label="Pilot Pricing Calculator bridge">
-      <div class="pilot-pricing-head">
-        <span>$$</span>
-        <div>
-          <p class="kicker">Day 10 enhancement</p>
-          <h2>Pilot Pricing Calculator bridge</h2>
-        </div>
-        <div class="pilot-pricing-actions">
-          <button id="copyPilotPricingBridge" type="button">Copy pricing memo</button>
-          <button id="downloadPilotPricingBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="pilot-pricing-intro">Convert this app's current output into a draft pilot-pricing note: recovered value cue, effort/risk proxy, proof-window boundary, and a review-ready range.</p>
-      <div id="pilotPricingCards" class="pilot-pricing-cards" aria-live="polite"></div>
-      <textarea id="pilotPricingText" readonly aria-label="Generated Pilot Pricing Calculator bridge"></textarea>
-    </section>
-    <!-- DAY10_PILOT_PRICING_BRIDGE_END -->
+      <div class="detail-col">
+        <section id="detailEmpty" class="panel empty-state" aria-label="No prospect selected">
+          <p class="empty-icon" aria-hidden="true">&#9998;</p>
+          <h2>No prospect selected</h2>
+          <p>Pick a card from the pipeline, add a new prospect, or load the demo to see a full working scenario.</p>
+          <button id="emptyAddBtn" type="button" class="btn btn-primary">+ Add your first prospect</button>
+        </section>
 
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START -->
-    <section id="local-biz-snapshot-bridge" class="local-biz-snapshot-bridge panel" aria-label="Local Biz Snapshot bridge">
-      <div class="local-biz-snapshot-head">
-        <span>LB</span>
-        <div>
-          <p class="kicker">Day 11 enhancement</p>
-          <h2>Local Biz Snapshot bridge</h2>
-        </div>
-        <div class="local-biz-snapshot-actions">
-          <button id="copyLocalBizSnapshotBridge" type="button">Copy snapshot</button>
-          <button id="downloadLocalBizSnapshotBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="local-biz-snapshot-intro">Turn this app's current output into a prospect dossier: business profile cue, likely lead leaks, first wedge, and human-reviewed next step.</p>
-      <div id="localBizSnapshotCards" class="local-biz-snapshot-cards" aria-live="polite"></div>
-      <textarea id="localBizSnapshotText" readonly aria-label="Generated Local Biz Snapshot bridge"></textarea>
-    </section>
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END -->
+        <div id="detailBody" hidden>
+          <section class="panel" aria-labelledby="researchHeading">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">01 &middot; Research card</p>
+                <h2 id="researchHeading"><span id="detailTitle">Prospect</span></h2>
+              </div>
+              <button id="deleteProspectBtn" type="button" class="btn btn-danger">Delete</button>
+            </div>
+            <div class="field-grid">
+              <label class="field">
+                <span>Business name <em class="req" aria-hidden="true">*</em></span>
+                <input id="pName" maxlength="90" autocomplete="off" aria-describedby="pNameErr" />
+                <small id="pNameErr" class="field-err" hidden>Business name is required.</small>
+              </label>
+              <label class="field">
+                <span>Contact first name</span>
+                <input id="pContact" maxlength="60" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span>Industry / local context</span>
+                <input id="pIndustry" maxlength="120" autocomplete="off" />
+              </label>
+              <label class="field">
+                <span>Channel</span>
+                <select id="pChannel">
+                  <option>Email</option>
+                  <option>LinkedIn DM</option>
+                  <option>SMS</option>
+                  <option>Voicemail script</option>
+                  <option>In person</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Status</span>
+                <select id="pStatus">
+                  <option value="research">Researching</option>
+                  <option value="draft">Drafting</option>
+                  <option value="ready">Ready to send</option>
+                  <option value="sent">Sent</option>
+                  <option value="replied">Replied</option>
+                  <option value="meeting">Meeting booked</option>
+                  <option value="passed">Passed / not now</option>
+                </select>
+              </label>
+            </div>
+            <div class="field-grid wide-fields">
+              <label class="field">
+                <span>Research notes (what you found, where, when)</span>
+                <textarea id="pNotes" rows="3" maxlength="800"></textarea>
+              </label>
+              <label class="field">
+                <span>Noticed issue (one specific, checkable thing)</span>
+                <textarea id="pNoticed" rows="2" maxlength="500"></textarea>
+              </label>
+              <label class="field">
+                <span>Proof point (why you, in one honest line)</span>
+                <textarea id="pProof" rows="2" maxlength="400"></textarea>
+              </label>
+              <label class="field">
+                <span>Low-pressure ask</span>
+                <textarea id="pAsk" rows="2" maxlength="300"></textarea>
+              </label>
+              <label class="field">
+                <span>Constraints / claims to avoid</span>
+                <textarea id="pConstraints" rows="2" maxlength="400"></textarea>
+              </label>
+            </div>
+          </section>
 
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START -->
-    <section id="script-rehearsal-room-bridge" class="script-rehearsal-room-bridge panel" aria-label="Script Rehearsal Room bridge">
-      <div class="script-rehearsal-head">
-        <span>SR</span>
-        <div>
-          <p class="kicker">Day 12 enhancement</p>
-          <h2>Script Rehearsal Room bridge</h2>
-        </div>
-        <div class="script-rehearsal-actions">
-          <button id="copyScriptRehearsalBridge" type="button">Copy run sheet</button>
-          <button id="downloadScriptRehearsalBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="script-rehearsal-intro">Turn this app's current output into a call-practice run sheet: objective, opening line, discovery prompts, objection card, and human-review boundary.</p>
-      <div id="scriptRehearsalCards" class="script-rehearsal-cards" aria-live="polite"></div>
-      <textarea id="scriptRehearsalText" readonly aria-label="Generated Script Rehearsal Room bridge"></textarea>
-    </section>
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END -->
+          <section class="panel" aria-labelledby="draftHeading">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">02 &middot; Message draft</p>
+                <h2 id="draftHeading">Compose with personalization slots</h2>
+              </div>
+            </div>
+            <div id="slotBar" class="slot-bar" role="group" aria-label="Insert personalization slot">
+              <button type="button" class="chip" data-slot="business">{{business}}</button>
+              <button type="button" class="chip" data-slot="contact">{{contact}}</button>
+              <button type="button" class="chip" data-slot="industry">{{industry}}</button>
+              <button type="button" class="chip" data-slot="noticed">{{noticed}}</button>
+              <button type="button" class="chip" data-slot="proof">{{proof}}</button>
+              <button type="button" class="chip" data-slot="ask">{{ask}}</button>
+            </div>
+            <label class="field">
+              <span>Draft (slots fill from the research card)</span>
+              <textarea id="draftText" rows="9" maxlength="3000" spellcheck="true"></textarea>
+            </label>
+            <div class="draft-grid">
+              <div class="lint-box" aria-live="polite" aria-label="Genericness lint results">
+                <div class="lint-head">
+                  <strong id="lintScore" class="lint-score">&ndash;</strong>
+                  <div>
+                    <p class="lint-label">Personalization score</p>
+                    <p id="lintVerdict" class="lint-verdict">No draft yet</p>
+                  </div>
+                </div>
+                <ul id="lintList" class="lint-list"></ul>
+              </div>
+              <div class="preview-box">
+                <div class="preview-head">
+                  <p class="lint-label">Resolved preview</p>
+                  <button id="copyDraftBtn" type="button" class="btn btn-ghost">Copy resolved draft</button>
+                </div>
+                <pre id="previewBox" class="preview-pre"></pre>
+              </div>
+            </div>
+          </section>
 
-  
-    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
-      <div class="panel-title">
-        <span>PV</span>
-        <div>
-          <p class="kicker">Day 13 enhancement</p>
-          <h2>Proof Vault bridge</h2>
+          <section class="panel" aria-labelledby="cadenceHeading">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">03 &middot; Follow-up cadence</p>
+                <h2 id="cadenceHeading">Plan the touches before you send</h2>
+              </div>
+            </div>
+            <div class="cadence-controls">
+              <label class="field compact">
+                <span>Cadence template</span>
+                <select id="cadenceTemplate">
+                  <option value="gentle-3">Gentle 3-touch (day 0 / 4 / 12)</option>
+                  <option value="standard-4">Standard 4-touch (day 0 / 3 / 8 / 16)</option>
+                  <option value="slow-4">Slow burn 4-touch (day 0 / 7 / 21 / 42)</option>
+                </select>
+              </label>
+              <label class="field compact">
+                <span>Start date</span>
+                <input id="cadenceStart" type="date" />
+              </label>
+              <div class="cadence-btns">
+                <button id="applyCadenceBtn" type="button" class="btn btn-primary">Apply cadence</button>
+                <button id="clearCadenceBtn" type="button" class="btn btn-ghost">Clear touches</button>
+              </div>
+            </div>
+            <ul id="touchList" class="touch-list" aria-label="Planned follow-up touches"></ul>
+          </section>
+
+          <section class="panel" aria-labelledby="exportHeading">
+            <div class="panel-head">
+              <div>
+                <p class="kicker">04 &middot; Export &amp; handoff</p>
+                <h2 id="exportHeading">Hand the packet to a human</h2>
+              </div>
+            </div>
+            <p class="boundary-note">Draft-only boundary: this app never sends messages, writes to a CRM, enriches leads, or contacts anyone. Every export is a draft for human review before use.</p>
+            <div class="export-row">
+              <button id="copyMdBtn" type="button" class="btn btn-primary">Copy Markdown packet</button>
+              <button id="downloadJsonBtn" type="button" class="btn">Download JSON</button>
+              <button id="exportCsvBtn" type="button" class="btn">Pipeline CSV</button>
+              <button id="printBtn" type="button" class="btn">Print packet</button>
+              <label class="btn file-btn">
+                Import JSON
+                <input id="importJsonInput" type="file" accept=".json,application/json" />
+              </label>
+            </div>
+          </section>
         </div>
       </div>
-      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
-      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
-      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
-      <div class="proof-vault-actions">
-        <button id="copyProofVault" type="button">Copy proof card</button>
-        <button id="downloadProofVault" type="button">Download proof JSON</button>
-      </div>
-    </section>
-  
-    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
-      <div class="panel-title">
-        <span>SOP</span>
-        <div>
-          <p class="kicker">Day 14 enhancement</p>
-          <h2>SOP Builder bridge</h2>
-        </div>
-      </div>
-      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
-      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
-      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
-      <div class="sop-builder-actions">
-        <button id="copySopBuilder" type="button">Copy SOP draft</button>
-        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
-      </div>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    </div>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <p>Local-first &middot; No accounts &middot; No tracking &mdash; data stays in this browser</p>
+    <a href="../../index.html">&#8592; All apps</a>
+  </footer>
+
+  <dialog id="helpModal" class="help-modal" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">How to use Warm Outreach Lab</h2>
+      <button id="closeHelpBtn" type="button" class="btn btn-ghost" aria-label="Close help">&#10005;</button>
+    </div>
+    <ol class="help-steps">
+      <li><strong>Add a prospect.</strong> Click <em>+ New prospect</em> and give the local business a name. Each prospect gets its own research card, draft, and cadence.</li>
+      <li><strong>Do the research first.</strong> Fill the research card: notes on what you found, one <em>specific, checkable</em> noticed issue, one honest proof point, and a low-pressure ask. Also list claims to avoid.</li>
+      <li><strong>Compose the draft.</strong> Write in the draft box and click slot chips like <code>{{noticed}}</code> to insert personalization slots — they fill from the research card automatically in the preview.</li>
+      <li><strong>Fix what the lint flags.</strong> The genericness lint scores the draft 0&ndash;100 and flags template-ish phrases, hype words, missing personalization, weak asks, and me-me-me writing. Aim for 70+.</li>
+      <li><strong>Plan the cadence.</strong> Pick a follow-up template and start date, then apply it. Check off touches as a human completes them; due touches show in the stats.</li>
+      <li><strong>Track the pipeline.</strong> Move status from Researching &rarr; Drafting &rarr; Ready &rarr; Sent &rarr; Replied. The stat strip shows send-ready drafts, due touches, and reply rate.</li>
+      <li><strong>Export for human review.</strong> Copy the Markdown packet, print it, or download JSON/CSV. Nothing is ever sent by this app — a human reviews and sends.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="help-keys">
+      <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close dialog</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy Markdown packet</td></tr>
+        <tr><td><kbd>N</kbd></td><td>New prospect (outside inputs)</td></tr>
+      </tbody>
+    </table>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+    <span id="toastMsg"></span>
+    <button id="toastUndo" type="button" class="btn btn-ghost" hidden>Undo</button>
+  </div>
+
+  <section id="printArea" class="print-area" hidden aria-hidden="true"></section>
+
   <script src="./app.js"></script>
 </body>
 </html>
