@@ -1,5 +1,7 @@
-/* SOP Builder — local-first standard operating procedure editor.
-   Structure: constants → state helpers → domain logic → render → events → init. */
+/* The Field Manual — local-first standard operating procedure editor.
+   Structure: constants → state helpers → domain logic → render → events → init.
+   Visual world: an operations field manual — manila cover, off-white pages,
+   stencil headings, safety-orange accents. Single committed paper theme. */
 (() => {
   'use strict';
 
@@ -7,6 +9,7 @@
   const STORAGE_KEY = 'fable-remake:day-14-sop-builder:v1';
   const LEGACY_KEY = 'sop-builder-v1';
   const UNDO_MS = 7000;
+  const SEAL_C = 2 * Math.PI * 54; // circumference of the certification-seal ring
 
   const $ = (id) => document.getElementById(id);
   const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
@@ -104,10 +107,10 @@
       updatedAt: Number(s.updatedAt) || Date.now(),
     };
   }
+  // `theme` is retained in the saved shape for data compatibility with v1
+  // exports/imports, even though the manual now commits to one paper theme.
   function normalize(raw) {
-    const prefersLight = typeof window.matchMedia === 'function'
-      && window.matchMedia('(prefers-color-scheme: light)').matches;
-    const base = { theme: prefersLight ? 'light' : 'dark', seenGuide: false, activeId: null, sops: [] };
+    const base = { theme: 'light', seenGuide: false, activeId: null, sops: [] };
     if (!raw || typeof raw !== 'object') return base;
     const st = { ...base };
     if (raw.theme === 'light' || raw.theme === 'dark') st.theme = raw.theme;
@@ -143,7 +146,7 @@
           escalate: String(old.owner || ''),
         }];
       }
-      return { theme: old.theme === 'light' ? 'light' : 'dark', seenGuide: false, activeId: sop.id, sops: [sop] };
+      return { theme: 'light', seenGuide: false, activeId: sop.id, sops: [sop] };
     } catch { return null; }
   }
 
@@ -169,6 +172,10 @@
     const sop = activeSop();
     if (sop) sop.updatedAt = Date.now();
     scheduleSave();
+  }
+  function docCode(sop) {
+    const i = state.sops.indexOf(sop);
+    return `SOP-${String((i < 0 ? state.sops.length : i) + 1).padStart(2, '0')}`;
   }
 
   // ---------- domain logic (pure) ----------
@@ -211,10 +218,10 @@
   }
 
   function scoreBadge(score) {
-    if (score >= 90) return ['Run-ready draft', 'ok'];
-    if (score >= 70) return ['Nearly ready', 'good'];
-    if (score >= 40) return ['Working draft', 'warn'];
-    return ['Skeleton', 'bad'];
+    if (score >= 90) return ['Ready to issue', 'ok'];
+    if (score >= 70) return ['Final review', 'good'];
+    if (score >= 40) return ['In drafting', 'warn'];
+    return ['Outline only', 'bad'];
   }
 
   function totalMinutes(sop) {
@@ -361,16 +368,16 @@
     return [a, b, c];
   }
 
-  // ---------- render ----------
-  function applyTheme() {
-    document.documentElement.dataset.theme = state.theme;
-    $('btnTheme').setAttribute('aria-label',
-      state.theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-    $('themeIcon').textContent = state.theme === 'dark' ? '☀' : '☾';
-  }
+  // ---------- shared inline SVG bits (one stroke style everywhere) ----------
+  const ICONS = {
+    del: '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>',
+    up: '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/></svg>',
+    down: '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M8 3v10M3.5 8.5L8 13l4.5-4.5"/></svg>',
+    grip: '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M3 4.5h10M3 8h10M3 11.5h10"/></svg>',
+  };
 
+  // ---------- render ----------
   function renderAll() {
-    applyTheme();
     renderLibrary();
     renderEditor();
   }
@@ -378,16 +385,20 @@
   function renderLibrary() {
     const list = $('sopList');
     $('libraryEmpty').hidden = state.sops.length > 0;
-    list.innerHTML = state.sops.map((s) => {
+    list.innerHTML = state.sops.map((s, i) => {
       const { score } = scoreSop(s);
       const name = s.title || 'Untitled SOP';
-      return `<li>
-        <button type="button" class="sop-item ${s.id === state.activeId ? 'active' : ''}" data-open="${s.id}"
-          aria-current="${s.id === state.activeId ? 'true' : 'false'}">
-          <span class="sop-item-title">${esc(name)}</span>
-          <span class="sop-item-meta">${s.steps.length} step${s.steps.length === 1 ? '' : 's'} &middot; ${score}% complete</span>
+      const code = `SOP-${String(i + 1).padStart(2, '0')}`;
+      const active = s.id === state.activeId;
+      return `<li class="spine ${active ? 'is-active' : ''}">
+        <button type="button" class="spine-btn" data-open="${s.id}"
+          aria-current="${active ? 'true' : 'false'}">
+          <span class="spine-code">${code}</span>
+          <span class="spine-title">${esc(name)}</span>
+          <span class="spine-meta"><span class="num">${s.steps.length}</span> step${s.steps.length === 1 ? '' : 's'} &middot; <span class="num">${score}%</span> written</span>
+          <span class="spine-tab" aria-hidden="true"></span>
         </button>
-        <button type="button" class="icon-btn danger sop-del" data-del="${s.id}" aria-label="Delete ${esc(name)}">&#10005;</button>
+        <button type="button" class="ghost-btn spine-del" data-del="${s.id}" aria-label="Delete ${esc(name)}">${ICONS.del}</button>
       </li>`;
     }).join('');
   }
@@ -416,42 +427,51 @@
 
   function renderSteps(sop) {
     $('stepsEmpty').hidden = sop.steps.length > 0;
-    $('stepList').innerHTML = sop.steps.map((s, i) => `
+    $('stepList').innerHTML = sop.steps.map((s, i) => {
+      const code = `§2.${String(i + 1).padStart(2, '0')}`;
+      return `
       <article class="step-card" data-sid="${s.id}">
-        <div class="step-top">
-          <span class="drag-handle" title="Drag to reorder" aria-hidden="true">&#10495;</span>
-          <span class="step-num" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
-          <input class="step-title" data-field="title" value="${esc(s.title)}" maxlength="120"
-            placeholder="Step title" aria-label="Step ${i + 1} title">
-          <div class="step-btns">
-            <button type="button" class="icon-btn" data-action="step-up" ${i === 0 ? 'disabled' : ''} aria-label="Move step ${i + 1} up">&uarr;</button>
-            <button type="button" class="icon-btn" data-action="step-down" ${i === sop.steps.length - 1 ? 'disabled' : ''} aria-label="Move step ${i + 1} down">&darr;</button>
-            <button type="button" class="icon-btn danger" data-action="step-del" aria-label="Delete step ${i + 1}">&#10005;</button>
-          </div>
+        <div class="step-rail">
+          <span class="drag-handle" title="Drag to reorder" aria-hidden="true">${ICONS.grip}</span>
+          <span class="step-num" aria-hidden="true">${code}</span>
         </div>
-        <label class="lbl">Action
-          <textarea data-field="detail" rows="2" maxlength="600"
-            placeholder="What exactly happens, in plain words.">${esc(s.detail)}</textarea>
-        </label>
-        <div class="step-meta">
+        <div class="step-body">
+          <div class="step-top">
+            <input class="step-title" data-field="title" value="${esc(s.title)}" maxlength="120"
+              placeholder="Name this station of the work" aria-label="Step ${i + 1} title">
+            <div class="step-btns">
+              <button type="button" class="ghost-btn" data-action="step-up" ${i === 0 ? 'disabled' : ''} aria-label="Move step ${i + 1} up">${ICONS.up}</button>
+              <button type="button" class="ghost-btn" data-action="step-down" ${i === sop.steps.length - 1 ? 'disabled' : ''} aria-label="Move step ${i + 1} down">${ICONS.down}</button>
+              <button type="button" class="ghost-btn danger" data-action="step-del" aria-label="Delete step ${i + 1}">${ICONS.del}</button>
+            </div>
+          </div>
+          <label class="lbl">Action — exactly what happens
+            <textarea data-field="detail" rows="2" maxlength="600"
+              placeholder="Plain words. Written so a new hire could run it cold.">${esc(s.detail)}</textarea>
+          </label>
+        </div>
+        <aside class="step-margin" aria-label="Step ${i + 1} margin notes">
+          <span class="margin-rule" aria-hidden="true"></span>
           <label class="lbl">Owner
             <input data-field="owner" value="${esc(s.owner)}" maxlength="80" placeholder="Role"></label>
           <label class="lbl">Tool
             <input data-field="tool" value="${esc(s.tool)}" maxlength="80" placeholder="CRM, phone…"></label>
           <label class="lbl">Minutes
             <input data-field="minutes" type="number" min="0" max="999" inputmode="numeric" value="${s.minutes || 0}"></label>
-        </div>
-      </article>`).join('');
+        </aside>
+      </article>`;
+    }).join('');
   }
 
   function renderChecks(sop) {
     $('checksEmpty').hidden = sop.checks.length > 0;
     $('checkList').innerHTML = sop.checks.map((c, i) => `
       <li class="check-row" data-cid="${c.id}">
-        <input type="checkbox" data-field="done" ${c.done ? 'checked' : ''} aria-label="Mark quality check ${i + 1} as verified in a dry run">
+        <span class="check-code" aria-hidden="true">§3.${String(i + 1).padStart(2, '0')}</span>
+        <input type="checkbox" class="stamp-box" data-field="done" ${c.done ? 'checked' : ''} aria-label="Mark inspection point ${i + 1} as verified in a dry run">
         <input type="text" data-field="text" value="${esc(c.text)}" maxlength="200"
-          placeholder="What must be true before this run counts?" aria-label="Quality check ${i + 1}">
-        <button type="button" class="icon-btn danger" data-action="check-del" aria-label="Delete quality check ${i + 1}">&#10005;</button>
+          placeholder="What must be true before this run counts?" aria-label="Inspection point ${i + 1}">
+        <button type="button" class="ghost-btn danger" data-action="check-del" aria-label="Delete inspection point ${i + 1}">${ICONS.del}</button>
       </li>`).join('');
   }
 
@@ -459,11 +479,12 @@
     $('excEmpty').hidden = sop.exceptions.length > 0;
     $('excList').innerHTML = sop.exceptions.map((x, i) => `
       <article class="exc-card" data-eid="${x.id}">
+        <div class="exc-flag" aria-hidden="true"><span>In case of</span><span class="exc-code">§4.${String(i + 1).padStart(2, '0')}</span></div>
         <div class="exc-top">
           <label class="lbl grow">If this happens
             <input data-field="condition" value="${esc(x.condition)}" maxlength="200"
               placeholder="e.g. The customer is angry or threatens to cancel"></label>
-          <button type="button" class="icon-btn danger" data-action="exc-del" aria-label="Delete exception ${i + 1}">&#10005;</button>
+          <button type="button" class="ghost-btn danger" data-action="exc-del" aria-label="Delete exception ${i + 1}">${ICONS.del}</button>
         </div>
         <label class="lbl">Do this instead
           <textarea data-field="response" rows="2" maxlength="400"
@@ -479,6 +500,7 @@
     if (!sop) return;
     const { score, rows } = scoreSop(sop);
 
+    $('statDoc').textContent = docCode(sop);
     $('statSteps').textContent = sop.steps.length;
     $('statTime').textContent = fmtMinutes(totalMinutes(sop));
     $('statChecks').textContent = sop.checks.filter((c) => filled(c.text)).length;
@@ -488,8 +510,10 @@
     const [label, tone] = scoreBadge(score);
     const badge = $('scoreBadge');
     badge.textContent = label;
-    badge.className = `badge badge-${tone}`;
-    $('scoreFill').style.width = `${score}%`;
+    badge.className = `stamp stamp-${tone}`;
+    // Certification seal: the ring inks in as the manual gets written.
+    $('scoreFill').style.strokeDashoffset = String(SEAL_C * (1 - score / 100));
+    $('sealWrap').classList.toggle('sealed', score >= 90);
 
     const cats = {};
     rows.forEach((r) => {
@@ -498,12 +522,12 @@
       cats[r.cat].max += r.max;
     });
     $('scoreBreakdown').innerHTML = Object.entries(cats).map(([cat, v]) =>
-      `<li><span>${esc(cat)}</span><span class="mono">${v.earned}/${v.max}</span></li>`).join('');
+      `<li><span>${esc(cat)}</span><span class="dots" aria-hidden="true"></span><span class="num">${v.earned}/${v.max}</span></li>`).join('');
 
     const fixes = rows.filter((r) => r.earned < r.max).slice(0, 4);
     $('fixList').innerHTML = fixes.length
       ? fixes.map((r) => `<li>${esc(r.hint)}</li>`).join('')
-      : '<li class="done-msg">Nothing left — run a dry run, then print or share the document.</li>';
+      : '<li class="done-msg">Nothing outstanding. Dry-run it once, then issue the page.</li>';
 
     markRequired(sop);
     renderDocument(sop, score);
@@ -527,36 +551,38 @@
   function renderDocument(sop, score) {
     const inp = inputLines(sop);
     const checks = sop.checks.filter((c) => filled(c.text));
+    const code = docCode(sop);
     $('sopDocument').innerHTML = `
+      <p class="doc-classify">For internal use &middot; draft for human review &middot; completeness <span class="num">${score}%</span></p>
       <header class="doc-head">
+        <p class="doc-code">${esc(code)} &middot; Standard operating procedure</p>
         <h1>${esc(sop.title || 'Untitled SOP')}</h1>
-        <p class="doc-sub">Standard operating procedure &middot; draft for human review &middot; completeness ${score}%</p>
         <dl class="doc-meta">
           <div><dt>Owner</dt><dd>${esc(sop.owner || '—')}</dd></div>
           <div><dt>Trigger</dt><dd>${esc(sop.trigger || '—')}</dd></div>
-          <div><dt>Frequency</dt><dd>${esc(sop.frequency || '—')}</dd></div>
-          <div><dt>Est. runtime</dt><dd>${esc(fmtMinutes(totalMinutes(sop)))}</dd></div>
+          <div><dt>Cadence</dt><dd>${esc(sop.frequency || '—')}</dd></div>
+          <div><dt>Est. runtime</dt><dd class="num">${esc(fmtMinutes(totalMinutes(sop)))}</dd></div>
         </dl>
       </header>
-      ${filled(sop.purpose) ? `<section><h2>Purpose</h2><p>${esc(sop.purpose)}</p></section>` : ''}
-      ${inp.length ? `<section><h2>Inputs needed</h2><ul>${inp.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></section>` : ''}
-      <section><h2>Steps</h2>
+      ${filled(sop.purpose) ? `<section><h2><span class="doc-sec num" aria-hidden="true">§0</span>Purpose</h2><p>${esc(sop.purpose)}</p></section>` : ''}
+      ${inp.length ? `<section><h2><span class="doc-sec num" aria-hidden="true">§1</span>Required on hand</h2><ul>${inp.map((i) => `<li>${esc(i)}</li>`).join('')}</ul></section>` : ''}
+      <section><h2><span class="doc-sec num" aria-hidden="true">§2</span>Procedure</h2>
         ${sop.steps.length
           ? `<ol class="doc-steps">${sop.steps.map((s) => `<li><strong>${esc(s.title || 'Untitled step')}</strong>${stepMetaLine(s)}${filled(s.detail) ? `<p>${esc(s.detail)}</p>` : ''}</li>`).join('')}</ol>`
           : '<p class="doc-empty">No steps documented yet.</p>'}
       </section>
-      <section><h2>Quality checklist</h2>
+      <section><h2><span class="doc-sec num" aria-hidden="true">§3</span>Inspection</h2>
         ${checks.length
           ? `<ul class="doc-checks">${checks.map((c) => `<li><span class="tick" aria-hidden="true"></span>${esc(c.text)}</li>`).join('')}</ul>`
-          : '<p class="doc-empty">No quality checks yet.</p>'}
+          : '<p class="doc-empty">No inspection points yet.</p>'}
       </section>
-      <section><h2>Exception paths</h2>
+      <section><h2><span class="doc-sec num" aria-hidden="true">§4</span>In case of</h2>
         ${sop.exceptions.length
           ? `<ul class="doc-excs">${sop.exceptions.map((x) => `<li><strong>If:</strong> ${esc(x.condition || '—')}<br><strong>Then:</strong> ${esc(x.response || '—')}${x.escalate ? `<br><strong>Escalate to:</strong> ${esc(x.escalate)}` : ''}</li>`).join('')}</ul>`
           : '<p class="doc-empty">No exception paths yet.</p>'}
       </section>
-      <section><h2>Definition of done</h2><p>${esc(sop.done || 'Not defined.')}</p></section>
-      <footer class="doc-foot">Draft SOP generated locally in SOP Builder &middot; a human approves before anything customer-facing, financial, or destructive.</footer>`;
+      <section><h2><span class="doc-sec num" aria-hidden="true">§5</span>Definition of done</h2><p>${esc(sop.done || 'Not defined.')}</p></section>
+      <footer class="doc-foot">Drafted locally in The Field Manual &middot; a human signs before anything customer-facing, financial, or destructive.</footer>`;
   }
 
   function scheduleDerived() {
@@ -630,7 +656,7 @@
   }
   function copyActiveMarkdown() {
     const sop = activeSop();
-    if (!sop) { toast('No SOP selected'); return; }
+    if (!sop) { toast('No manual open'); return; }
     copyText(sopMarkdown(sop), 'SOP Markdown copied');
   }
 
@@ -650,11 +676,11 @@
     save();
     renderAll();
     $('fTitle').focus();
-    toast('New SOP created');
+    toast('New manual drafted');
   }
 
   function loadDemo() {
-    mutateWithUndo('Demo library loaded', () => {
+    mutateWithUndo('Specimen manuals racked on the shelf', () => {
       state.sops = demoSops();
       state.activeId = state.sops[0].id;
     });
@@ -675,7 +701,7 @@
     state.activeId = copy.id;
     save();
     renderAll();
-    toast('SOP duplicated');
+    toast('Manual duplicated');
   }
 
   function deleteSop(id) {
@@ -717,20 +743,14 @@
 
   // ---------- events ----------
   function wireEvents() {
-    // Header
-    $('btnTheme').addEventListener('click', () => {
-      state.theme = state.theme === 'dark' ? 'light' : 'dark';
-      save();
-      applyTheme();
-      toast(state.theme === 'light' ? 'Light theme on' : 'Dark theme on');
-    });
+    // Cover band
     $('btnDemo').addEventListener('click', loadDemo);
     $('btnEmptyDemo').addEventListener('click', loadDemo);
     $('btnHelp').addEventListener('click', openHelp);
     $('btnCloseHelp').addEventListener('click', () => $('helpModal').close());
     $('helpModal').addEventListener('close', () => { lastFocus?.focus?.(); });
 
-    // Library
+    // Shelf
     $('btnNewSop').addEventListener('click', createSop);
     $('btnEmptyNew').addEventListener('click', createSop);
     $('sopList').addEventListener('click', (e) => {
@@ -796,11 +816,11 @@
       if (action === 'step-up') moveStep(sop, sid, -1);
       else if (action === 'step-down') moveStep(sop, sid, 1);
       else if (action === 'step-del') {
-        mutateWithUndo('Step deleted', () => { sop.steps = sop.steps.filter((s) => s.id !== sid); });
+        mutateWithUndo('Step struck from the procedure', () => { sop.steps = sop.steps.filter((s) => s.id !== sid); });
       } else if (action === 'check-del') {
-        mutateWithUndo('Quality check deleted', () => { sop.checks = sop.checks.filter((c) => c.id !== cid); });
+        mutateWithUndo('Inspection point removed', () => { sop.checks = sop.checks.filter((c) => c.id !== cid); });
       } else if (action === 'exc-del') {
-        mutateWithUndo('Exception deleted', () => { sop.exceptions = sop.exceptions.filter((x) => x.id !== eid); });
+        mutateWithUndo('Exception path removed', () => { sop.exceptions = sop.exceptions.filter((x) => x.id !== eid); });
       }
     });
 
@@ -825,7 +845,7 @@
       renderChecks(sop);
       renderDerived();
       $('checkList').querySelector(`[data-cid="${c.id}"] input[type="text"]`)?.focus();
-      toast('Quality check added');
+      toast('Inspection point added');
     });
     $('btnAddExc').addEventListener('click', () => {
       const sop = activeSop();
@@ -882,7 +902,7 @@
     });
     stepList.addEventListener('dragend', endDrag);
 
-    // Export & handoff
+    // Issue & file
     $('btnCopyMd').addEventListener('click', copyActiveMarkdown);
     $('btnPrint').addEventListener('click', () => window.print());
     $('btnJson').addEventListener('click', () => {

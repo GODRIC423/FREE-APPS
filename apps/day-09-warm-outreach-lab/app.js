@@ -1,4 +1,5 @@
-/* Warm Outreach Lab — draft human-reviewed warm outreach to local businesses.
+/* The Correspondence Desk — Warm Outreach Lab.
+   Draft human-reviewed warm outreach to local businesses.
    Local-first. No sending, no CRM writes, no network calls. */
 (() => {
   'use strict';
@@ -9,13 +10,13 @@
   const DAY_MS = 86400000;
 
   const STATUSES = [
-    { id: 'research', label: 'Researching' },
-    { id: 'draft',    label: 'Drafting' },
-    { id: 'ready',    label: 'Ready to send' },
-    { id: 'sent',     label: 'Sent' },
-    { id: 'replied',  label: 'Replied' },
-    { id: 'meeting',  label: 'Meeting booked' },
-    { id: 'passed',   label: 'Passed / not now' },
+    { id: 'research', label: 'Gathering notes' },
+    { id: 'draft',    label: 'At the desk' },
+    { id: 'ready',    label: 'Sealed & ready' },
+    { id: 'sent',     label: 'Posted' },
+    { id: 'replied',  label: 'Reply received' },
+    { id: 'meeting',  label: 'Meeting set' },
+    { id: 'passed',   label: 'Filed away' },
   ];
   const STATUS_IDS = STATUSES.map(s => s.id);
   const CHANNELS = ['Email', 'LinkedIn DM', 'SMS', 'Voicemail script', 'In person'];
@@ -23,29 +24,29 @@
 
   const CADENCES = {
     'gentle-3': {
-      name: 'Gentle 3-touch',
+      name: 'The gentle three',
       touches: [
-        { offset: 0,  label: 'Initial note',   hint: 'Noticed issue + proof point + low-pressure ask' },
-        { offset: 4,  label: 'Soft bump',      hint: 'One line in the same thread — no guilt, no pressure' },
-        { offset: 12, label: 'Value close',    hint: 'Share one useful observation, then close the loop politely' },
+        { offset: 0,  label: 'The first letter', hint: 'Noticed issue + honest proof + one gentle ask' },
+        { offset: 4,  label: 'A soft bump',      hint: 'One line in the same thread — no guilt, no pressure' },
+        { offset: 12, label: 'The value close',  hint: 'Share one useful observation, then close the loop politely' },
       ],
     },
     'standard-4': {
-      name: 'Standard 4-touch',
+      name: 'The standard four',
       touches: [
-        { offset: 0,  label: 'Initial note',   hint: 'Noticed issue + proof point + low-pressure ask' },
-        { offset: 3,  label: 'Short bump',     hint: 'Reply to your own message with one added detail' },
-        { offset: 8,  label: 'New angle',      hint: 'Different noticed detail or a small useful resource' },
-        { offset: 16, label: 'Close the loop', hint: '"Closing the file" note — easy yes/no, door stays open' },
+        { offset: 0,  label: 'The first letter', hint: 'Noticed issue + honest proof + one gentle ask' },
+        { offset: 3,  label: 'A short bump',     hint: 'Reply to your own message with one added detail' },
+        { offset: 8,  label: 'A new angle',      hint: 'Different noticed detail or a small useful resource' },
+        { offset: 16, label: 'Close the loop',   hint: '"Closing the file" note — easy yes/no, door stays open' },
       ],
     },
     'slow-4': {
-      name: 'Slow burn 4-touch',
+      name: 'The slow burn',
       touches: [
-        { offset: 0,  label: 'Initial note',    hint: 'Noticed issue + proof point + low-pressure ask' },
-        { offset: 7,  label: 'Week-later bump', hint: 'Short, warm, zero pressure' },
-        { offset: 21, label: 'Value drop',      hint: 'Something genuinely useful, no ask attached' },
-        { offset: 42, label: 'Season check-in', hint: 'Light check-in tied to their busy season' },
+        { offset: 0,  label: 'The first letter', hint: 'Noticed issue + honest proof + one gentle ask' },
+        { offset: 7,  label: 'Week-later bump',  hint: 'Short, warm, zero pressure' },
+        { offset: 21, label: 'A value drop',     hint: 'Something genuinely useful, no ask attached' },
+        { offset: 42, label: 'Season check-in',  hint: 'Light check-in tied to their busy season' },
       ],
     },
   };
@@ -71,7 +72,7 @@
     'limited time', 'cutting-edge', 'world-class', 'best in class', 'unlock',
   ];
 
-  const GUARDRAIL = 'Draft-only boundary: this packet was produced by a local drafting tool. '
+  const GUARDRAIL = 'Draft-only boundary: this packet came off a local correspondence desk. '
     + 'Nothing has been sent. A human must verify the noticed issue, the proof claim, and the tone before any message goes out.';
 
   /* ============================== Small helpers ============================== */
@@ -148,7 +149,6 @@
     const src = raw && typeof raw === 'object' ? raw : {};
     const st = {
       version: 1,
-      theme: src.theme === 'light' || src.theme === 'dark' ? src.theme : null,
       seenGuide: !!src.seenGuide,
       filter: src.filter === 'all' || STATUS_IDS.includes(src.filter) ? src.filter : 'all',
       selectedId: typeof src.selectedId === 'string' ? src.selectedId : null,
@@ -214,8 +214,8 @@
     const raw = p.draft.trim();
     if (!raw) {
       return {
-        score: null, verdict: 'No draft yet',
-        issues: [{ level: 'warn', msg: 'Write a draft — use the slot chips to pull in your research.' }],
+        score: null, verdict: 'Nothing to mark yet',
+        issues: [{ level: 'warn', msg: 'Set words on the sheet — press a brass plate to pull in your research.' }],
       };
     }
     const { text, unresolved, unknown } = resolveSlots(raw, p);
@@ -270,10 +270,10 @@
     if (/\b[A-Z]{4,}\b/.test(text.replace(/\{\{\w+\}\}/g, ''))) hit(4, 'warn', 'ALL-CAPS words read as shouting');
 
     score = Math.max(0, Math.min(100, Math.round(score)));
-    const verdict = score >= 85 ? 'Reads personal'
-      : score >= 70 ? 'Warm enough — review it'
-      : score >= 50 ? 'Getting there'
-      : 'Template-ish — rework';
+    const verdict = score >= 85 ? 'Reads like a real letter'
+      : score >= 70 ? 'Warm enough — give it a read'
+      : score >= 50 ? 'Getting there — keep the pencil moving'
+      : 'Reads like a circular — rework it';
     return { score, verdict, issues };
   }
 
@@ -362,7 +362,7 @@
   function pipelineMarkdown() {
     const stats = pipelineStats();
     return [
-      '# Warm Outreach Lab — pipeline overview',
+      '# The Correspondence Desk — tray ledger',
       '',
       `Generated: ${new Date().toLocaleString()}`,
       `Prospects: ${stats.total} · Send-ready drafts: ${stats.ready} · Touches due: ${stats.due} · Reply rate: ${stats.replyRate === null ? '—' : stats.replyRate + '%'}`,
@@ -404,7 +404,7 @@
   function printHTML() {
     const p = selected();
     if (!p) {
-      return `<h1>Warm Outreach Lab — pipeline overview</h1>
+      return `<h1>The Correspondence Desk — tray ledger</h1>
         <p class="print-dim">Generated ${esc(new Date().toLocaleString())} · Draft-only, human review required</p>
         <ul>${state.prospects.map(x => `<li><strong>${esc(x.name || 'Unnamed')}</strong> — ${esc(statusLabel(x.status))}, ${esc(x.channel)}</li>`).join('')}</ul>
         <h2>Guardrail</h2><p>${esc(GUARDRAIL)}</p>`;
@@ -446,9 +446,9 @@
       constraints: 'No revenue promises. Do not name the bakery without permission.',
       draft: 'Hi {{contact}} — I was at {{business}} on Saturday (flat white, worth the line) and noticed {{noticed}}.\n\n{{proof}}.\n\n{{ask}}\n\nIf the timing is wrong, no worries at all — the coffee was great either way.',
       touches: [
-        { label: 'Initial note', hint: 'Noticed issue + proof point + low-pressure ask', date: addDaysISO(t, -4), done: true },
-        { label: 'Soft bump', hint: 'One line in the same thread — no guilt, no pressure', date: t, done: false },
-        { label: 'Value close', hint: 'Share one useful observation, then close the loop politely', date: addDaysISO(t, 8), done: false },
+        { label: 'The first letter', hint: 'Noticed issue + honest proof + one gentle ask', date: addDaysISO(t, -4), done: true },
+        { label: 'A soft bump', hint: 'One line in the same thread — no guilt, no pressure', date: t, done: false },
+        { label: 'The value close', hint: 'Share one useful observation, then close the loop politely', date: addDaysISO(t, 8), done: false },
       ],
       createdAt: addDaysISO(t, -6),
     });
@@ -474,9 +474,9 @@
       constraints: 'She runs everything solo — do not pitch anything that adds weekly work.',
       draft: 'Hi {{contact}} — quick note from a class regular\'s friend. I noticed {{noticed}}, which probably costs you drop-ins who plan from the website.\n\n{{proof}}.\n\n{{ask}}',
       touches: [
-        { label: 'Initial note', hint: 'Noticed issue + proof point + low-pressure ask', date: addDaysISO(t, -14), done: true },
-        { label: 'Short bump', hint: 'Reply to your own message with one added detail', date: addDaysISO(t, -11), done: true },
-        { label: 'New angle', hint: 'Different noticed detail or a small useful resource', date: addDaysISO(t, -6), done: false },
+        { label: 'The first letter', hint: 'Noticed issue + honest proof + one gentle ask', date: addDaysISO(t, -14), done: true },
+        { label: 'A short bump', hint: 'Reply to your own message with one added detail', date: addDaysISO(t, -11), done: true },
+        { label: 'A new angle', hint: 'Different noticed detail or a small useful resource', date: addDaysISO(t, -6), done: false },
         { label: 'Close the loop', hint: '"Closing the file" note — easy yes/no, door stays open', date: addDaysISO(t, 2), done: false },
       ],
       createdAt: addDaysISO(t, -16),
@@ -492,7 +492,7 @@
       draft: '', touches: [], createdAt: t,
     });
     return normalize({
-      theme: state.theme, seenGuide: true, filter: 'all',
+      seenGuide: true, filter: 'all',
       selectedId: cedar.id, prospects: [cedar, hartline, bluebird, northstar],
     });
   }
@@ -505,14 +505,12 @@
     pAsk: 'ask', pConstraints: 'constraints',
   };
 
-  function applyTheme() {
-    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    const theme = state.theme || (prefersLight ? 'light' : 'dark');
-    document.documentElement.dataset.theme = theme;
-    const btn = $('themeToggle');
-    btn.textContent = theme === 'dark' ? '☀ Light' : '☾ Dark';
-    btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
-  }
+  // Pencil marks for the editor's report — one consistent stroke style, no emoji.
+  const MARKS = {
+    ok:   '<svg class="mark m-ok" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 6.5l2.5 2.5L10 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    warn: '<svg class="mark m-warn" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1.8v5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="10" r="1.2" fill="currentColor"/></svg>',
+    bad:  '<svg class="mark m-bad" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.8 2.8l6.4 6.4M9.2 2.8 2.8 9.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  };
 
   function renderStats() {
     const s = pipelineStats();
@@ -527,36 +525,37 @@
     if (!nt) return '';
     const diff = dayDiff(nt.date);
     if (diff === null) return '';
-    if (diff < 0) return `<span class="card-overdue">${Math.abs(diff)}d overdue</span>`;
-    if (diff === 0) return '<span class="card-due">Touch due today</span>';
-    return `<span>Next: ${esc(fmtDate(nt.date))}</span>`;
+    if (diff < 0) return `<span class="env-next overdue">${Math.abs(diff)}d past due</span>`;
+    if (diff === 0) return '<span class="env-next due">post today</span>';
+    return `<span class="env-next">next: ${esc(fmtDate(nt.date))}</span>`;
   }
 
   function renderList() {
     const listEl = $('prospectList');
     const filtered = state.filter === 'all' ? state.prospects : state.prospects.filter(p => p.status === state.filter);
     if (!state.prospects.length) {
-      listEl.innerHTML = '<li class="list-empty">No prospects yet.<br>Add one above or load the demo to explore.</li>';
+      listEl.innerHTML = '<li class="list-empty">The tray is empty.<br>Start a letter above, or lay out the demo to see the desk at work.</li>';
       return;
     }
     if (!filtered.length) {
-      listEl.innerHTML = '<li class="list-empty">No prospects with this status. Try another filter.</li>';
+      listEl.innerHTML = '<li class="list-empty">No letters under this mark — sort the tray another way.</li>';
       return;
     }
     listEl.innerHTML = filtered.map(p => {
       const lint = lintDraft(p);
-      const mini = lint.score === null ? '' : `<span class="mini-score ${scoreClass(lint.score)}">Lint ${lint.score}</span>`;
+      const grade = lint.score === null ? '' : `<span class="grade g-${scoreClass(lint.score)}" title="Editor&#39;s grade">${lint.score}</span>`;
       return `<li>
-        <div class="prospect-card" data-id="${esc(p.id)}" role="button" tabindex="0"
+        <div class="envelope" data-id="${esc(p.id)}" role="button" tabindex="0"
              aria-current="${p.id === state.selectedId ? 'true' : 'false'}"
-             aria-label="Open ${esc(p.name || 'unnamed prospect')}">
-          <div class="card-top">
-            <span class="card-name">${esc(p.name || 'Unnamed prospect')}</span>
-            <span class="status-chip s-${esc(p.status)}">${esc(statusLabel(p.status))}</span>
+             aria-label="Open the letter to ${esc(p.name || 'an unnamed addressee')}">
+          <span class="env-flap" aria-hidden="true"></span>
+          <div class="env-row">
+            <span class="env-name">${esc(p.name || 'Unnamed addressee')}</span>
+            <span class="stamp s-${esc(p.status)}">${esc(statusLabel(p.status))}</span>
           </div>
-          <div class="card-meta">
+          <div class="env-meta">
             <span>${esc(p.channel)}</span>
-            ${mini}
+            ${grade}
             ${cardTouchInfo(p)}
           </div>
         </div>
@@ -568,12 +567,11 @@
     const p = selected();
     if (!p) return;
     const lint = lintDraft(p);
-    const scoreEl = $('lintScore');
-    scoreEl.textContent = lint.score === null ? '–' : lint.score;
-    scoreEl.className = 'lint-score' + (lint.score === null ? '' : ' ' + scoreClass(lint.score));
+    $('lintScore').textContent = lint.score === null ? '–' : lint.score;
+    $('gradeStamp').className = 'grade-stamp' + (lint.score === null ? '' : ' ' + scoreClass(lint.score));
     $('lintVerdict').textContent = lint.verdict;
     $('lintList').innerHTML = lint.issues.map(i =>
-      `<li><span class="dot d-${i.level}" aria-hidden="true"></span><span>${esc(i.msg)}</span></li>`
+      `<li>${MARKS[i.level] || MARKS.warn}<span>${esc(i.msg)}</span></li>`
     ).join('');
 
     // Resolved preview with unresolved slots highlighted.
@@ -587,7 +585,7 @@
       last = m.index + m[0].length;
     }
     html += esc(raw.slice(last));
-    $('previewBox').innerHTML = html || '<span class="slot-unresolved">Preview appears as you type.</span>';
+    $('previewBox').innerHTML = html || '<span class="slot-unresolved">The fair copy appears as you write.</span>';
   }
 
   function renderTouches() {
@@ -595,25 +593,28 @@
     if (!p) return;
     const listEl = $('touchList');
     if (!p.touches.length) {
-      listEl.innerHTML = '<li class="list-empty">No touches planned yet. Pick a template and start date, then apply the cadence.</li>';
+      listEl.innerHTML = '<li class="list-empty">No postmarks on the string yet — choose a cadence and a first posting date, then set them.</li>';
       return;
     }
     const today = todayISO();
     listEl.innerHTML = p.touches.map(t => {
       const diff = dayDiff(t.date);
-      const cls = ['touch-item',
-        t.done ? 'done' : '',
-        !t.done && t.date < today ? 'overdue' : '',
-        !t.done && t.date === today ? 'due' : ''].filter(Boolean).join(' ');
-      const when = t.done ? 'done' : diff < 0 ? `${Math.abs(diff)}d overdue` : diff === 0 ? 'due today' : `in ${diff}d`;
+      const isOverdue = !t.done && t.date < today;
+      const isDue = !t.done && t.date === today;
+      const cls = ['postmark', t.done ? 'done' : '', isOverdue ? 'overdue' : '', isDue ? 'due' : '']
+        .filter(Boolean).join(' ');
+      const badge = t.done ? 'POSTED' : isOverdue ? 'PAST DUE' : isDue ? 'DUE TODAY' : '';
+      const when = t.done ? 'posted' : diff < 0 ? `${Math.abs(diff)}d past due` : diff === 0 ? 'due today' : `in ${diff}d`;
       return `<li class="${cls}">
-        <input type="checkbox" data-touch="${esc(t.id)}" ${t.done ? 'checked' : ''}
-               aria-label="Mark ${esc(t.label)} on ${esc(fmtDate(t.date))} as done">
-        <div class="touch-text">
-          <div class="touch-label">${esc(t.label)}</div>
-          <div class="touch-hint">${esc(t.hint)}</div>
-        </div>
-        <span class="touch-date">${esc(fmtDate(t.date))} · ${esc(when)}</span>
+        <label class="pm-stamp">
+          <input type="checkbox" data-touch="${esc(t.id)}" ${t.done ? 'checked' : ''}
+                 aria-label="Mark ${esc(t.label)} on ${esc(fmtDate(t.date))} as posted">
+          <span class="pm-ring" aria-hidden="true">${esc(fmtDate(t.date))}</span>
+          ${badge ? `<span class="pm-mark" aria-hidden="true">${badge}</span>` : ''}
+        </label>
+        <span class="pm-label">${esc(t.label)}</span>
+        <span class="pm-hint">${esc(t.hint)}</span>
+        <span class="pm-when">${esc(when)}</span>
       </li>`;
     }).join('');
   }
@@ -631,7 +632,7 @@
     $('detailEmpty').hidden = !!p;
     $('detailBody').hidden = !p;
     if (!p) return;
-    $('detailTitle').textContent = p.name || 'Unnamed prospect';
+    $('detailTitle').textContent = p.name || 'Unnamed addressee';
     Object.entries(FIELD_MAP).forEach(([id, prop]) => { $(id).value = p[prop]; });
     $('draftText').value = p.draft;
     if (!$('cadenceStart').value) $('cadenceStart').value = todayISO();
@@ -641,7 +642,6 @@
   }
 
   function renderAll() {
-    applyTheme();
     $('statusFilter').value = state.filter;
     renderStats();
     renderList();
@@ -724,7 +724,7 @@
     save();
     renderAll();
     $('pName').focus();
-    showToast('New prospect added — start with the business name');
+    showToast('A fresh sheet is on the desk — name the addressee first');
   }
 
   function deleteProspect() {
@@ -735,7 +735,7 @@
     state.selectedId = state.prospects[Math.min(idx, state.prospects.length - 1)]?.id ?? null;
     save();
     renderAll();
-    showToast(`Deleted "${p.name || 'Unnamed prospect'}"`, () => {
+    showToast(`Discarded the letter to "${p.name || 'Unnamed addressee'}"`, () => {
       state.prospects.splice(Math.min(idx, state.prospects.length), 0, p);
       state.selectedId = p.id;
       save();
@@ -752,7 +752,7 @@
     save();
     renderTouches(); renderList(); renderStats();
     const tplName = (CADENCES[$('cadenceTemplate').value] || CADENCES['gentle-3']).name;
-    showToast(`${tplName} applied from ${fmtDate(startISO)}`, prev.length ? () => {
+    showToast(`${tplName} strung from ${fmtDate(startISO)}`, prev.length ? () => {
       p.touches = prev; save(); renderTouches(); renderList(); renderStats();
     } : null);
   }
@@ -764,7 +764,7 @@
     p.touches = [];
     save();
     renderTouches(); renderList(); renderStats();
-    showToast('Touches cleared', () => {
+    showToast('Postmarks taken down', () => {
       p.touches = prev; save(); renderTouches(); renderList(); renderStats();
     });
   }
@@ -775,14 +775,13 @@
       try {
         const parsed = JSON.parse(String(reader.result));
         const incoming = normalize(parsed && typeof parsed.state === 'object' ? parsed.state : parsed);
-        incoming.theme = state.theme;
         incoming.seenGuide = true;
         state = incoming;
         save();
         renderAll();
-        showToast(`Imported ${state.prospects.length} prospect${state.prospects.length === 1 ? '' : 's'}`);
+        showToast(`Imported ${state.prospects.length} letter${state.prospects.length === 1 ? '' : 's'} into the tray`);
       } catch {
-        showToast('Import failed — not a valid JSON export');
+        showToast('Import failed — not a valid JSON export from this desk');
       }
     };
     reader.onerror = () => showToast('Import failed — could not read the file');
@@ -799,11 +798,6 @@
   /* ============================== Event wiring ============================== */
 
   // Header
-  $('themeToggle').addEventListener('click', () => {
-    state.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-    save();
-    applyTheme();
-  });
   $('helpBtn').addEventListener('click', () => openHelp($('helpBtn')));
   $('closeHelpBtn').addEventListener('click', closeHelp);
   $('helpModal').addEventListener('close', () => {
@@ -817,14 +811,14 @@
     state = demoState();
     save();
     renderAll();
-    showToast('Demo pipeline loaded — 4 prospects');
+    showToast('Demo laid out — four letters on the desk');
   });
   $('resetBtn').addEventListener('click', () => {
-    if (!window.confirm('Reset Warm Outreach Lab? This clears all prospects, drafts, and cadences from this browser.')) return;
-    state = normalize({ theme: state.theme, seenGuide: true });
+    if (!window.confirm('Clear the desk? This discards every letter, dossier, and postmark kept in this browser.')) return;
+    state = normalize({ seenGuide: true });
     save();
     renderAll();
-    showToast('All data cleared');
+    showToast('The desk is cleared');
   });
 
   // Pipeline
@@ -836,12 +830,12 @@
     renderList();
   });
   $('prospectList').addEventListener('click', e => {
-    const card = e.target.closest('.prospect-card');
+    const card = e.target.closest('.envelope');
     if (card) selectProspect(card.dataset.id);
   });
   $('prospectList').addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const card = e.target.closest('.prospect-card');
+    const card = e.target.closest('.envelope');
     if (!card) return;
     e.preventDefault();
     selectProspect(card.dataset.id);
@@ -855,7 +849,7 @@
       p[prop] = $(id).value;
       save();
       if (id === 'pName') {
-        $('detailTitle').textContent = p.name || 'Unnamed prospect';
+        $('detailTitle').textContent = p.name || 'Unnamed addressee';
         validateName();
       }
       renderList();
@@ -893,8 +887,8 @@
     if (!p) return;
     const { text, unresolved } = resolveSlots(p.draft, p);
     copyText(text, unresolved.length
-      ? `Draft copied — ${unresolved.length} slot${unresolved.length === 1 ? '' : 's'} still unresolved`
-      : 'Resolved draft copied for human review');
+      ? `Fair copy taken — ${unresolved.length} slot${unresolved.length === 1 ? '' : 's'} still blank`
+      : 'Fair copy taken, for a human to review and send');
   });
 
   // Cadence
@@ -914,7 +908,7 @@
   });
 
   // Export & handoff
-  $('copyMdBtn').addEventListener('click', () => copyText(mainMarkdown(), 'Markdown packet copied — review before sending anything'));
+  $('copyMdBtn').addEventListener('click', () => copyText(mainMarkdown(), 'Markdown packet copied — a human reads it before anything is sent'));
   $('downloadJsonBtn').addEventListener('click', () => {
     downloadFile('warm-outreach-lab.json', JSON.stringify({
       app: 'warm-outreach-lab',
@@ -922,11 +916,11 @@
       safety: 'draft-only, human review required before any message is sent',
       state,
     }, null, 2), 'application/json');
-    showToast('JSON downloaded');
+    showToast('JSON downloaded — the whole desk, re-importable');
   });
   $('exportCsvBtn').addEventListener('click', () => {
     downloadFile('warm-outreach-pipeline.csv', pipelineCsv(), 'text/csv');
-    showToast('Pipeline CSV downloaded');
+    showToast('Tray ledger CSV downloaded');
   });
   $('printBtn').addEventListener('click', () => {
     $('printArea').innerHTML = printHTML();
@@ -950,7 +944,7 @@
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
       e.preventDefault();
-      copyText(mainMarkdown(), 'Markdown packet copied — review before sending anything');
+      copyText(mainMarkdown(), 'Markdown packet copied — a human reads it before anything is sent');
       return;
     }
     const typing = e.target.closest && e.target.closest('input, textarea, select');
