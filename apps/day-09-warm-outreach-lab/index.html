@@ -1,266 +1,376 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Warm Outreach Lab — draft human-reviewed warm outreach to local businesses: noticed issue, proof point, low-pressure ask." />
-  <title>Warm Outreach Lab</title>
+  <meta name="description" content="The Correspondence Desk — Warm Outreach Lab. Draft human-reviewed warm outreach to local businesses: one noticed issue, one honest proof, one gentle ask." />
+  <title>The Correspondence Desk — Warm Outreach Lab</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">Skip to the desk</a>
 
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">WO</span>
-      <div class="brand-text">
-        <p class="brand-name">Warm Outreach Lab</p>
-        <p class="brand-tag">Noticed issue · proof point · low-pressure ask — drafted here, sent by a human</p>
-      </div>
-    </div>
-    <nav class="header-actions" aria-label="App actions">
-      <a class="btn btn-ghost back-link" href="../../index.html">&#8592; All apps</a>
-      <button id="loadDemoBtn" type="button" class="btn">Load demo</button>
-      <button id="resetBtn" type="button" class="btn">Reset</button>
-      <button id="helpBtn" type="button" class="btn">How to use</button>
-      <button id="themeToggle" type="button" class="btn" aria-pressed="false" aria-label="Toggle color theme">Theme</button>
-    </nav>
-  </header>
+  <!-- Icon sprite: one consistent stroke style -->
+  <svg hidden aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-envelope" viewBox="0 0 20 20">
+        <rect x="2" y="4.5" width="16" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M2.5 5.5 10 11l7.5-5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="i-nib" viewBox="0 0 20 20">
+        <path d="M10 2.5c2.6 1.8 4 4.2 4 7.2 0 2.6-1.6 5-4 6.8-2.4-1.8-4-4.2-4-6.8 0-3 1.4-5.4 4-7.2Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M10 8v9.5M10 8a1.2 1.2 0 1 0 0-.01" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-seal" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 1.6v2M10 16.4v2M1.6 10h2M16.4 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-postmark" viewBox="0 0 20 20">
+        <circle cx="8" cy="10" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M14.5 6.5c1.6.6 3 .6 4 0M14.5 10c1.6.6 3 .6 4 0M14.5 13.5c1.6.6 3 .6 4 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-pencil" viewBox="0 0 20 20">
+        <path d="m3 17 .9-3.6L14.6 2.7a1.5 1.5 0 0 1 2.1 0l.6.6a1.5 1.5 0 0 1 0 2.1L6.6 16.1 3 17Z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="m12.8 4.5 2.7 2.7" stroke="currentColor" stroke-width="1.5"/>
+      </symbol>
+      <symbol id="i-copy" viewBox="0 0 20 20">
+        <rect x="6.5" y="6.5" width="10" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13.5 4V3.5a1 1 0 0 0-1-1h-8a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1H4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+      </symbol>
+      <symbol id="i-down" viewBox="0 0 20 20">
+        <path d="M10 3v9m0 0 3.5-3.5M10 12 6.5 8.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3.5 15.5h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-up" viewBox="0 0 20 20">
+        <path d="M10 17V8m0 0 3.5 3.5M10 8 6.5 11.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3.5 4.5h13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </symbol>
+      <symbol id="i-print" viewBox="0 0 20 20">
+        <path d="M6 7V3.5h8V7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <rect x="3" y="7" width="14" height="6.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="6" y="11.5" width="8" height="5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      </symbol>
+      <symbol id="i-string" viewBox="0 0 20 20">
+        <path d="M2 12c3-4 6 4 9 0s5-2 7-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </symbol>
+    </defs>
+  </svg>
 
-  <main id="main" class="shell">
-    <section class="stat-strip" aria-label="Pipeline stats" aria-live="polite">
-      <article class="stat"><strong id="statProspects">0</strong><span>Prospects</span></article>
-      <article class="stat"><strong id="statReady">0</strong><span>Send-ready drafts</span></article>
-      <article class="stat"><strong id="statDue">0</strong><span>Touches due</span></article>
-      <article class="stat"><strong id="statReply">&ndash;</strong><span>Reply rate</span></article>
-    </section>
-
-    <div class="layout">
-      <section class="panel pipeline-panel" aria-labelledby="pipelineHeading">
-        <div class="panel-head">
-          <h2 id="pipelineHeading">Pipeline</h2>
-          <button id="addProspectBtn" type="button" class="btn btn-primary">+ New prospect</button>
+  <header class="desk-band">
+    <div class="band-inner">
+      <div class="masthead">
+        <!-- Signature hero: envelope, wax seal, postmark ring, cancellation lines -->
+        <svg class="hero" viewBox="0 0 360 180" role="img" aria-label="Still life of an envelope with a wax seal beside a postmark reading The Correspondence Desk">
+          <defs>
+            <path id="pmArcTop" d="M218.5 96a43.5 43.5 0 0 1 87 0" />
+            <path id="pmArcBot" d="M218.5 96a43.5 43.5 0 0 0 87 0" />
+          </defs>
+          <!-- envelope -->
+          <g class="hero-envelope">
+            <rect x="18" y="52" width="176" height="106" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M20 54 106 116 192 54" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M20 156 88 104 M192 156 124 104" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55"/>
+            <!-- address rules -->
+            <path d="M52 128h84M52 138h108M52 148h66" stroke="currentColor" stroke-width="1.2" opacity=".45" stroke-linecap="round"/>
+            <!-- postage stamp, perforated -->
+            <rect x="152" y="62" width="30" height="36" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2.4 3" />
+            <rect x="157" y="67" width="20" height="26" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <path d="M160 86c2-6 4-10 7-12 3 2 5 6 7 12" fill="none" stroke="currentColor" stroke-width="1.1"/>
+          </g>
+          <!-- wax seal on the flap point -->
+          <g class="hero-seal">
+            <circle cx="106" cy="116" r="17" class="seal-wax"/>
+            <circle cx="106" cy="116" r="17" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/>
+            <circle cx="106" cy="116" r="11.5" fill="none" stroke="#f6efdf" stroke-width="1.2" opacity=".85"/>
+            <path d="m99.5 111.5 2.6 9 3.9-6.5 3.9 6.5 2.6-9" stroke="#f6efdf" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="106" cy="106.5" r="1.2" fill="#f6efdf" opacity=".85"/>
+          </g>
+          <!-- postmark ring + cancellation waves -->
+          <g class="hero-postmark">
+            <circle cx="262" cy="96" r="56" fill="none" stroke="currentColor" stroke-width="1.8"/>
+            <circle cx="262" cy="96" r="51" fill="none" stroke="currentColor" stroke-width="1"/>
+            <circle cx="262" cy="96" r="34" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text class="pm-arc" text-anchor="middle"><textPath href="#pmArcTop" startOffset="50%">THE CORRESPONDENCE DESK</textPath></text>
+            <text class="pm-arc pm-arc-sm" text-anchor="middle"><textPath href="#pmArcBot" startOffset="50%">POSTED BY A HUMAN</textPath></text>
+            <text x="262" y="92" text-anchor="middle" class="pm-center">WARM</text>
+            <text x="262" y="106" text-anchor="middle" class="pm-center">OUTREACH</text>
+            <path d="M318 76c10 4 20 4 30 0M320 92c10 4 20 4 30 0M318 108c10 4 20 4 30 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>
+          </g>
+        </svg>
+        <div class="masthead-text">
+          <p class="masthead-over">Warm Outreach Lab &middot; kept entirely on this desk</p>
+          <h1>The Correspondence Desk</h1>
+          <p class="masthead-tag">One noticed issue, one honest proof, one gentle ask. Every letter is drafted here and posted by a human &mdash; never by this desk.</p>
         </div>
-        <label class="field compact">
-          <span>Filter by status</span>
-          <select id="statusFilter">
-            <option value="all">All statuses</option>
-            <option value="research">Researching</option>
-            <option value="draft">Drafting</option>
-            <option value="ready">Ready to send</option>
-            <option value="sent">Sent</option>
-            <option value="replied">Replied</option>
-            <option value="meeting">Meeting booked</option>
-            <option value="passed">Passed / not now</option>
-          </select>
-        </label>
-        <ul id="prospectList" class="prospect-list" aria-label="Prospect cards"></ul>
+      </div>
+      <nav class="band-actions" aria-label="Desk actions">
+        <a class="band-btn" href="../../index.html"><span aria-hidden="true">&larr;</span> All apps</a>
+        <button id="loadDemoBtn" type="button" class="band-btn">Lay out the demo</button>
+        <button id="resetBtn" type="button" class="band-btn">Clear the desk</button>
+        <button id="helpBtn" type="button" class="band-btn band-btn-wax">Desk manual</button>
+      </nav>
+    </div>
+    <div class="ledger" aria-label="Desk ledger" aria-live="polite">
+      <span class="ledger-item"><strong id="statProspects" class="ledger-num">0</strong> letters in the tray</span>
+      <span class="ledger-rule" aria-hidden="true"></span>
+      <span class="ledger-item"><strong id="statReady" class="ledger-num">0</strong> sealed &amp; send-ready</span>
+      <span class="ledger-rule" aria-hidden="true"></span>
+      <span class="ledger-item"><strong id="statDue" class="ledger-num">0</strong> postmarks due</span>
+      <span class="ledger-rule" aria-hidden="true"></span>
+      <span class="ledger-item"><strong id="statReply" class="ledger-num">&ndash;</strong> reply rate</span>
+    </div>
+  </header>
+  <div class="airmail" aria-hidden="true"></div>
+
+  <main id="main" class="desk">
+    <aside class="tray" aria-labelledby="trayHeading">
+      <div class="tray-head">
+        <h2 id="trayHeading"><svg class="ic" aria-hidden="true"><use href="#i-envelope"/></svg> The Letter Tray</h2>
+        <button id="addProspectBtn" type="button" class="btn btn-wax">+ New letter</button>
+      </div>
+      <label class="field field-sort">
+        <span>Sort the tray</span>
+        <select id="statusFilter">
+          <option value="all">Every letter</option>
+          <option value="research">Gathering notes</option>
+          <option value="draft">At the desk</option>
+          <option value="ready">Sealed &amp; ready</option>
+          <option value="sent">Posted</option>
+          <option value="replied">Reply received</option>
+          <option value="meeting">Meeting set</option>
+          <option value="passed">Filed away</option>
+        </select>
+      </label>
+      <ul id="prospectList" class="tray-list" aria-label="Letters in progress"></ul>
+    </aside>
+
+    <section class="blotter" aria-label="Writing desk">
+      <section id="detailEmpty" class="empty-desk" aria-label="Nothing on the desk">
+        <svg class="empty-art" viewBox="0 0 220 130" aria-hidden="true">
+          <rect x="30" y="30" width="160" height="86" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+          <path d="M32 32 110 88 188 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          <path d="M32 114 92 74 M188 114 128 74" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".5"/>
+          <circle cx="110" cy="88" r="11" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <circle cx="110" cy="88" r="6.5" fill="none" stroke="currentColor" stroke-width="1.1"/>
+          <path d="M52 12c30-8 86-8 116 0" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="1 5" stroke-linecap="round"/>
+        </svg>
+        <h2>The desk is clear</h2>
+        <p>Pull a letter from the tray, start a fresh one, or lay out the demo bundle to see a full week of correspondence in progress.</p>
+        <p class="pencil-note" aria-hidden="true">every good letter starts with something you actually noticed &mdash;</p>
+        <button id="emptyAddBtn" type="button" class="btn btn-wax">+ Begin your first letter</button>
       </section>
 
-      <div class="detail-col">
-        <section id="detailEmpty" class="panel empty-state" aria-label="No prospect selected">
-          <p class="empty-icon" aria-hidden="true">&#9998;</p>
-          <h2>No prospect selected</h2>
-          <p>Pick a card from the pipeline, add a new prospect, or load the demo to see a full working scenario.</p>
-          <button id="emptyAddBtn" type="button" class="btn btn-primary">+ Add your first prospect</button>
+      <div id="detailBody" hidden>
+        <!-- FOLIO I — the dossier -->
+        <section class="paper dossier" aria-labelledby="researchHeading">
+          <header class="paper-head">
+            <div>
+              <p class="folio">Folio I &middot; The Dossier</p>
+              <h2 id="researchHeading"><span id="detailTitle">Prospect</span></h2>
+              <p class="paper-sub">What you actually know, gathered before a single word is written.</p>
+            </div>
+            <button id="deleteProspectBtn" type="button" class="btn btn-discard">Discard letter</button>
+          </header>
+          <div class="field-grid">
+            <label class="field">
+              <span>Business name <em class="req" aria-hidden="true">*</em></span>
+              <input id="pName" maxlength="90" autocomplete="off" aria-describedby="pNameErr" />
+              <small id="pNameErr" class="field-err" hidden>Every letter needs an addressee &mdash; name the business.</small>
+            </label>
+            <label class="field">
+              <span>Contact first name</span>
+              <input id="pContact" maxlength="60" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>Trade &amp; local context</span>
+              <input id="pIndustry" maxlength="120" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span>Channel of delivery</span>
+              <select id="pChannel">
+                <option>Email</option>
+                <option>LinkedIn DM</option>
+                <option>SMS</option>
+                <option>Voicemail script</option>
+                <option>In person</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Where this letter stands</span>
+              <select id="pStatus">
+                <option value="research">Gathering notes</option>
+                <option value="draft">At the desk</option>
+                <option value="ready">Sealed &amp; ready</option>
+                <option value="sent">Posted</option>
+                <option value="replied">Reply received</option>
+                <option value="meeting">Meeting set</option>
+                <option value="passed">Filed away</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-grid wide-fields">
+            <label class="field">
+              <span>Field notes <i class="hint">what you found, where, and when</i></span>
+              <textarea id="pNotes" rows="3" maxlength="800"></textarea>
+            </label>
+            <label class="field">
+              <span>The noticed issue <i class="hint">one specific, checkable thing</i></span>
+              <textarea id="pNoticed" rows="2" maxlength="500"></textarea>
+            </label>
+            <label class="field">
+              <span>The proof point <i class="hint">why you, in one honest line</i></span>
+              <textarea id="pProof" rows="2" maxlength="400"></textarea>
+            </label>
+            <label class="field">
+              <span>The gentle ask <i class="hint">answerable in one line, smaller than a meeting</i></span>
+              <textarea id="pAsk" rows="2" maxlength="300"></textarea>
+            </label>
+            <label class="field">
+              <span>Claims you must not make</span>
+              <textarea id="pConstraints" rows="2" maxlength="400"></textarea>
+            </label>
+          </div>
         </section>
 
-        <div id="detailBody" hidden>
-          <section class="panel" aria-labelledby="researchHeading">
-            <div class="panel-head">
-              <div>
-                <p class="kicker">01 &middot; Research card</p>
-                <h2 id="researchHeading"><span id="detailTitle">Prospect</span></h2>
+        <!-- FOLIO II — the letter -->
+        <section class="paper letter" aria-labelledby="draftHeading">
+          <header class="paper-head">
+            <div>
+              <p class="folio">Folio II &middot; The Letter</p>
+              <h2 id="draftHeading">Set the words down</h2>
+              <p class="paper-sub">Press a brass plate to set a fill-in slot at the cursor; each fills from the dossier.</p>
+            </div>
+          </header>
+          <div id="slotBar" class="plate-rack" role="group" aria-label="Brass fill-in plates — insert a personalization slot">
+            <button type="button" class="plate" data-slot="business">{{business}}</button>
+            <button type="button" class="plate" data-slot="contact">{{contact}}</button>
+            <button type="button" class="plate" data-slot="industry">{{industry}}</button>
+            <button type="button" class="plate" data-slot="noticed">{{noticed}}</button>
+            <button type="button" class="plate" data-slot="proof">{{proof}}</button>
+            <button type="button" class="plate" data-slot="ask">{{ask}}</button>
+          </div>
+          <label class="field letter-field">
+            <span class="visually-hidden">Letter draft &mdash; slots fill from the dossier</span>
+            <textarea id="draftText" rows="9" maxlength="3000" spellcheck="true" placeholder="Dear&hellip;"></textarea>
+          </label>
+          <div class="letter-lower">
+            <div class="pencil-card" aria-live="polite" aria-label="The editor's pencil — genericness report">
+              <div class="pencil-head">
+                <div id="gradeStamp" class="grade-stamp">
+                  <strong id="lintScore">&ndash;</strong>
+                  <span class="grade-cap">of 100</span>
+                </div>
+                <div>
+                  <p class="micro-label"><svg class="ic" aria-hidden="true"><use href="#i-pencil"/></svg> The Editor&rsquo;s Pencil</p>
+                  <p id="lintVerdict" class="pencil-verdict">Nothing to mark yet</p>
+                </div>
               </div>
-              <button id="deleteProspectBtn" type="button" class="btn btn-danger">Delete</button>
+              <ul id="lintList" class="pencil-list"></ul>
             </div>
-            <div class="field-grid">
-              <label class="field">
-                <span>Business name <em class="req" aria-hidden="true">*</em></span>
-                <input id="pName" maxlength="90" autocomplete="off" aria-describedby="pNameErr" />
-                <small id="pNameErr" class="field-err" hidden>Business name is required.</small>
-              </label>
-              <label class="field">
-                <span>Contact first name</span>
-                <input id="pContact" maxlength="60" autocomplete="off" />
-              </label>
-              <label class="field">
-                <span>Industry / local context</span>
-                <input id="pIndustry" maxlength="120" autocomplete="off" />
-              </label>
-              <label class="field">
-                <span>Channel</span>
-                <select id="pChannel">
-                  <option>Email</option>
-                  <option>LinkedIn DM</option>
-                  <option>SMS</option>
-                  <option>Voicemail script</option>
-                  <option>In person</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>Status</span>
-                <select id="pStatus">
-                  <option value="research">Researching</option>
-                  <option value="draft">Drafting</option>
-                  <option value="ready">Ready to send</option>
-                  <option value="sent">Sent</option>
-                  <option value="replied">Replied</option>
-                  <option value="meeting">Meeting booked</option>
-                  <option value="passed">Passed / not now</option>
-                </select>
-              </label>
+            <div class="fair-copy">
+              <div class="fair-head">
+                <p class="micro-label"><svg class="ic" aria-hidden="true"><use href="#i-nib"/></svg> The fair copy</p>
+                <button id="copyDraftBtn" type="button" class="btn btn-quiet"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> Copy fair copy</button>
+              </div>
+              <pre id="previewBox" class="fair-pre"></pre>
             </div>
-            <div class="field-grid wide-fields">
-              <label class="field">
-                <span>Research notes (what you found, where, when)</span>
-                <textarea id="pNotes" rows="3" maxlength="800"></textarea>
-              </label>
-              <label class="field">
-                <span>Noticed issue (one specific, checkable thing)</span>
-                <textarea id="pNoticed" rows="2" maxlength="500"></textarea>
-              </label>
-              <label class="field">
-                <span>Proof point (why you, in one honest line)</span>
-                <textarea id="pProof" rows="2" maxlength="400"></textarea>
-              </label>
-              <label class="field">
-                <span>Low-pressure ask</span>
-                <textarea id="pAsk" rows="2" maxlength="300"></textarea>
-              </label>
-              <label class="field">
-                <span>Constraints / claims to avoid</span>
-                <textarea id="pConstraints" rows="2" maxlength="400"></textarea>
-              </label>
-            </div>
-          </section>
+          </div>
+        </section>
 
-          <section class="panel" aria-labelledby="draftHeading">
-            <div class="panel-head">
-              <div>
-                <p class="kicker">02 &middot; Message draft</p>
-                <h2 id="draftHeading">Compose with personalization slots</h2>
-              </div>
+        <!-- FOLIO III — postmarks to come -->
+        <section class="paper cadence" aria-labelledby="cadenceHeading">
+          <header class="paper-head">
+            <div>
+              <p class="folio">Folio III &middot; Postmarks to Come</p>
+              <h2 id="cadenceHeading">Plan the follow-ups before the first letter goes</h2>
+              <p class="paper-sub">A string of dated postmarks. Stamp each one as a human completes it; the string goes quiet once they reply.</p>
             </div>
-            <div id="slotBar" class="slot-bar" role="group" aria-label="Insert personalization slot">
-              <button type="button" class="chip" data-slot="business">{{business}}</button>
-              <button type="button" class="chip" data-slot="contact">{{contact}}</button>
-              <button type="button" class="chip" data-slot="industry">{{industry}}</button>
-              <button type="button" class="chip" data-slot="noticed">{{noticed}}</button>
-              <button type="button" class="chip" data-slot="proof">{{proof}}</button>
-              <button type="button" class="chip" data-slot="ask">{{ask}}</button>
-            </div>
-            <label class="field">
-              <span>Draft (slots fill from the research card)</span>
-              <textarea id="draftText" rows="9" maxlength="3000" spellcheck="true"></textarea>
+          </header>
+          <div class="cadence-controls">
+            <label class="field field-sort">
+              <span>Cadence</span>
+              <select id="cadenceTemplate">
+                <option value="gentle-3">Gentle &mdash; three letters (day 0 &middot; 4 &middot; 12)</option>
+                <option value="standard-4">Standard &mdash; four letters (day 0 &middot; 3 &middot; 8 &middot; 16)</option>
+                <option value="slow-4">Slow burn &mdash; four letters (day 0 &middot; 7 &middot; 21 &middot; 42)</option>
+              </select>
             </label>
-            <div class="draft-grid">
-              <div class="lint-box" aria-live="polite" aria-label="Genericness lint results">
-                <div class="lint-head">
-                  <strong id="lintScore" class="lint-score">&ndash;</strong>
-                  <div>
-                    <p class="lint-label">Personalization score</p>
-                    <p id="lintVerdict" class="lint-verdict">No draft yet</p>
-                  </div>
-                </div>
-                <ul id="lintList" class="lint-list"></ul>
-              </div>
-              <div class="preview-box">
-                <div class="preview-head">
-                  <p class="lint-label">Resolved preview</p>
-                  <button id="copyDraftBtn" type="button" class="btn btn-ghost">Copy resolved draft</button>
-                </div>
-                <pre id="previewBox" class="preview-pre"></pre>
-              </div>
+            <label class="field field-sort">
+              <span>First posting date</span>
+              <input id="cadenceStart" type="date" />
+            </label>
+            <div class="cadence-btns">
+              <button id="applyCadenceBtn" type="button" class="btn btn-wax">Set the postmarks</button>
+              <button id="clearCadenceBtn" type="button" class="btn btn-quiet">Take them down</button>
             </div>
-          </section>
+          </div>
+          <div class="postmark-scroll">
+            <ul id="touchList" class="postmark-line" aria-label="Planned follow-up postmarks"></ul>
+          </div>
+        </section>
 
-          <section class="panel" aria-labelledby="cadenceHeading">
-            <div class="panel-head">
-              <div>
-                <p class="kicker">03 &middot; Follow-up cadence</p>
-                <h2 id="cadenceHeading">Plan the touches before you send</h2>
-              </div>
+        <!-- FOLIO IV — dispatch -->
+        <section class="paper dispatch" aria-labelledby="exportHeading">
+          <header class="paper-head">
+            <div>
+              <p class="folio">Folio IV &middot; Dispatch to a Human</p>
+              <h2 id="exportHeading">Hand the packet across the desk</h2>
             </div>
-            <div class="cadence-controls">
-              <label class="field compact">
-                <span>Cadence template</span>
-                <select id="cadenceTemplate">
-                  <option value="gentle-3">Gentle 3-touch (day 0 / 4 / 12)</option>
-                  <option value="standard-4">Standard 4-touch (day 0 / 3 / 8 / 16)</option>
-                  <option value="slow-4">Slow burn 4-touch (day 0 / 7 / 21 / 42)</option>
-                </select>
-              </label>
-              <label class="field compact">
-                <span>Start date</span>
-                <input id="cadenceStart" type="date" />
-              </label>
-              <div class="cadence-btns">
-                <button id="applyCadenceBtn" type="button" class="btn btn-primary">Apply cadence</button>
-                <button id="clearCadenceBtn" type="button" class="btn btn-ghost">Clear touches</button>
-              </div>
-            </div>
-            <ul id="touchList" class="touch-list" aria-label="Planned follow-up touches"></ul>
-          </section>
-
-          <section class="panel" aria-labelledby="exportHeading">
-            <div class="panel-head">
-              <div>
-                <p class="kicker">04 &middot; Export &amp; handoff</p>
-                <h2 id="exportHeading">Hand the packet to a human</h2>
-              </div>
-            </div>
-            <p class="boundary-note">Draft-only boundary: this app never sends messages, writes to a CRM, enriches leads, or contacts anyone. Every export is a draft for human review before use.</p>
-            <div class="export-row">
-              <button id="copyMdBtn" type="button" class="btn btn-primary">Copy Markdown packet</button>
-              <button id="downloadJsonBtn" type="button" class="btn">Download JSON</button>
-              <button id="exportCsvBtn" type="button" class="btn">Pipeline CSV</button>
-              <button id="printBtn" type="button" class="btn">Print packet</button>
-              <label class="btn file-btn">
-                Import JSON
-                <input id="importJsonInput" type="file" accept=".json,application/json" />
-              </label>
-            </div>
-          </section>
-        </div>
+          </header>
+          <p class="boundary-note"><svg class="ic" aria-hidden="true"><use href="#i-seal"/></svg><span><strong>The desk&rsquo;s seal:</strong> this desk never posts a letter, writes to a CRM, enriches a lead, or contacts anyone. Every export is a draft that a person must read, verify, and send with their own hands.</span></p>
+          <div class="export-row">
+            <button id="copyMdBtn" type="button" class="btn btn-wax"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg> Copy Markdown packet</button>
+            <button id="downloadJsonBtn" type="button" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Download JSON</button>
+            <button id="exportCsvBtn" type="button" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg> Tray ledger CSV</button>
+            <button id="printBtn" type="button" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Print the packet</button>
+            <label class="btn file-btn"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg> Import JSON
+              <input id="importJsonInput" type="file" accept=".json,application/json" />
+            </label>
+          </div>
+        </section>
       </div>
-    </div>
+    </section>
   </main>
 
-  <footer class="app-footer">
-    <p>Local-first &middot; No accounts &middot; No tracking &mdash; data stays in this browser</p>
-    <a href="../../index.html">&#8592; All apps</a>
+  <footer class="desk-foot">
+    <p>Kept on this desk alone &mdash; no accounts, no tracking, nothing leaves this browser.</p>
+    <a href="../../index.html">&larr; All apps</a>
   </footer>
 
-  <dialog id="helpModal" class="help-modal" aria-labelledby="helpTitle">
-    <div class="help-head">
-      <h2 id="helpTitle">How to use Warm Outreach Lab</h2>
-      <button id="closeHelpBtn" type="button" class="btn btn-ghost" aria-label="Close help">&#10005;</button>
+  <dialog id="helpModal" class="manual" aria-labelledby="helpTitle">
+    <div class="manual-head">
+      <div>
+        <p class="folio">The Desk Manual</p>
+        <h2 id="helpTitle">How correspondence moves across this desk</h2>
+      </div>
+      <button id="closeHelpBtn" type="button" class="btn btn-quiet" aria-label="Close the manual">&#10005;</button>
     </div>
-    <ol class="help-steps">
-      <li><strong>Add a prospect.</strong> Click <em>+ New prospect</em> and give the local business a name. Each prospect gets its own research card, draft, and cadence.</li>
-      <li><strong>Do the research first.</strong> Fill the research card: notes on what you found, one <em>specific, checkable</em> noticed issue, one honest proof point, and a low-pressure ask. Also list claims to avoid.</li>
-      <li><strong>Compose the draft.</strong> Write in the draft box and click slot chips like <code>{{noticed}}</code> to insert personalization slots — they fill from the research card automatically in the preview.</li>
-      <li><strong>Fix what the lint flags.</strong> The genericness lint scores the draft 0&ndash;100 and flags template-ish phrases, hype words, missing personalization, weak asks, and me-me-me writing. Aim for 70+.</li>
-      <li><strong>Plan the cadence.</strong> Pick a follow-up template and start date, then apply it. Check off touches as a human completes them; due touches show in the stats.</li>
-      <li><strong>Track the pipeline.</strong> Move status from Researching &rarr; Drafting &rarr; Ready &rarr; Sent &rarr; Replied. The stat strip shows send-ready drafts, due touches, and reply rate.</li>
-      <li><strong>Export for human review.</strong> Copy the Markdown packet, print it, or download JSON/CSV. Nothing is ever sent by this app — a human reviews and sends.</li>
+    <ol class="manual-steps">
+      <li><strong>Start a letter.</strong> Press <em>+ New letter</em> (or <kbd>N</kbd>). Every prospect gets an envelope in the tray with its own dossier, letter, and string of postmarks.</li>
+      <li><strong>Gather the dossier first.</strong> Field notes on what you found; one <em>specific, checkable</em> noticed issue; one honest proof point; one gentle ask. Note the claims you must never make &mdash; they travel with every export.</li>
+      <li><strong>Set the words down.</strong> Write on the letter sheet and press brass plates like <code>{{noticed}}</code> to set fill-in slots &mdash; the fair copy fills them from the dossier as you type.</li>
+      <li><strong>Mind the editor&rsquo;s pencil.</strong> It grades the resolved letter 0&ndash;100 and marks every deduction: canned openers, hype words, a letter that never names the business, a missing ask, me-heavy writing. A grade of 70 or better counts as send-ready.</li>
+      <li><strong>String the postmarks.</strong> Choose a cadence &mdash; gentle three letters, standard four, or the slow burn &mdash; set the first posting date, and set the postmarks. Stamp each as a human completes it; due and past-due postmarks are counted in the ledger. The string goes quiet on a reply, a meeting, or a pass.</li>
+      <li><strong>Move the letter along.</strong> Gathering notes &rarr; At the desk &rarr; Sealed &amp; ready &rarr; Posted &rarr; Reply received. The ledger above the desk keeps the running count.</li>
+      <li><strong>Dispatch to a human.</strong> Copy the Markdown packet (<kbd>Ctrl/Cmd+S</kbd>), print it, or download JSON and the tray ledger CSV. This desk posts nothing &mdash; a person reads, verifies, and sends.</li>
     </ol>
-    <h3>Keyboard shortcuts</h3>
-    <table class="help-keys">
+    <h3 class="manual-sub">At the keys</h3>
+    <table class="manual-keys">
       <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
       <tbody>
-        <tr><td><kbd>?</kbd></td><td>Open this help</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Close dialog</td></tr>
-        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy Markdown packet</td></tr>
-        <tr><td><kbd>N</kbd></td><td>New prospect (outside inputs)</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Open the desk manual</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close the manual</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the Markdown packet</td></tr>
+        <tr><td><kbd>N</kbd></td><td>New letter (when not writing)</td></tr>
       </tbody>
     </table>
   </dialog>
 
-  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+  <div id="toast" class="telegram" role="status" aria-live="polite" hidden>
+    <span class="telegram-tick" aria-hidden="true"></span>
     <span id="toastMsg"></span>
-    <button id="toastUndo" type="button" class="btn btn-ghost" hidden>Undo</button>
+    <button id="toastUndo" type="button" class="btn btn-quiet" hidden>Undo</button>
   </div>
 
   <section id="printArea" class="print-area" hidden aria-hidden="true"></section>

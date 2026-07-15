@@ -1,231 +1,376 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pilot Forge — scope an AI pilot worth paying for</title>
-  <meta name="description" content="Turn a rough service-business idea into a scoped AI pilot: fit score with reasons, ROI case, editable proof plan, action board, exportable brief." />
+  <title>Pilot Forge — The Drafting Room</title>
+  <meta name="description" content="An industrial drafting table where a service-business AI pilot gets engineered: live blueprint schematic, engraved fit gauge, loss calculation, proof schedule, work orders, and an issued brief." />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to content</a>
+  <a class="skip-link" href="#main">Skip to the drawing</a>
 
-  <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">PF</span>
-      <div class="brand-text">
+  <!-- Ambient: faint flame-over-anvil contour in the corner of the room -->
+  <svg class="corner-contour" viewBox="0 0 320 320" aria-hidden="true" focusable="false">
+    <g fill="none" stroke="currentColor" stroke-width="1">
+      <path d="M160 268 Q96 268 84 236 Q76 214 96 202 Q80 184 96 164 Q108 148 132 152 Q128 120 152 96 Q168 80 164 56 Q192 76 196 108 Q220 104 228 132 Q236 156 220 172 Q244 184 236 212 Q228 244 184 260 Q172 264 160 268 Z"/>
+      <path d="M160 244 Q116 240 110 216 Q106 198 124 192 Q112 176 126 160 Q138 148 156 154 Q152 128 170 112 Q178 132 192 140 Q208 148 206 168 Q222 182 212 202 Q202 228 160 244 Z"/>
+      <path d="M162 218 Q138 212 136 196 Q135 184 148 180 Q142 166 156 158 Q162 174 176 180 Q190 186 186 200 Q182 214 162 218 Z"/>
+      <path d="M40 292 H280 M56 302 H264" stroke-dasharray="3 5"/>
+    </g>
+  </svg>
+
+  <header class="register">
+    <div class="register-brand">
+      <svg class="register-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="3" y="3" width="34" height="34"/>
+          <path d="M20 8 L20 14 M20 8 L11 30 M20 8 L29 30"/>
+          <path d="M14.6 22 A9 9 0 0 0 25.4 22"/>
+          <circle cx="20" cy="8" r="1.6" fill="currentColor"/>
+        </g>
+      </svg>
+      <div class="register-text">
         <strong>Pilot Forge</strong>
-        <small>Scope an AI pilot a service business would pay for</small>
+        <small>The Drafting Room — where a service-business pilot gets engineered</small>
       </div>
     </div>
-    <nav class="topnav" aria-label="Sections">
-      <a href="#shape">Shape</a>
-      <a href="#numbers">Numbers</a>
-      <a href="#plan">Plan</a>
-      <a href="#board">Board</a>
-      <a href="#export">Export</a>
+    <nav class="register-nav" aria-label="Sheet zones">
+      <a href="#spec"><span aria-hidden="true">A·</span>Spec</a>
+      <a href="#calc"><span aria-hidden="true">B·</span>Calc</a>
+      <a href="#schedule"><span aria-hidden="true">C·</span>Schedule</a>
+      <a href="#orders"><span aria-hidden="true">D·</span>Orders</a>
+      <a href="#issue"><span aria-hidden="true">E·</span>Issue</a>
       <a class="all-apps" href="../../index.html">&larr; All apps</a>
     </nav>
-    <div class="top-actions">
-      <button id="helpBtn" class="btn btn-ghost" type="button">How to use</button>
-      <button id="themeToggle" class="btn btn-ghost icon-btn" type="button" aria-label="Switch color theme">
-        <svg class="icon-moon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
-        <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-      </button>
+    <div class="register-actions">
+      <button id="loadDemoBtn" class="btn" type="button">Pin up a sample job</button>
+      <button id="resetBtn" class="btn btn-clear" type="button">Clear the sheet</button>
+      <button id="helpBtn" class="btn btn-ember" type="button">Operator&rsquo;s card</button>
     </div>
   </header>
 
-  <main id="main" class="shell">
+  <main id="main" class="table">
+    <div class="sheet">
 
-    <section class="panel stat-panel" aria-label="Key pilot metrics">
-      <div class="stat-strip" aria-live="polite">
-        <div class="stat"><strong id="statScore">0<span class="stat-sub">/100</span></strong><span class="stat-label">Pilot fit</span></div>
-        <div class="stat"><strong id="statLeak">$0</strong><span class="stat-label">Monthly leak</span></div>
-        <div class="stat"><strong id="statRecover">$0</strong><span class="stat-label">Recoverable / mo</span></div>
-        <div class="stat"><strong id="statFee">$0</strong><span class="stat-label">Suggested pilot fee</span></div>
-      </div>
-      <div class="stat-actions">
-        <button id="loadDemoBtn" class="btn" type="button">Load demo</button>
-        <button id="resetBtn" class="btn btn-danger" type="button">Reset</button>
-      </div>
-    </section>
+      <!-- ZONE 0 · GENERAL ARRANGEMENT — the live blueprint -->
+      <section class="hero" aria-label="General arrangement drawing of the pilot">
+        <header class="hero-head">
+          <p class="drawing-no">DWG&nbsp;PF-001&nbsp;&middot;&nbsp;GENERAL ARRANGEMENT</p>
+          <h1>One leak. One gate. One proof.</h1>
+          <p class="hero-sub">This drawing redraws itself from your specification below.</p>
+        </header>
 
-    <div id="shape" class="grid-2 section-anchor">
-      <form id="shapeForm" class="panel" novalidate>
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Step 1</p>
-            <h2>Shape the pilot</h2>
-          </div>
-        </div>
+        <div class="hero-plate">
+          <svg id="heroSchematic" class="schematic" viewBox="0 0 920 280" role="img"
+               aria-label="Schematic of the pilot: intake flows into the pilot wedge, through a human approval gate, into the proof artifact the owner reads">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 Z" fill="currentColor"/>
+              </marker>
+            </defs>
 
-        <div class="field-row">
-          <label class="field">
-            <span class="field-label">Business type</span>
-            <select id="businessType"></select>
-          </label>
-          <label class="field">
-            <span class="field-label">Business name <em>(optional)</em></span>
-            <input id="businessName" type="text" maxlength="60" placeholder="Rivera Heating &amp; Air" autocomplete="off" />
-          </label>
-        </div>
+            <!-- double frame + border ticks -->
+            <g class="sch-frame">
+              <rect x="4" y="4" width="912" height="272" fill="none"/>
+              <rect x="16" y="16" width="888" height="248" fill="none"/>
+              <line class="sch-ticks" x1="16" y1="10" x2="904" y2="10" stroke-dasharray="1 39"/>
+              <line class="sch-ticks" x1="16" y1="270" x2="904" y2="270" stroke-dasharray="1 39"/>
+              <line class="sch-ticks" x1="10" y1="16" x2="10" y2="264" stroke-dasharray="1 39"/>
+              <line class="sch-ticks" x1="910" y1="16" x2="910" y2="264" stroke-dasharray="1 39"/>
+            </g>
+            <g class="sch-coords" aria-hidden="true">
+              <text x="130" y="12.5">1</text><text x="360" y="12.5">2</text><text x="590" y="12.5">3</text><text x="820" y="12.5">4</text>
+              <text x="11" y="80">A</text><text x="11" y="160">B</text><text x="11" y="240">C</text>
+            </g>
 
-        <label class="field">
-          <span class="field-label">Pilot wedge — the one leak this pilot fixes</span>
-          <select id="wedge"></select>
-        </label>
+            <!-- registration crosses -->
+            <g class="sch-reg" aria-hidden="true">
+              <path d="M36 30 v12 M30 36 h12"/>
+              <path d="M884 30 v12 M878 36 h12"/>
+            </g>
 
-        <label class="field" id="painField">
-          <span class="field-label">Owner pain in one concrete sentence</span>
-          <textarea id="pain" rows="2" maxlength="200" placeholder="After-hours calls go to voicemail and 10-14 a week never get a callback."></textarea>
-          <span class="field-hint" id="painHint"></span>
-        </label>
+            <!-- schematic flow -->
+            <g class="sch-line">
+              <rect x="40" y="92" width="142" height="72"/>
+              <text class="sch-cap" x="111" y="112">INTAKE</text>
+              <text class="sch-val" id="heroSource" x="111" y="138">PHONE LINES</text>
+              <text class="sch-dim" x="111" y="155">RAW &middot; UNCOUNTED</text>
 
-        <label class="field" id="proofField">
-          <span class="field-label">Proof the owner will see</span>
-          <textarea id="proof" rows="2" maxlength="260" placeholder="A daily one-page report: calls captured, callbacks drafted, response time, jobs booked."></textarea>
-          <span class="field-hint" id="proofHint"></span>
-        </label>
+              <line class="sch-flow" x1="182" y1="128" x2="224" y2="128" marker-end="url(#arr)"/>
 
-        <div class="field slider-field">
-          <label class="field-label" for="automationLevel">Automation level — <strong id="automationName">Draft-only</strong> <span class="chip" id="automationRisk">Low risk</span></label>
-          <input id="automationLevel" type="range" min="0" max="3" step="1" value="1" />
-          <div class="slider-hints" aria-hidden="true"><span>Manual</span><span>Draft-only</span><span>Reviewed</span><span>Full auto</span></div>
-          <p class="field-hint" id="automationDesc"></p>
-        </div>
-      </form>
+              <rect class="sch-hot" x="228" y="84" width="192" height="88"/>
+              <text class="sch-cap" x="324" y="104">PILOT WEDGE</text>
+              <text class="sch-val sch-strong" id="heroWedge" x="324" y="132">MISSED-CALL RESCUE</text>
+              <text class="sch-dim" x="324" y="155">FIXES EXACTLY ONE LEAK</text>
 
-      <section class="panel score-panel" aria-label="Pilot fit score">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Live score</p>
-            <h2>Pilot fit</h2>
-          </div>
-        </div>
-        <div class="score-top" aria-live="polite">
-          <div class="score-ring" id="scoreRing" style="--score:0" role="img" aria-label="Pilot fit score">
-            <span id="scoreValue">0</span>
-          </div>
-          <div class="score-copy">
-            <h3 id="scoreVerdict">—</h3>
-            <p id="scoreSummary" class="dim">—</p>
-            <div class="score-meta">
-              <div><span>Proof window</span><strong id="proofWindowText">14 days</strong></div>
-              <div><span>Risk level</span><strong id="riskText">Low</strong></div>
-              <div><span>First artifact</span><strong id="artifactText">—</strong></div>
+              <line class="sch-flow" x1="420" y1="128" x2="462" y2="128" marker-end="url(#arr)"/>
+
+              <path class="sch-gate" d="M521 84 L577 128 L521 172 L465 128 Z"/>
+              <text class="sch-cap" x="521" y="122">HUMAN</text>
+              <text class="sch-cap" x="521" y="138">GATE</text>
+              <text class="sch-val" id="heroGate" x="521" y="196">DRAFT-ONLY</text>
+
+              <line class="sch-flow" x1="577" y1="128" x2="616" y2="128" marker-end="url(#arr)"/>
+
+              <rect x="620" y="92" width="164" height="72"/>
+              <text class="sch-cap" x="702" y="112">PROOF ARTIFACT</text>
+              <text class="sch-val" id="heroArtifact" x="702" y="138">RECOVERY LOG</text>
+              <text class="sch-dim" x="702" y="155">COUNTED DAILY</text>
+
+              <line class="sch-flow" x1="784" y1="128" x2="812" y2="128" marker-end="url(#arr)"/>
+
+              <circle cx="848" cy="128" r="33"/>
+              <text class="sch-cap" x="848" y="132">OWNER</text>
+
+              <!-- revise loop from the gate back to the wedge -->
+              <path class="sch-revise" d="M521 172 V212 H324 V177" fill="none" marker-end="url(#arr)"/>
+              <text class="sch-dim" x="430" y="207">REVISE &amp; REDRAFT</text>
+            </g>
+
+            <!-- proof-window dimension line -->
+            <g class="sch-dimline">
+              <line x1="228" y1="228" x2="228" y2="248"/>
+              <line x1="784" y1="228" x2="784" y2="248"/>
+              <line x1="228" y1="238" x2="392" y2="238" marker-start="url(#arr)"/>
+              <line x1="620" y1="238" x2="784" y2="238" marker-end="url(#arr)"/>
+              <text class="sch-val" id="heroWindowDim" x="506" y="242">PROOF WINDOW &middot; 14 DAYS</text>
+            </g>
+          </svg>
+
+          <div class="title-block" role="group" aria-label="Drawing title block">
+            <div class="tb-cell tb-wide">
+              <span>Project</span><strong id="tbProject">&mdash;</strong>
+            </div>
+            <div class="tb-cell"><span>Client</span><strong id="tbClient">&mdash;</strong></div>
+            <div class="tb-cell"><span>Drawn</span><strong id="tbDate">&mdash;</strong></div>
+            <div class="tb-cell"><span>Sheet</span><strong>01 of 01 &middot; REV A</strong></div>
+            <div class="tb-live" aria-live="polite">
+              <div class="tb-cell tb-num"><span>Fit score</span><strong id="statScore">0/100</strong></div>
+              <div class="tb-cell tb-num"><span>Monthly leak</span><strong id="statLeak">$0</strong></div>
+              <div class="tb-cell tb-num tb-ember"><span>Recoverable / mo</span><strong id="statRecover">$0</strong></div>
+              <div class="tb-cell tb-num"><span>Pilot fee / mo</span><strong id="statFee">&mdash;</strong></div>
             </div>
           </div>
         </div>
-        <h3 class="sub-head">Why this score</h3>
-        <ul id="factorList" class="factor-list"></ul>
-      </section>
-    </div>
-
-    <div id="numbers" class="grid-2 section-anchor">
-      <section class="panel" aria-label="ROI calculator">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Step 2</p>
-            <h2>Run the numbers</h2>
-          </div>
-          <span class="pill" id="roiPill">$0/mo recoverable</span>
-        </div>
-        <div class="number-grid">
-          <label class="field"><span class="field-label">Missed leads / week</span><input id="missedLeads" type="number" min="0" max="999" step="1" inputmode="numeric" /></label>
-          <label class="field"><span class="field-label">Close rate %</span><input id="closeRate" type="number" min="0" max="100" step="1" inputmode="numeric" /></label>
-          <label class="field"><span class="field-label">Average job $</span><input id="jobValue" type="number" min="0" max="1000000" step="10" inputmode="numeric" /></label>
-          <label class="field"><span class="field-label">Recovery rate %</span><input id="recoveryRate" type="number" min="0" max="100" step="1" inputmode="numeric" /></label>
-        </div>
-        <p class="formula dim">Leak = missed leads &times; close rate &times; job value &times; 4.33 weeks. Recoverable = leak &times; recovery rate.</p>
-        <div class="result-grid" aria-live="polite">
-          <div class="result"><span>Monthly leak</span><strong id="monthlyLeak">$0</strong></div>
-          <div class="result"><span>Yearly leak</span><strong id="annualLeak">$0</strong></div>
-          <div class="result accent"><span>Recoverable / mo</span><strong id="recoverableOut">$0</strong></div>
-          <div class="result"><span>Suggested fee / mo</span><strong id="pilotFeeOut">$0</strong></div>
-          <div class="result"><span>Owner payback</span><strong id="paybackOut">—</strong></div>
-        </div>
+        <p class="margin-note note-hero">the drawing is the pitch — walk in with this, not with promises</p>
       </section>
 
-      <section id="plan" class="panel section-anchor" aria-label="Proof plan">
-        <div class="panel-head">
-          <div>
-            <p class="eyebrow">Step 3</p>
-            <h2>Proof plan</h2>
-          </div>
-          <div class="btn-row">
-            <button id="addMilestoneBtn" class="btn" type="button">+ Milestone</button>
-            <button id="regenPlanBtn" class="btn btn-ghost" type="button" title="Rebuild the plan from the current wedge and proof window">Regenerate</button>
+      <!-- ZONE A · SPECIFICATION -->
+      <section id="spec" class="zone" data-zone="A" aria-label="Zone A — specification">
+        <header class="zone-head">
+          <span class="zone-code">Zone A &middot; Specification</span>
+          <h2>Spec the leak before you spec the machine</h2>
+          <p class="zone-sub">Name the business, the one leak this pilot fixes, and the proof the owner will hold. The gauge reads the drawing as you work.</p>
+        </header>
+
+        <div class="spec-grid">
+          <form id="shapeForm" class="spec-form" novalidate>
+            <div class="field-row">
+              <label class="field">
+                <span class="field-label"><span class="fcode">F-01</span> Business type</span>
+                <select id="businessType"></select>
+              </label>
+              <label class="field">
+                <span class="field-label"><span class="fcode">F-02</span> Business name <em>(optional)</em></span>
+                <input id="businessName" type="text" maxlength="60" placeholder="Rivera Heating &amp; Air" autocomplete="off" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span class="field-label"><span class="fcode">F-03</span> Pilot wedge — the one leak on this drawing</span>
+              <select id="wedge"></select>
+            </label>
+
+            <label class="field" id="painField">
+              <span class="field-label"><span class="fcode">F-04</span> Owner&rsquo;s pain, one concrete sentence</span>
+              <textarea id="pain" rows="2" maxlength="200" placeholder="After-hours calls go to voicemail and 10-14 a week never get a callback."></textarea>
+              <span class="field-hint" id="painHint"></span>
+            </label>
+
+            <label class="field" id="proofField">
+              <span class="field-label"><span class="fcode">F-05</span> Proof the owner will hold</span>
+              <textarea id="proof" rows="2" maxlength="260" placeholder="A daily one-page report: calls captured, callbacks drafted, response time, jobs booked."></textarea>
+              <span class="field-hint" id="proofHint"></span>
+            </label>
+
+            <div class="field slider-field">
+              <label class="field-label" for="automationLevel"><span class="fcode">F-06</span> Gate setting — <strong id="automationName">Draft-only</strong> <span class="chip" id="automationRisk">Low risk</span></label>
+              <input id="automationLevel" type="range" min="0" max="3" step="1" value="1" />
+              <div class="slider-hints" aria-hidden="true"><span>Manual</span><span>Draft-only</span><span>Reviewed</span><span>Full auto</span></div>
+              <p class="field-hint" id="automationDesc"></p>
+            </div>
+            <p class="margin-note note-spec">no pain, no pilot — put a number in the owner&rsquo;s sentence</p>
+          </form>
+
+          <div class="gauge-wrap" aria-label="Pilot fit gauge">
+            <p class="gauge-plate">FIT GAUGE &middot; PF-G1 &middot; 0&ndash;100</p>
+            <svg id="scoreGauge" class="gauge" viewBox="0 0 220 140" role="img" aria-label="Pilot fit score 0 out of 100">
+              <g class="gauge-engrave">
+                <path d="M18 118 A 92 92 0 0 1 202 118" fill="none"/>
+                <path d="M32 118 A 78 78 0 0 1 188 118" fill="none"/>
+              </g>
+              <g class="gauge-zones">
+                <path class="gz gz-cold" d="M25 118 A 85 85 0 0 1 195 118" pathLength="100" stroke-dasharray="40 60" fill="none"/>
+                <path class="gz gz-warm" d="M25 118 A 85 85 0 0 1 195 118" pathLength="100" stroke-dasharray="30 70" stroke-dashoffset="-40" fill="none"/>
+                <path class="gz gz-hot"  d="M25 118 A 85 85 0 0 1 195 118" pathLength="100" stroke-dasharray="30 30" stroke-dashoffset="-70" fill="none"/>
+              </g>
+              <path class="gauge-ticks" d="M38 118 A 72 72 0 0 1 182 118" pathLength="100" stroke-dasharray="0.6 4.4" fill="none"/>
+              <g class="gauge-labels" aria-hidden="true">
+                <text x="24" y="134">0</text>
+                <text x="110" y="24">50</text>
+                <text x="196" y="134">100</text>
+              </g>
+              <g id="gaugeNeedle" class="gauge-needle">
+                <path d="M110 118 L106 108 L110 44 L114 108 Z"/>
+                <line x1="110" y1="118" x2="110" y2="130"/>
+              </g>
+              <circle class="gauge-pivot" cx="110" cy="118" r="7"/>
+              <circle class="gauge-pivot-dot" cx="110" cy="118" r="2.5"/>
+            </svg>
+            <p class="gauge-reading" aria-hidden="true"><span id="scoreValue">0</span><span class="gauge-of">/100 &middot; PILOT FIT</span></p>
+            <div class="gauge-copy" aria-live="polite">
+              <h3 id="scoreVerdict">&mdash;</h3>
+              <p id="scoreSummary" class="dim">&mdash;</p>
+              <dl class="gauge-meta">
+                <div><dt>Proof window</dt><dd id="proofWindowText">14 days</dd></div>
+                <div><dt>Risk level</dt><dd id="riskText">Low</dd></div>
+                <div><dt>First artifact</dt><dd id="artifactText">&mdash;</dd></div>
+              </dl>
+            </div>
+            <h3 class="inspection-head">Inspection record — why the needle sits there</h3>
+            <ul id="factorList" class="factor-list"></ul>
           </div>
         </div>
+      </section>
+
+      <!-- ZONE B · LOSS CALCULATION -->
+      <section id="calc" class="zone" data-zone="B" aria-label="Zone B — loss calculation">
+        <header class="zone-head">
+          <span class="zone-code">Zone B &middot; Loss calculation</span>
+          <h2>Put a dollar figure on the leak</h2>
+          <p class="zone-sub">Four measurements, taken from the owner&rsquo;s own logs. The calculation block rules itself out below.</p>
+        </header>
+
+        <div class="calc-grid">
+          <div class="calc-inputs">
+            <label class="field"><span class="field-label"><span class="fcode">D-01</span> Missed leads / week</span><input id="missedLeads" type="number" min="0" max="999" step="1" inputmode="numeric" /></label>
+            <label class="field"><span class="field-label"><span class="fcode">D-02</span> Close rate %</span><input id="closeRate" type="number" min="0" max="100" step="1" inputmode="numeric" /></label>
+            <label class="field"><span class="field-label"><span class="fcode">D-03</span> Average job $</span><input id="jobValue" type="number" min="0" max="1000000" step="10" inputmode="numeric" /></label>
+            <label class="field"><span class="field-label"><span class="fcode">D-04</span> Recovery rate %</span><input id="recoveryRate" type="number" min="0" max="100" step="1" inputmode="numeric" /></label>
+            <p class="margin-note note-calc">pull these from the phone log, not from hope</p>
+          </div>
+
+          <div class="calc-block">
+            <p class="calc-head">CALCULATION BLOCK &middot; LC-01</p>
+            <p class="formula">LEAK = MISSED &times; CLOSE% &times; JOB$ &times; 4.33 WK/MO &nbsp;&middot;&nbsp; RECOVERABLE = LEAK &times; RECOVERY%</p>
+            <dl class="calc-lines" aria-live="polite">
+              <div class="calc-line"><dt>Monthly leak</dt><dd id="monthlyLeak">$0</dd></div>
+              <div class="calc-line"><dt>Yearly leak</dt><dd id="annualLeak">$0</dd></div>
+              <div class="calc-line is-ember"><dt>Recoverable / mo</dt><dd id="recoverableOut">$0</dd></div>
+              <div class="calc-line"><dt>Suggested fee / mo</dt><dd id="pilotFeeOut">&mdash;</dd></div>
+              <div class="calc-line"><dt>Owner payback</dt><dd id="paybackOut">&mdash;</dd></div>
+            </dl>
+            <p id="roiPill" class="calc-stamp">$0/MO RECOVERABLE</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZONE C · SCHEDULE OF PROOF -->
+      <section id="schedule" class="zone" data-zone="C" aria-label="Zone C — schedule of proof">
+        <header class="zone-head">
+          <span class="zone-code">Zone C &middot; Schedule of proof</span>
+          <h2>The day-by-day proof schedule</h2>
+          <p class="zone-sub">Drafted from your wedge and proof window. Tick milestones as inspected, redraw days and wording inline, or redraft the whole schedule.</p>
+          <div class="zone-tools">
+            <button id="addMilestoneBtn" class="btn" type="button">+ Add a milestone</button>
+            <button id="regenPlanBtn" class="btn btn-clear" type="button" title="Redraft the schedule from the current wedge and proof window">Redraft schedule</button>
+          </div>
+        </header>
         <p class="plan-meta dim" id="planMeta" aria-live="polite"></p>
         <ol id="planList" class="plan-list"></ol>
+        <p class="margin-note note-plan">day one is a map, not a build</p>
       </section>
+
+      <!-- ZONE D · WORK ORDERS -->
+      <section id="orders" class="zone" data-zone="D" aria-label="Zone D — work orders">
+        <header class="zone-head">
+          <span class="zone-code">Zone D &middot; Work orders</span>
+          <h2>Cut the work into cards</h2>
+          <p class="zone-sub">Three clipboards: queued, on the bench, signed off. Drag cards between boards or walk them with the arrows.</p>
+          <span class="board-count" id="boardCount" aria-live="polite">0 cards</span>
+        </header>
+        <form class="task-add-row" id="taskAddForm">
+          <label class="visually-hidden" for="taskInput">New work order</label>
+          <input id="taskInput" type="text" maxlength="120" placeholder="Cut the next card, e.g. &quot;Write the pilot offer with price and window&quot;" autocomplete="off" />
+          <button id="addTaskBtn" class="btn btn-ember" type="submit">Cut card</button>
+        </form>
+        <div class="kanban" id="kanban"></div>
+        <p class="margin-note note-board">one card = one action someone can finish today</p>
+      </section>
+
+      <!-- ZONE E · ISSUE -->
+      <section id="issue" class="zone" data-zone="E" aria-label="Zone E — issue the drawing">
+        <header class="zone-head">
+          <span class="zone-code">Zone E &middot; Issue</span>
+          <h2>Issue the drawing</h2>
+          <p class="zone-sub">The finished brief, ready to leave the drafting room — copy it, file it, reload it, or print the issued sheet.</p>
+          <div class="zone-tools">
+            <button id="copyMdBtn" class="btn btn-ember" type="button">Copy Markdown brief</button>
+            <button id="downloadJsonBtn" class="btn" type="button">File JSON copy</button>
+            <button id="importBtn" class="btn" type="button">Load JSON copy</button>
+            <button id="printBtn" class="btn btn-clear" type="button">Print issued sheet</button>
+          </div>
+        </header>
+
+        <div class="issue-grid">
+          <div class="issue-paper">
+            <label class="visually-hidden" for="briefPreview">Pilot brief preview</label>
+            <textarea id="briefPreview" readonly spellcheck="false"></textarea>
+          </div>
+          <div class="issue-side">
+            <div id="issueStamp" class="issue-stamp" role="status">
+              <strong>HOLD</strong>
+              <span>TIGHTEN THE SPEC</span>
+              <small>HUMAN GATE ON EVERY SEND</small>
+            </div>
+            <p class="boundary-note">Everything issued here is a <strong>draft for human review</strong>. Pilot Forge never contacts customers, sends messages, or touches live systems — a person signs off on every step.</p>
+            <p class="margin-note note-issue">nothing ships without a human signature</p>
+          </div>
+        </div>
+        <input id="importFile" type="file" accept="application/json,.json" class="visually-hidden" aria-hidden="true" tabindex="-1" />
+      </section>
+
     </div>
-
-    <section id="board" class="panel section-anchor" aria-label="Action board">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">Step 4</p>
-          <h2>Action board</h2>
-        </div>
-        <span class="pill" id="boardCount">0 tasks</span>
-      </div>
-      <form class="task-add-row" id="taskAddForm">
-        <label class="visually-hidden" for="taskInput">New action</label>
-        <input id="taskInput" type="text" maxlength="120" placeholder="Add the next action, e.g. &quot;Write the pilot offer with price and window&quot;" autocomplete="off" />
-        <button id="addTaskBtn" class="btn btn-primary" type="submit">Add task</button>
-      </form>
-      <div class="kanban" id="kanban"></div>
-      <p class="dim board-hint">Drag cards between columns, or use the arrow buttons on each card.</p>
-    </section>
-
-    <section id="export" class="panel section-anchor" aria-label="Export and handoff">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">Step 5</p>
-          <h2>Export &amp; handoff</h2>
-        </div>
-        <div class="btn-row">
-          <button id="copyMdBtn" class="btn btn-primary" type="button">Copy Markdown</button>
-          <button id="downloadJsonBtn" class="btn" type="button">Download JSON</button>
-          <button id="importBtn" class="btn" type="button">Import JSON</button>
-          <button id="printBtn" class="btn btn-ghost" type="button">Print brief</button>
-        </div>
-      </div>
-      <input id="importFile" type="file" accept="application/json,.json" class="visually-hidden" aria-hidden="true" tabindex="-1" />
-      <label class="visually-hidden" for="briefPreview">Pilot brief preview</label>
-      <textarea id="briefPreview" readonly spellcheck="false"></textarea>
-      <p class="boundary-note">Everything exported here is a <strong>draft for human review</strong>. Pilot Forge never contacts customers, sends messages, or touches live systems — a person approves every step.</p>
-    </section>
   </main>
 
   <footer class="footer">
-    <p>Local-first &middot; No accounts &middot; No tracking — data stays in this browser.</p>
+    <p>Drafted locally &middot; no accounts &middot; no tracking — the whole drawing stays in this browser.</p>
     <a href="../../index.html">&larr; All apps</a>
   </footer>
 
   <dialog id="helpDialog" aria-labelledby="helpTitle">
     <div class="dialog-head">
-      <h2 id="helpTitle">How to use Pilot Forge</h2>
-      <button id="helpCloseBtn" class="btn btn-ghost icon-btn" type="button" aria-label="Close guide">&#10005;</button>
+      <h2 id="helpTitle">Operator&rsquo;s card — how to work the table</h2>
+      <button id="helpCloseBtn" class="btn btn-clear icon-btn" type="button" aria-label="Close the operator's card">&#10005;</button>
     </div>
     <div class="dialog-body">
-      <p>Pilot Forge turns a rough service-business idea into a scoped AI pilot you can actually pitch: a fit score with reasons, a revenue case, a day-by-day proof plan, and an exportable brief.</p>
+      <p>Pilot Forge is a drafting table for AI pilots. A rough &ldquo;I could build something for that business&rdquo; goes on the sheet; a scoped, priced, provable pilot comes off it — schematic, fit gauge, loss calculation, proof schedule, work orders, and an issued brief.</p>
       <ol class="help-steps">
-        <li><strong>Load the demo</strong> (button in the metrics strip) to see a finished pilot, or start clean.</li>
-        <li><strong>Shape the pilot</strong> — pick the business type, the wedge (the one leak this pilot fixes), and write the owner's pain in one concrete sentence with a number in it.</li>
-        <li><strong>Define the proof</strong> the owner will see (a report, log, or tracker) and set the automation level. Draft-only scores best — it is the safest thing to sell first.</li>
-        <li><strong>Read the fit score.</strong> Every factor shows its points and a tip when it is weak. Fix the lowest factor until the score is 60+.</li>
-        <li><strong>Run the numbers</strong> — missed leads, close rate, job value, recovery rate. The leak, recoverable revenue, suggested fee, and payback update live.</li>
-        <li><strong>Edit the proof plan.</strong> Milestones are generated from your wedge and proof window. Change days and wording, check them off, add your own, or regenerate.</li>
-        <li><strong>Work the action board</strong> — add tasks, then drag them (or use the arrow buttons) across To do / In progress / Done. Deleting shows an Undo toast.</li>
-        <li><strong>Export</strong> — copy the Markdown brief, download a JSON backup, import it later, or print a clean one-pager. Everything stays a draft for human review.</li>
+        <li><strong>Pin up the sample job</strong> (header button) to see a finished drawing — Rivera Heating &amp; Air, missed-call rescue — or start on a clean sheet.</li>
+        <li><strong>Zone A — Specification.</strong> Pick the business type, the wedge (the one leak this pilot fixes), and write the owner&rsquo;s pain in one concrete sentence with a number in it. The schematic at the top redraws as you type.</li>
+        <li><strong>Define the proof</strong> the owner will hold — a report, log, or tracker — and set the gate. Draft-only reads best on the gauge: it is the safest thing to sell first.</li>
+        <li><strong>Read the fit gauge.</strong> The needle sweeps 0&ndash;100; the inspection record shows every factor&rsquo;s points and a fix when it runs weak. Work the lowest line until the needle clears 60.</li>
+        <li><strong>Zone B — Loss calculation.</strong> Missed leads, close rate, job value, recovery rate. The leak, recoverable revenue, suggested fee, and payback rule themselves out live.</li>
+        <li><strong>Zone C — Schedule of proof.</strong> Milestones are drafted from your wedge and proof window. Tick them, redraw days and wording, add your own, or redraft the whole schedule.</li>
+        <li><strong>Zone D — Work orders.</strong> Cut cards, then drag them (or walk them with the arrows) across Queued / On the bench / Signed off. Striking a card offers Undo.</li>
+        <li><strong>Zone E — Issue.</strong> Copy the Markdown brief, file a JSON copy, reload it later, or print the issued sheet. The stamp reads APPROVED FOR PROOF once the gauge clears 60 — until then the drawing holds.</li>
       </ol>
       <h3>Keyboard shortcuts</h3>
       <table class="shortcut-table">
         <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
         <tbody>
-          <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Open this card</td></tr>
           <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
           <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the Markdown brief</td></tr>
         </tbody>

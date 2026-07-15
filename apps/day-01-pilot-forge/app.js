@@ -1,4 +1,4 @@
-/* Pilot Forge — remake. Vanilla JS, local-first, no external calls. */
+/* Pilot Forge — The Drafting Room. Vanilla JS, local-first, no external calls. */
 (() => {
   'use strict';
 
@@ -55,6 +55,15 @@
     }
   };
 
+  // Short engraving labels for the blueprint schematic (SVG text has no wrap).
+  const SCHEMATIC = {
+    'missed-call': { intake: 'PHONE LINES', out: 'RECOVERY LOG' },
+    'web-lead': { intake: 'WEB FORMS', out: 'RESPONSE LOG' },
+    'quote-chase': { intake: 'OPEN QUOTES', out: 'FOLLOW-UP BOARD' },
+    'review-recovery': { intake: 'FINISHED JOBS', out: 'REVIEW TRACKER' },
+    'owner-report': { intake: 'JOBS & CALLS', out: 'DAILY REPORT' }
+  };
+
   const AUTOMATION = [
     { name: 'Manual capture', desc: 'A human does everything; the pilot only organizes and counts.', risk: 'Low', pts: 12 },
     { name: 'Draft-only', desc: 'AI drafts every message; a human reviews and sends each one.', risk: 'Low', pts: 15 },
@@ -63,10 +72,20 @@
   ];
 
   const STATUSES = [
-    { id: 'todo', title: 'To do' },
-    { id: 'doing', title: 'In progress' },
-    { id: 'done', title: 'Done' }
+    { id: 'todo', title: 'Queued' },
+    { id: 'doing', title: 'On the bench' },
+    { id: 'done', title: 'Signed off' }
   ];
+
+  // One consistent stroke style for every glyph. No emoji as UI.
+  const svgIcon = (paths) =>
+    `<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+  const ICONS = {
+    left: svgIcon('<path d="M10 3 L5 8 L10 13"/>'),
+    right: svgIcon('<path d="M6 3 L11 8 L6 13"/>'),
+    x: svgIcon('<path d="M4 4 L12 12 M12 4 L4 12"/>'),
+    clip: '<svg viewBox="0 0 36 14" width="34" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="1" y="5" width="34" height="8" rx="2.5"/><path d="M13 5 V3 a5 5 0 0 1 10 0 v2"/><circle cx="18" cy="9" r="1.4"/></svg>'
+  };
 
   // ---------------------------------------------------------------- utilities
 
@@ -100,7 +119,7 @@
   function defaultState() {
     return {
       version: 1,
-      theme: null,               // null → follow prefers-color-scheme on first visit
+      theme: null,               // retained for v1 JSON compatibility; the room has one light now
       seenGuide: false,
       businessType: 'HVAC',
       businessName: '',
@@ -291,8 +310,8 @@
 
   function verdictOf(score) {
     if (score >= 80) return { title: 'Strong pilot fit', text: 'Clear leak, fast proof, safe posture. Pitch it this week.' };
-    if (score >= 60) return { title: 'Good pilot fit', text: 'Solid wedge. Tighten the weakest factor below before selling it.' };
-    if (score >= 40) return { title: 'Workable — tighten it', text: 'The bones are there. Fix the low-scoring factors before pitching.' };
+    if (score >= 60) return { title: 'Good pilot fit', text: 'Solid wedge. Tighten the weakest line below before selling it.' };
+    if (score >= 40) return { title: 'Workable — tighten it', text: 'The bones are there. Fix the low-scoring lines before pitching.' };
     return { title: 'Not ready to pitch', text: 'Sharpen the pain, proof, and numbers — right now this reads as a guess.' };
   }
 
@@ -336,7 +355,7 @@
     const lines = [
       `# ${briefTitle()}`,
       '',
-      `_Draft for human review — generated locally by Pilot Forge on ${new Date().toLocaleDateString()}. Nothing in this brief contacts customers or runs live._`,
+      `_Draft for human review — drafted locally by Pilot Forge on ${new Date().toLocaleDateString()}. Nothing in this brief contacts customers or runs live._`,
       '',
       '## Snapshot',
       `- Business: ${businessLabel()}`,
@@ -366,7 +385,7 @@
         ? ms.map((m) => `- [${m.done ? 'x' : ' '}] Day ${m.day} — ${m.title}`)
         : ['_No milestones yet._']),
       '',
-      '## Action board',
+      '## Work orders',
       ...STATUSES.flatMap((col) => {
         const tasks = state.tasks.filter((t) => t.status === col.id);
         return [`### ${col.title}`, ...(tasks.length ? tasks.map((t) => `- [${col.id === 'done' ? 'x' : ' '}] ${t.text}`) : ['- _(empty)_']), ''];
@@ -385,8 +404,15 @@
     const ms = [...state.milestones].sort((a, b) => a.day - b.day);
     const row = (k, v) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`;
     return `
+      <div class="print-titleblock">
+        <div><span>Project</span><strong>${esc(briefTitle())}</strong></div>
+        <div><span>Client</span><strong>${esc(businessLabel())}</strong></div>
+        <div><span>Drawn</span><strong>${esc(new Date().toLocaleDateString())}</strong></div>
+        <div><span>Fit</span><strong>${score}/100</strong></div>
+        <div><span>Sheet</span><strong>01 of 01 &middot; REV A</strong></div>
+      </div>
       <h1>${esc(briefTitle())}</h1>
-      <p class="meta">Draft for human review — generated locally by Pilot Forge on ${esc(new Date().toLocaleDateString())}. Nothing here contacts customers or runs live.</p>
+      <p class="meta">Draft for human review — drafted locally by Pilot Forge (The Drafting Room). Nothing here contacts customers or runs live.</p>
       <h2>Snapshot</h2>
       <table>
         ${row('Business', businessLabel())}
@@ -409,19 +435,13 @@
       <ul>${factors.map((f) => `<li><strong>${esc(f.label)}</strong> — ${f.pts}/${f.max}: ${esc(f.why)}</li>`).join('')}</ul>
       <h2>Proof plan (${windowDays}-day window)</h2>
       <ol>${ms.map((m) => `<li>${m.done ? '&#9745;' : '&#9744;'} Day ${m.day} — ${esc(m.title)}</li>`).join('') || '<li>No milestones yet.</li>'}</ol>
-      <h2>Action board</h2>
+      <h2>Work orders</h2>
       <ul>${STATUSES.map((col) => `<li><strong>${esc(col.title)}:</strong> ${state.tasks.filter((t) => t.status === col.id).map((t) => esc(t.text)).join('; ') || '(empty)'}</li>`).join('')}</ul>
       <p class="boundary"><strong>Boundaries:</strong> draft-only customer messages, fake/test data first, no secrets or customer data leave the owner's systems, human approval on every step. Automation level: ${esc(auto.name)}.</p>
     `;
   }
 
   // ---------------------------------------------------------------- rendering
-
-  function applyTheme() {
-    const preferLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    const theme = state.theme || (preferLight ? 'light' : 'dark');
-    document.documentElement.dataset.theme = theme;
-  }
 
   function syncInput(id, value) {
     const el = $(id);
@@ -460,16 +480,27 @@
       : `${state.proof.trim().length}/260 characters`;
   }
 
-  function renderStats(d) {
-    $('statScore').innerHTML = `${d.score}<span class="stat-sub">/100</span>`;
+  function renderHero(d) {
+    const sch = SCHEMATIC[state.wedge];
+    $('heroSource').textContent = sch.intake;
+    $('heroWedge').textContent = d.wedge.title.toUpperCase();
+    $('heroGate').textContent = d.auto.name.toUpperCase();
+    $('heroArtifact').textContent = sch.out;
+    $('heroWindowDim').textContent = `PROOF WINDOW · ${d.windowDays} DAYS`;
+
+    $('tbProject').textContent = briefTitle();
+    $('tbClient').textContent = businessLabel();
+    $('tbDate').textContent = new Date().toLocaleDateString();
+    $('statScore').textContent = `${d.score}/100`;
     $('statLeak').textContent = usd(d.roi.monthlyLeak);
     $('statRecover').textContent = usd(d.roi.recoverable);
     $('statFee').textContent = d.roi.fee > 0 ? usd(d.roi.fee) : '—';
   }
 
   function renderScore(d) {
-    $('scoreRing').style.setProperty('--score', d.score);
-    $('scoreRing').setAttribute('aria-label', `Pilot fit score ${d.score} out of 100`);
+    // Needle sweep: 0 → -90deg, 100 → +90deg.
+    $('gaugeNeedle').style.transform = `rotate(${d.score * 1.8 - 90}deg)`;
+    $('scoreGauge').setAttribute('aria-label', `Pilot fit score ${d.score} out of 100 — ${d.verdict.title}`);
     $('scoreValue').textContent = d.score;
     $('scoreVerdict').textContent = d.verdict.title;
     $('scoreSummary').textContent = d.verdict.text;
@@ -483,13 +514,13 @@
         <div class="factor-top"><strong>${esc(f.label)}</strong><span class="factor-pts">${f.pts}/${f.max}</span></div>
         <div class="factor-bar"><i style="width:${Math.round((f.pts / f.max) * 100)}%"></i></div>
         <p class="factor-why">${esc(f.why)}</p>
-        ${f.tip ? `<p class="factor-tip">Tip: ${esc(f.tip)}</p>` : ''}
+        ${f.tip ? `<p class="factor-tip">Fix: ${esc(f.tip)}</p>` : ''}
       </li>`;
     }).join('');
   }
 
   function renderRoi(d) {
-    $('roiPill').textContent = `${usd(d.roi.recoverable)}/mo recoverable`;
+    $('roiPill').textContent = `${usd(d.roi.recoverable)}/MO RECOVERABLE`;
     $('monthlyLeak').textContent = usd(d.roi.monthlyLeak);
     $('annualLeak').textContent = usd(d.roi.annualLeak);
     $('recoverableOut').textContent = usd(d.roi.recoverable);
@@ -498,7 +529,7 @@
   }
 
   function renderPlan(d) {
-    // Auto-sync the generated plan until the user edits it by hand.
+    // Auto-sync the drafted schedule until the user redraws it by hand.
     const sig = `${state.wedge}:${d.windowDays}`;
     if (!state.planEdited && state.planSig !== sig) {
       state.milestones = generatePlan(state.wedge, d.windowDays);
@@ -508,37 +539,39 @@
     const ms = [...state.milestones].sort((a, b) => a.day - b.day);
     const doneCount = ms.filter((m) => m.done).length;
     $('planMeta').textContent = ms.length
-      ? `${d.windowDays}-day proof window · ${doneCount}/${ms.length} milestones done${state.planEdited ? ' · edited by hand' : ' · auto-generated from your wedge'}`
+      ? `${d.windowDays}-day proof window · ${doneCount}/${ms.length} milestones inspected${state.planEdited ? ' · redrawn by hand' : ' · drafted from your wedge'}`
       : `${d.windowDays}-day proof window`;
 
     $('planList').innerHTML = ms.length
       ? ms.map((m) => `<li class="ms-row${m.done ? ' done' : ''}" data-id="${esc(m.id)}">
-          <input type="checkbox" data-f="done" ${m.done ? 'checked' : ''} aria-label="Mark milestone done" />
-          <span class="ms-day">Day <input type="number" data-f="day" min="1" max="60" value="${m.day}" aria-label="Milestone day" /></span>
-          <input type="text" data-f="title" maxlength="160" value="${esc(m.title)}" aria-label="Milestone description" />
-          <button class="icon-x" type="button" data-act="del" aria-label="Delete milestone">&#10005;</button>
+          <input type="checkbox" data-f="done" ${m.done ? 'checked' : ''} aria-label="Mark milestone inspected" />
+          <span class="ms-day">DAY <input type="number" data-f="day" min="1" max="60" value="${m.day}" aria-label="Milestone day" /></span>
+          <input class="ms-title" type="text" data-f="title" maxlength="160" value="${esc(m.title)}" aria-label="Milestone description" />
+          <button class="icon-x" type="button" data-act="del" aria-label="Strike this milestone">${ICONS.x}</button>
         </li>`).join('')
-      : `<li class="plan-empty"><span>No milestones yet.</span><button class="btn" type="button" id="planEmptyRegen">Generate a plan</button></li>`;
+      : `<li class="plan-empty"><span>No schedule on the sheet yet.</span><button class="btn" type="button" id="planEmptyRegen">Draft the schedule</button></li>`;
   }
 
   function renderBoard() {
     const total = state.tasks.length;
-    $('boardCount').textContent = `${total} task${total === 1 ? '' : 's'}`;
+    $('boardCount').textContent = `${total} card${total === 1 ? '' : 's'} on the boards`;
     $('kanban').innerHTML = STATUSES.map((col, colIdx) => {
       const tasks = state.tasks.filter((t) => t.status === col.id);
-      const cards = tasks.map((t) => `
+      const cards = tasks.map((t, i) => `
         <article class="task-card" draggable="true" data-id="${esc(t.id)}">
+          <span class="wo-num" aria-hidden="true">WO-${String(colIdx + 1)}${String(i + 1).padStart(2, '0')}</span>
           <p>${esc(t.text)}</p>
           <div class="task-actions">
-            <button type="button" data-act="left" ${colIdx === 0 ? 'disabled' : ''} aria-label="Move to ${esc(STATUSES[Math.max(0, colIdx - 1)].title)}">&#9664;</button>
-            <button type="button" data-act="right" ${colIdx === STATUSES.length - 1 ? 'disabled' : ''} aria-label="Move to ${esc(STATUSES[Math.min(STATUSES.length - 1, colIdx + 1)].title)}">&#9654;</button>
-            <button type="button" data-act="del" aria-label="Delete task">&#10005;</button>
+            <button type="button" data-act="left" ${colIdx === 0 ? 'disabled' : ''} aria-label="Move to ${esc(STATUSES[Math.max(0, colIdx - 1)].title)}">${ICONS.left}</button>
+            <button type="button" data-act="right" ${colIdx === STATUSES.length - 1 ? 'disabled' : ''} aria-label="Move to ${esc(STATUSES[Math.min(STATUSES.length - 1, colIdx + 1)].title)}">${ICONS.right}</button>
+            <button type="button" data-act="del" aria-label="Strike this card">${ICONS.x}</button>
           </div>
         </article>`).join('');
       const empty = `<div class="col-empty">${total === 0 && col.id === 'todo'
-        ? 'No actions yet — add the first step above.'
-        : 'Drop a card here.'}</div>`;
-      return `<section class="kanban-col" aria-label="${esc(col.title)} column">
+        ? 'No work orders yet — cut the first card above.'
+        : 'Drop a card on this clipboard.'}</div>`;
+      return `<section class="clipboard" aria-label="${esc(col.title)} clipboard">
+        <span class="clip" aria-hidden="true">${ICONS.clip}</span>
         <header><h3>${esc(col.title)}</h3><span class="col-count">${tasks.length}</span></header>
         <div class="col-body" data-status="${col.id}">${cards || empty}</div>
       </section>`;
@@ -548,13 +581,19 @@
   function renderExport(d) {
     $('briefPreview').value = buildBriefMarkdown(d);
     $('printSheet').innerHTML = buildPrintHtml(d);
+
+    const approved = d.score >= 60;
+    const stamp = $('issueStamp');
+    stamp.classList.toggle('approved', approved);
+    stamp.innerHTML = approved
+      ? '<strong>APPROVED</strong><span>FOR PROOF</span><small>HUMAN GATE ON EVERY SEND</small>'
+      : '<strong>HOLD</strong><span>TIGHTEN THE SPEC</span><small>NEEDLE MUST CLEAR 60</small>';
   }
 
   function renderAll() {
-    applyTheme();
     renderForm();
     const d = derive();
-    renderStats(d);
+    renderHero(d);
     renderScore(d);
     renderRoi(d);
     renderPlan(d);
@@ -629,7 +668,7 @@
 
   async function copyBrief() {
     const ok = await copyText(buildBriefMarkdown(derive()));
-    toast(ok ? 'Markdown brief copied to clipboard.' : 'Copy failed — select the preview text instead.');
+    toast(ok ? 'Markdown brief copied — take it to the owner.' : 'Copy failed — select the brief text and copy it by hand.');
   }
 
   // ---------------------------------------------------------------- dialog
@@ -704,7 +743,7 @@
       state.milestones = state.milestones.filter((m) => m.id !== row.dataset.id);
       state.planEdited = true;
       renderAll();
-      toast('Milestone deleted.', { actionLabel: 'Undo', onAction: undo });
+      toast('Milestone struck from the schedule.', { actionLabel: 'Undo', onAction: undo });
     });
 
     $('addMilestoneBtn').addEventListener('click', () => {
@@ -730,7 +769,7 @@
     state.planEdited = false;
     state.planSig = `${state.wedge}:${d.windowDays}`;
     renderAll();
-    toast('Proof plan regenerated from the current wedge.', { actionLabel: 'Undo', onAction: undo });
+    toast('Schedule redrafted from the current wedge.', { actionLabel: 'Undo', onAction: undo });
   }
 
   function wireBoard() {
@@ -762,7 +801,7 @@
         const undo = snapshotUndo();
         state.tasks = state.tasks.filter((t) => t.id !== task.id);
         renderAll();
-        toast('Task deleted.', { actionLabel: 'Undo', onAction: undo });
+        toast('Card struck from the boards.', { actionLabel: 'Undo', onAction: undo });
         return;
       }
       const idx = order.indexOf(task.status);
@@ -811,7 +850,7 @@
 
     $('downloadJsonBtn').addEventListener('click', () => {
       downloadFile('pilot-forge-state.json', JSON.stringify(state, null, 2), 'application/json');
-      toast('JSON backup downloaded.');
+      toast('JSON copy filed to your downloads.');
     });
 
     $('importBtn').addEventListener('click', () => $('importFile').click());
@@ -825,9 +864,9 @@
         state = normalize(parsed);
         state.seenGuide = true;
         renderAll();
-        toast('State imported.', { actionLabel: 'Undo', onAction: undo });
+        toast('Drawing loaded from the JSON copy.', { actionLabel: 'Undo', onAction: undo });
       } catch {
-        toast('Import failed — that file is not valid Pilot Forge JSON.');
+        toast('Load failed — that file is not a Pilot Forge drawing.');
       }
     });
 
@@ -835,12 +874,6 @@
   }
 
   function wireChrome() {
-    $('themeToggle').addEventListener('click', () => {
-      const current = document.documentElement.dataset.theme;
-      state.theme = current === 'dark' ? 'light' : 'dark';
-      renderAll();
-    });
-
     $('helpBtn').addEventListener('click', openHelp);
     $('helpCloseBtn').addEventListener('click', closeHelp);
     const dlg = $('helpDialog');
@@ -853,17 +886,17 @@
       const undo = snapshotUndo();
       state = demoState();
       renderAll();
-      toast('Demo pilot loaded — Rivera Heating & Air.', { actionLabel: 'Undo', onAction: undo });
+      toast('Sample job pinned up — Rivera Heating & Air.', { actionLabel: 'Undo', onAction: undo });
     });
 
     $('resetBtn').addEventListener('click', () => {
-      if (!window.confirm('Reset Pilot Forge? This clears the pilot, plan, and board in this browser.')) return;
+      if (!window.confirm('Clear the sheet? This scraps the spec, schedule, and work orders in this browser.')) return;
       const theme = state.theme;
       state = defaultState();
       state.theme = theme;
       state.seenGuide = true;
       renderAll();
-      toast('Everything reset.');
+      toast('Sheet cleared — fresh vellum on the table.');
     });
 
     document.addEventListener('keydown', (e) => {
@@ -896,6 +929,8 @@
     wireExport();
     wireChrome();
     renderAll();
+    // Orchestrated reveal: the sheet inks in and the gauge needle sweeps to its reading.
+    requestAnimationFrame(() => document.body.classList.add('inked'));
     if (!state.seenGuide) {
       state.seenGuide = true;
       persist();

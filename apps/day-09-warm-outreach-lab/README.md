@@ -1,14 +1,14 @@
-# Warm Outreach Lab
+# The Correspondence Desk — Warm Outreach Lab
 
-Draft human-reviewed warm outreach to local businesses — one noticed issue, one proof point, one low-pressure ask per prospect.
+A writer's desk for warm outreach to local businesses, where every prospect is a letter in progress — one noticed issue, one honest proof point, one gentle ask per letter. Drafted here, posted by a human.
 
 ## Highlights
 
-- **Prospect cards with research notes** — business, contact, channel, noticed issue, proof point, ask, and claims to avoid, tracked through a simple pipeline.
-- **Personalization slots + genericness lint** — compose drafts with `{{business}}`-style slots and get a 0–100 personalization score that flags canned openers, hype words, missing specifics, and me-heavy writing.
-- **Follow-up cadence planner** — apply a 3- or 4-touch template from a start date, check touches off, and see due/overdue touches at a glance.
-- **Pipeline stats** — prospects, send-ready drafts, touches due, and reply rate, live.
-- **Export & handoff** — Markdown packet, JSON download/import, pipeline CSV, and a print-ready packet. Undo for deletes, dark/light theme, keyboard shortcuts.
+- **A letter tray of envelopes** — each prospect is an envelope carrying a dossier: business, contact, channel, the noticed issue, the proof point, the ask, and claims to avoid, tracked from *Gathering notes* to *Reply received*.
+- **Brass fill-in plates + the editor's pencil** — compose on a ruled letter sheet with `{{business}}`-style slots, and get a 0–100 grade stamped on the draft that flags canned openers, hype words, missing specifics, and me-heavy writing.
+- **A string of postmarks** — apply a 3- or 4-letter follow-up cadence from a start date, stamp each postmark as it's posted, and see due/past-due postmarks at a glance.
+- **The desk ledger** — letters in the tray, sealed-and-send-ready drafts, postmarks due, and reply rate, live in the header band.
+- **Dispatch & handoff** — Markdown packet, JSON download/import, tray-ledger CSV, and a print-ready packet. Undo for discards and keyboard shortcuts throughout.
 
 ## Run
 

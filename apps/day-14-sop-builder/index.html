@@ -1,208 +1,320 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SOP Builder — repeatable operating procedures</title>
+  <title>The Field Manual — SOP Builder</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <header class="app-header">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">SB</span>
-      <div class="brand-text">
-        <strong>SOP Builder</strong>
-        <span>Trigger, owner, steps, checks, exceptions — written once, run the same every time</span>
+  <a class="skip-link" href="#page">Skip to the manual page</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="cover-band">
+    <div class="hazard-edge" aria-hidden="true"></div>
+    <div class="cover-band-inner">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 40 48" aria-hidden="true" focusable="false">
+          <rect class="bm-cover" x="1.5" y="1.5" width="37" height="45" rx="2"/>
+          <rect class="bm-bar" x="1.5" y="8" width="37" height="5"/>
+          <line class="bm-line" x1="8" y1="22" x2="32" y2="22"/>
+          <line class="bm-line" x1="8" y1="28" x2="32" y2="28"/>
+          <line class="bm-line" x1="8" y1="34" x2="24" y2="34"/>
+          <circle class="bm-hole" cx="5.5" cy="19" r="1.3"/>
+          <circle class="bm-hole" cx="5.5" cy="29" r="1.3"/>
+          <circle class="bm-hole" cx="5.5" cy="39" r="1.3"/>
+        </svg>
+        <div class="brand-text">
+          <p class="brand-kicker">Standard operating procedures &middot; ops series</p>
+          <p class="brand-title">The Field Manual</p>
+        </div>
       </div>
+      <nav class="cover-actions" aria-label="App controls">
+        <a class="btn btn-quiet back-link" href="../../index.html">&larr; All apps</a>
+        <button id="btnDemo" type="button" class="btn">Rack specimen manuals</button>
+        <button id="btnHelp" type="button" class="btn">Operator&rsquo;s card</button>
+      </nav>
     </div>
-    <nav class="header-actions" aria-label="App controls">
-      <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
-      <button id="btnDemo" type="button" class="btn">Load demo</button>
-      <button id="btnHelp" type="button" class="btn">How to use</button>
-      <button id="btnTheme" type="button" class="btn btn-ghost" aria-label="Toggle color theme"><span id="themeIcon" aria-hidden="true">&#9788;</span></button>
-    </nav>
+    <p class="classify-bar"><span>For internal use</span><span>Draft copy</span><span>A human signs before anything real ships</span></p>
   </header>
 
-  <main class="shell">
-    <div class="layout">
-      <aside class="panel library" aria-label="SOP library">
-        <div class="library-head">
-          <h2>SOP library</h2>
-          <button id="btnNewSop" type="button" class="btn-primary">+ New</button>
-        </div>
-        <ul id="sopList" class="sop-list"></ul>
-        <div id="libraryEmpty" class="empty" hidden>
-          <p><strong>No SOPs yet.</strong></p>
-          <p class="dim">Create your first procedure, or load the demo library to see a finished one.</p>
-        </div>
-      </aside>
+  <main class="desk">
+    <aside class="shelf" aria-label="Manual shelf">
+      <div class="shelf-head">
+        <h2 class="shelf-title">The shelf</h2>
+        <button id="btnNewSop" type="button" class="btn btn-issue">+ Draft manual</button>
+      </div>
+      <ul id="sopList" class="spine-list"></ul>
+      <div id="libraryEmpty" class="shelf-empty" hidden>
+        <p><strong>The shelf is bare.</strong></p>
+        <p class="dim">Draft your first manual, or rack the three specimen manuals and study a finished one.</p>
+      </div>
+    </aside>
 
-      <section class="workspace" aria-label="SOP editor">
-        <div id="editorEmpty" class="panel empty empty-big" hidden>
-          <h2>Document how the work actually gets done</h2>
-          <p class="dim">An SOP turns tribal knowledge into a repeatable procedure: what triggers it, who owns it,
-            the exact steps, the quality checks, and what to do when things go sideways.</p>
-          <div class="empty-actions">
-            <button id="btnEmptyNew" type="button" class="btn-primary">Create your first SOP</button>
-            <button id="btnEmptyDemo" type="button" class="btn">Load demo library</button>
+    <section id="page" class="bench" aria-label="Manual authoring page" tabindex="-1">
+      <div id="editorEmpty" class="cover-hero" hidden>
+        <svg class="hero-cover" viewBox="0 0 560 380" role="img"
+          aria-label="Field manual cover: stencil title, issue number, classification bar, and hazard stripe">
+          <defs>
+            <pattern id="hz" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <rect width="18" height="18" class="hz-a"/>
+              <rect width="9" height="18" class="hz-b"/>
+            </pattern>
+          </defs>
+          <rect class="hc-cover" x="4" y="4" width="552" height="372" rx="6"/>
+          <rect class="hc-frame" x="20" y="20" width="520" height="340"/>
+          <rect class="hc-ticks" x="28" y="28" width="504" height="324"/>
+          <circle class="hc-hole" cx="44" cy="76" r="7"/>
+          <circle class="hc-hole" cx="44" cy="190" r="7"/>
+          <circle class="hc-hole" cx="44" cy="304" r="7"/>
+          <rect class="hc-hazard" x="366" y="34" width="166" height="22" fill="url(#hz)"/>
+          <text class="hc-kicker" x="76" y="92">Standard operating procedures</text>
+          <text class="hc-title" x="76" y="150">Field</text>
+          <text class="hc-title" x="76" y="204">Manual</text>
+          <line class="hc-rule" x1="76" y1="224" x2="484" y2="224"/>
+          <text class="hc-sub" x="76" y="248">Write it once. Run it the same every time.</text>
+          <g class="hc-schematic">
+            <rect class="hc-node" x="76" y="270" width="96" height="40"/>
+            <text class="hc-node-label" x="124" y="288">Trigger</text>
+            <text class="hc-node-sub" x="124" y="302">&sect;1</text>
+            <line class="hc-wire" x1="172" y1="290" x2="212" y2="290"/>
+            <path class="hc-arrow" d="M206 285l8 5-8 5"/>
+            <rect class="hc-node" x="214" y="270" width="96" height="40"/>
+            <text class="hc-node-label" x="262" y="288">Procedure</text>
+            <text class="hc-node-sub" x="262" y="302">&sect;2&ndash;&sect;4</text>
+            <line class="hc-wire" x1="310" y1="290" x2="350" y2="290"/>
+            <path class="hc-arrow" d="M344 285l8 5-8 5"/>
+            <rect class="hc-node hc-node-done" x="352" y="270" width="96" height="40"/>
+            <text class="hc-node-label" x="400" y="288">Done</text>
+            <text class="hc-node-sub" x="400" y="302">&sect;5</text>
+          </g>
+          <g class="hc-issue">
+            <rect class="hc-issue-box" x="452" y="264" width="80" height="52"/>
+            <text class="hc-issue-k" x="492" y="282">Issue</text>
+            <text class="hc-issue-v" x="492" y="304">01</text>
+          </g>
+          <rect class="hc-classify" x="20" y="336" width="520" height="24"/>
+          <text class="hc-classify-text" x="280" y="352">For internal use &middot; draft for human review</text>
+        </svg>
+        <div class="cover-hero-copy">
+          <h2>Write the manual the work deserves.</h2>
+          <p class="dim">A field manual turns tribal knowledge into a procedure anyone can run: the trigger
+            that starts it, the owning role, the numbered steps, the inspection list, and the
+            <em>in&nbsp;case&nbsp;of</em> paths for when the day goes sideways.</p>
+          <div class="cover-hero-actions">
+            <button id="btnEmptyNew" type="button" class="btn btn-issue">Draft your first manual</button>
+            <button id="btnEmptyDemo" type="button" class="btn">Rack the specimen manuals</button>
           </div>
         </div>
+      </div>
 
-        <div id="editor" hidden>
-          <section class="stat-strip" aria-label="Live SOP metrics" aria-live="polite">
-            <article><strong id="statSteps">0</strong><span>Steps</span></article>
-            <article><strong id="statTime">0 min</strong><span>Est. runtime</span></article>
-            <article><strong id="statChecks">0</strong><span>Quality checks</span></article>
-            <article><strong id="statScore">0%</strong><span>Completeness</span></article>
-          </section>
+      <div id="editor" class="page" hidden>
+        <div class="page-holes" aria-hidden="true"></div>
 
-          <section class="panel" aria-label="Procedure overview">
-            <div class="panel-head">
-              <h2>1 &middot; Overview</h2>
-              <p class="dim">What is this procedure, when does it start, and who owns it?</p>
-            </div>
-            <div class="form-grid">
-              <label>SOP title <span class="req">required</span>
-                <input id="fTitle" data-field="title" maxlength="120" placeholder="e.g. Missed lead &rarr; same-day callback">
-              </label>
-              <label>Owner <span class="req">required</span>
-                <input id="fOwner" data-field="owner" maxlength="80" placeholder="A role, not a person — e.g. Ops lead">
-              </label>
-              <label>Trigger <span class="req">required</span>
-                <input id="fTrigger" data-field="trigger" maxlength="200" placeholder="The event or schedule that starts this SOP">
-              </label>
-              <label>Frequency
-                <input id="fFrequency" data-field="frequency" maxlength="80" placeholder="e.g. Daily at 16:00, or per new lead">
-              </label>
-              <label class="span-2">Purpose
-                <textarea id="fPurpose" data-field="purpose" rows="2" maxlength="400" placeholder="Why this procedure exists and what good looks like."></textarea>
-              </label>
-              <label class="span-2">Inputs needed <span class="hint-inline">one per line</span>
-                <textarea id="fInputs" data-field="inputs" rows="3" maxlength="600" placeholder="Lead source and timestamp&#10;Customer context and prior notes&#10;Quote value, if one exists"></textarea>
-              </label>
-              <label class="span-2">Definition of done <span class="req">required</span>
-                <textarea id="fDone" data-field="done" rows="2" maxlength="400" placeholder="What must be true for a run of this SOP to count as complete?"></textarea>
-              </label>
-            </div>
-          </section>
-
-          <section class="panel" aria-label="Steps">
-            <div class="panel-head">
-              <h2>2 &middot; Steps</h2>
-              <p class="dim">Drag the &#10495; handle or use &uarr; &darr; to reorder. Give every step an owner, a tool, and a duration.</p>
-            </div>
-            <div id="stepList" class="step-list"></div>
-            <div id="stepsEmpty" class="empty" hidden>
-              <p><strong>No steps yet.</strong></p>
-              <p class="dim">Break the work into numbered stations — each one small enough to hand to someone else.</p>
-            </div>
-            <button id="btnAddStep" type="button" class="btn">+ Add step</button>
-          </section>
-
-          <div class="grid-2">
-            <section class="panel" aria-label="Quality checks">
-              <div class="panel-head">
-                <h2>3 &middot; Quality checks</h2>
-                <p class="dim">The inspection list before a run counts as done. Tick a box once you have verified it in a dry run.</p>
-              </div>
-              <ul id="checkList" class="check-list"></ul>
-              <div id="checksEmpty" class="empty" hidden>
-                <p><strong>No quality checks yet.</strong></p>
-                <p class="dim">Write at least three — the things that must be true before anyone calls this done.</p>
-              </div>
-              <button id="btnAddCheck" type="button" class="btn">+ Add check</button>
-            </section>
-
-            <section class="panel" aria-label="Exception paths">
-              <div class="panel-head">
-                <h2>4 &middot; Exception paths</h2>
-                <p class="dim">When X goes wrong, do Y — and who to escalate to. This is what makes an SOP safe to delegate.</p>
-              </div>
-              <div id="excList" class="exc-list"></div>
-              <div id="excEmpty" class="empty" hidden>
-                <p><strong>No exception paths yet.</strong></p>
-                <p class="dim">List the ways the happy path breaks: angry customer, missing input, system down.</p>
-              </div>
-              <button id="btnAddExc" type="button" class="btn">+ Add exception</button>
-            </section>
+        <section class="control-block" aria-label="Document control block" aria-live="polite">
+          <div class="cb-cell cb-doc">
+            <span class="cb-k">Document no.</span>
+            <strong id="statDoc" class="num">SOP-01</strong>
           </div>
-
-          <div class="grid-2">
-            <section class="panel" aria-label="Completeness score">
-              <div class="panel-head">
-                <h2>5 &middot; Completeness</h2>
-                <p class="dim">A structural score — it measures whether the SOP is fully written, not whether it is correct.</p>
-              </div>
-              <div class="score-row">
-                <strong id="scoreBig">0%</strong>
-                <span id="scoreBadge" class="badge">Skeleton</span>
-              </div>
-              <div class="score-bar" role="presentation"><div id="scoreFill"></div></div>
-              <ul id="scoreBreakdown" class="score-breakdown"></ul>
-              <h3 class="sub-head">Fix next</h3>
-              <ul id="fixList" class="fix-list" aria-live="polite"></ul>
-            </section>
-
-            <section class="panel" aria-label="Export and handoff">
-              <div class="panel-head">
-                <h2>6 &middot; Export &amp; handoff</h2>
-                <p class="dim">Every export is a draft for human review — approve before anything customer-facing, financial, or destructive.</p>
-              </div>
-              <div class="btn-row">
-                <button id="btnCopyMd" type="button" class="btn-primary">Copy Markdown</button>
-                <button id="btnPrint" type="button" class="btn">Print SOP</button>
-                <button id="btnJson" type="button" class="btn">Download JSON</button>
-                <button id="btnCsv" type="button" class="btn">Steps CSV</button>
-                <button id="btnImport" type="button" class="btn">Import JSON</button>
-              </div>
-              <p class="dim small">Markdown and print cover this SOP's full document. JSON is the whole library and can be re-imported. CSV is this SOP's step table.</p>
-              <hr class="rule">
-              <div class="btn-row">
-                <button id="btnDuplicate" type="button" class="btn">Duplicate SOP</button>
-                <button id="btnDeleteSop" type="button" class="btn btn-danger">Delete SOP</button>
-                <button id="btnReset" type="button" class="btn btn-danger">Reset all data</button>
-              </div>
-            </section>
+          <div class="cb-cell">
+            <span class="cb-k">Steps</span>
+            <strong id="statSteps" class="num">0</strong>
           </div>
+          <div class="cb-cell">
+            <span class="cb-k">Est. runtime</span>
+            <strong id="statTime" class="num">0 min</strong>
+          </div>
+          <div class="cb-cell">
+            <span class="cb-k">Inspection points</span>
+            <strong id="statChecks" class="num">0</strong>
+          </div>
+          <div class="cb-cell cb-score">
+            <span class="cb-k">Written</span>
+            <strong id="statScore" class="num">0%</strong>
+          </div>
+        </section>
 
-          <section class="panel doc-panel" aria-label="SOP document preview">
-            <div class="panel-head doc-panel-head">
-              <h2>7 &middot; Document preview</h2>
-              <p class="dim">This is what prints — a clean operating procedure you can pin on the wall.</p>
+        <section class="sec" aria-label="Identification">
+          <header class="sec-head">
+            <span class="sec-no num" aria-hidden="true">&sect;1</span>
+            <div class="sec-title-wrap">
+              <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><rect x="2.5" y="5" width="15" height="10.5" rx="1"/><circle cx="6.8" cy="10.2" r="1.5"/><path d="M10.5 8.4h4.5M10.5 12h3"/></svg>Identification</h2>
+              <p class="sec-sub">Name the procedure, the role that owns it, and the moment it begins.</p>
             </div>
-            <article id="sopDocument" class="sop-document"></article>
+          </header>
+          <div class="form-grid">
+            <label>Procedure title <span class="req">required</span>
+              <input id="fTitle" data-field="title" maxlength="120" placeholder="e.g. Missed lead &rarr; same-day callback">
+            </label>
+            <label>Owning role <span class="req">required</span>
+              <input id="fOwner" data-field="owner" maxlength="80" placeholder="A role, not a person — e.g. Ops lead">
+            </label>
+            <label>Trigger <span class="req">required</span>
+              <input id="fTrigger" data-field="trigger" maxlength="200" placeholder="The event or schedule that opens this manual">
+            </label>
+            <label>Cadence
+              <input id="fFrequency" data-field="frequency" maxlength="80" placeholder="e.g. Daily at 16:00, or per new lead">
+            </label>
+            <label class="span-2">Why this manual exists
+              <textarea id="fPurpose" data-field="purpose" rows="2" maxlength="400" placeholder="The failure it prevents, and what a good outcome looks like."></textarea>
+            </label>
+            <label class="span-2">Required on hand <span class="hint-inline">one per line</span>
+              <textarea id="fInputs" data-field="inputs" rows="3" maxlength="600" placeholder="Lead source and timestamp&#10;Customer context and prior notes&#10;Quote value, if one exists"></textarea>
+            </label>
+            <label class="span-2">Definition of done <span class="req">required</span>
+              <textarea id="fDone" data-field="done" rows="2" maxlength="400" placeholder="What must be true for a run of this procedure to count as complete?"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <section class="sec" aria-label="Procedure steps">
+          <header class="sec-head">
+            <span class="sec-no num" aria-hidden="true">&sect;2</span>
+            <div class="sec-title-wrap">
+              <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M8 5h9.5M8 10h9.5M8 15h9.5"/><rect x="2.5" y="3.5" width="3" height="3"/><rect x="2.5" y="8.5" width="3" height="3"/><rect x="2.5" y="13.5" width="3" height="3"/></svg>Procedure</h2>
+              <p class="sec-sub">Number the work. Small stations, plain words, one owner each.
+                Owner, tool, and minutes live in the margin. Drag the grip or use the arrows to reorder.</p>
+            </div>
+          </header>
+          <div id="stepList" class="step-list"></div>
+          <div id="stepsEmpty" class="sec-empty" hidden>
+            <p><strong>No steps on the page.</strong></p>
+            <p class="dim">Break the work into numbered stations — each one small enough to hand to someone else.</p>
+          </div>
+          <button id="btnAddStep" type="button" class="btn btn-add">+ Add step</button>
+        </section>
+
+        <div class="sec-pair">
+          <section class="sec" aria-label="Inspection checklist">
+            <header class="sec-head">
+              <span class="sec-no num" aria-hidden="true">&sect;3</span>
+              <div class="sec-title-wrap">
+                <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.5"/><path d="M7.2 10.2l2 2 3.6-4.2"/></svg>Inspection</h2>
+                <p class="sec-sub">What an inspector checks before a run counts. Stamp a point once you have verified it in a dry run.</p>
+              </div>
+            </header>
+            <ul id="checkList" class="check-list"></ul>
+            <div id="checksEmpty" class="sec-empty" hidden>
+              <p><strong>No inspection points yet.</strong></p>
+              <p class="dim">Write at least three — the things that must be true before anyone calls this done.</p>
+            </div>
+            <button id="btnAddCheck" type="button" class="btn btn-add">+ Add inspection point</button>
+          </section>
+
+          <section class="sec" aria-label="Exception paths">
+            <header class="sec-head">
+              <span class="sec-no num" aria-hidden="true">&sect;4</span>
+              <div class="sec-title-wrap">
+                <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 3.2L17.6 16H2.4z"/><path d="M10 8.2v4"/><path d="M10 14.4v.1"/></svg>In case of</h2>
+                <p class="sec-sub">When the happy path breaks: what happened, what to do instead, who to call. This is what makes a manual safe to hand over.</p>
+              </div>
+            </header>
+            <div id="excList" class="exc-list"></div>
+            <div id="excEmpty" class="sec-empty" hidden>
+              <p><strong>No exception paths yet.</strong></p>
+              <p class="dim">List the ways it breaks in the field: angry customer, missing input, system down.</p>
+            </div>
+            <button id="btnAddExc" type="button" class="btn btn-add">+ Add exception path</button>
           </section>
         </div>
-      </section>
-    </div>
+
+        <div class="sec-pair">
+          <section class="sec" aria-label="Certification">
+            <header class="sec-head">
+              <span class="sec-no num" aria-hidden="true">&sect;5</span>
+              <div class="sec-title-wrap">
+                <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.2"/><circle cx="10" cy="10" r="2.8"/><path d="M10 1.6v2.2M10 16.2v2.2M1.6 10h2.2M16.2 10h2.2"/></svg>Certification</h2>
+                <p class="sec-sub">The seal inks in as the manual gets written. It measures whether the procedure is fully documented — not whether it is correct.</p>
+              </div>
+            </header>
+            <div class="seal-row">
+              <div id="sealWrap" class="seal-wrap">
+                <svg class="seal" viewBox="0 0 140 140" role="img" aria-label="Certification seal showing completeness">
+                  <circle class="seal-outer" cx="70" cy="70" r="62"/>
+                  <circle class="seal-track" cx="70" cy="70" r="54"/>
+                  <circle id="scoreFill" class="seal-ring" cx="70" cy="70" r="54"/>
+                  <circle class="seal-inner" cx="70" cy="70" r="44"/>
+                  <text id="scoreBig" class="seal-score num" x="70" y="72">0%</text>
+                  <text class="seal-word" x="70" y="92">written</text>
+                </svg>
+              </div>
+              <div class="seal-side">
+                <span id="scoreBadge" class="stamp stamp-bad">Outline only</span>
+                <ul id="scoreBreakdown" class="score-breakdown"></ul>
+              </div>
+            </div>
+            <h3 class="sub-head">Fix next</h3>
+            <ul id="fixList" class="fix-list" aria-live="polite"></ul>
+          </section>
+
+          <section class="sec" aria-label="Issue and file">
+            <header class="sec-head">
+              <span class="sec-no num" aria-hidden="true">&sect;6</span>
+              <div class="sec-title-wrap">
+                <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M4 12.5v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3"/><path d="M10 2.8V11M6.8 8.2L10 11.4l3.2-3.2"/></svg>Issue &amp; file</h2>
+                <p class="sec-sub">Every copy that leaves this desk is a draft for human review — a person signs before anything customer-facing, financial, or destructive.</p>
+              </div>
+            </header>
+            <div class="btn-row">
+              <button id="btnCopyMd" type="button" class="btn btn-issue">Copy as Markdown</button>
+              <button id="btnPrint" type="button" class="btn">Print the issued page</button>
+              <button id="btnJson" type="button" class="btn">Download library JSON</button>
+              <button id="btnCsv" type="button" class="btn">Steps CSV</button>
+              <button id="btnImport" type="button" class="btn">Import JSON</button>
+            </div>
+            <p class="dim small">Markdown and print cover this manual&rsquo;s full page. JSON is the whole shelf and can be re-imported. CSV is this manual&rsquo;s step table.</p>
+            <hr class="rule">
+            <div class="btn-row">
+              <button id="btnDuplicate" type="button" class="btn">Duplicate manual</button>
+              <button id="btnDeleteSop" type="button" class="btn btn-danger">Delete manual</button>
+              <button id="btnReset" type="button" class="btn btn-danger">Reset all data</button>
+            </div>
+          </section>
+        </div>
+
+        <section class="sec sec-issued" aria-label="Issued page preview">
+          <header class="sec-head">
+            <span class="sec-no num" aria-hidden="true">&para;</span>
+            <div class="sec-title-wrap">
+              <h2 class="sec-title"><svg class="sec-icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M5 2.5h7l3.5 3.5v11.5H5z"/><path d="M12 2.5V6h3.5"/><path d="M7.5 10h5M7.5 13h5"/></svg>The issued page</h2>
+              <p class="sec-sub">This is what prints — the clean manual page you pin above the workbench.</p>
+            </div>
+          </header>
+          <article id="sopDocument" class="sop-document"></article>
+        </section>
+      </div>
+    </section>
   </main>
 
   <footer class="app-footer">
-    <span>Local-first &middot; No accounts &middot; No tracking — data stays in this browser</span>
+    <span>Local-first &middot; no accounts &middot; no tracking — every word stays in this browser</span>
     <a href="../../index.html">&larr; All apps</a>
   </footer>
 
   <dialog id="helpModal" aria-labelledby="helpTitle">
     <div class="modal-head">
-      <h2 id="helpTitle">How to use SOP Builder</h2>
-      <button id="btnCloseHelp" type="button" class="btn btn-ghost" aria-label="Close guide">&#10005;</button>
+      <div>
+        <p class="modal-kicker">Operator&rsquo;s card &middot; keep within reach</p>
+        <h2 id="helpTitle">How to author a field manual</h2>
+      </div>
+      <button id="btnCloseHelp" type="button" class="btn btn-quiet" aria-label="Close the operator&rsquo;s card">&#10005;</button>
     </div>
     <ol class="help-steps">
-      <li><strong>Create an SOP.</strong> Click <em>+ New</em> in the library (left), or <em>Load demo</em> to explore three finished procedures first.</li>
-      <li><strong>Fill the overview.</strong> Title, owner (a role, not a person), the trigger that starts it, frequency, purpose, inputs, and a definition of done.</li>
-      <li><strong>Break the work into steps.</strong> Each step gets a title, the exact action, an owner, the tool used, and a duration in minutes. Drag the &#10495; handle or use &uarr; &darr; to reorder.</li>
-      <li><strong>Write quality checks.</strong> The short inspection list a runner ticks before calling the run done. Tick a box here once you have verified it in a dry run.</li>
-      <li><strong>Map exception paths.</strong> For each way the happy path breaks: what happened, what to do instead, and who to escalate to.</li>
-      <li><strong>Watch the completeness score.</strong> The stat strip and the <em>Fix next</em> list tell you exactly what is still missing.</li>
-      <li><strong>Export the document.</strong> Copy Markdown, print the clean SOP page, or download JSON (whole library, re-importable) and CSV (step table). Everything is a draft for human review.</li>
+      <li><strong>Draft a manual.</strong> Hit <em>+ Draft manual</em> on the shelf (left), or <em>Rack specimen manuals</em> to study three finished procedures first.</li>
+      <li><strong>Fill &sect;1 Identification.</strong> Title, owning role (a role, not a person), the trigger that opens the manual, cadence, purpose, what must be on hand, and a definition of done.</li>
+      <li><strong>Number the work in &sect;2 Procedure.</strong> Each step gets a name, the exact action in plain words, and margin notes — owner, tool, minutes. Drag the grip or use the arrows to reorder.</li>
+      <li><strong>Write &sect;3 Inspection.</strong> The short list an inspector checks before a run counts. Stamp a point here once you have verified it in a dry run.</li>
+      <li><strong>Map &sect;4 In case of.</strong> For each way the happy path breaks: what happened, what to do instead, and who to escalate to.</li>
+      <li><strong>Watch &sect;5 Certification.</strong> The seal inks in as the manual gets written; the <em>Fix next</em> list names exactly what is still missing.</li>
+      <li><strong>Issue &amp; file in &sect;6.</strong> Copy Markdown, print the issued page, download the shelf as JSON (re-importable), or the step table as CSV. Every copy is a draft for human review.</li>
     </ol>
     <h3>Keyboard shortcuts</h3>
     <table class="shortcut-table">
       <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
       <tbody>
-        <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Open this operator&rsquo;s card</td></tr>
         <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
-        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the current SOP as Markdown</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the open manual as Markdown</td></tr>
       </tbody>
     </table>
     <p class="dim small">Everything you write stays in this browser (localStorage). Exports are drafts for human review.</p>
