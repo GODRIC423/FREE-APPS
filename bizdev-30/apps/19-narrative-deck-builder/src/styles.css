@@ -1,0 +1,154 @@
+@import "tailwindcss";
+@import "./_fonts.css";
+
+@theme {
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Public Sans", system-ui, -apple-system, sans-serif;
+  --font-hand: "Caveat", "Segoe Script", cursive;
+
+  /* Storyboard palette — matte cork black, cream index cards, red string */
+  --color-cork: #17130f;        /* base backdrop */
+  --color-cork-deep: #0a0806;   /* vignette / deep shadow */
+  --color-panel: #201a13;       /* raised panel surface */
+  --color-panel-2: #2a2216;     /* copilot rail, deeper panel */
+  --color-card: #f8f2e1;        /* index card cream */
+  --color-card-line: #ddd0ac;   /* ruled line on card */
+  --color-ink: #221b12;         /* dark ink text on cards */
+  --color-bone: #ddd2b9;        /* primary light text on dark bg */
+  --color-fog: #968a76;         /* secondary/tertiary text on dark bg */
+  --color-faint: #6b6252;       /* quietest text on dark bg */
+
+  --color-string: #d5402c;      /* red string — signature accent */
+  --color-string-deep: #8f2419;
+  --color-brass: #cda23c;       /* promised land / resolution */
+  --color-slate: #8493a3;       /* status quo / setup */
+  --color-ember: #c1543a;       /* threat / conflict */
+  --color-moss: #63935f;        /* proof */
+  --color-teal: #359a92;        /* the ask */
+
+  --shadow-pin: 0 1px 0 rgba(0,0,0,.5), 0 16px 28px -12px rgba(0,0,0,.72), 0 4px 10px -3px rgba(0,0,0,.55);
+  --shadow-hero: 0 1px 0 rgba(0,0,0,.5), 0 24px 40px -16px rgba(0,0,0,.75), 0 6px 14px -4px rgba(0,0,0,.5);
+  --shadow-panel: 0 1px 2px rgba(0,0,0,.45), 0 10px 26px -12px rgba(0,0,0,.6);
+}
+
+html { font-family: var(--font-body); }
+
+body {
+  color: var(--color-bone);
+  background-color: var(--color-cork);
+  background-image:
+    radial-gradient(900px 420px at 50% -120px, rgba(255,235,190,.08), rgba(255,235,190,0) 65%),
+    radial-gradient(700px 480px at 10% 10%, rgba(213,64,44,.05), rgba(213,64,44,0) 60%),
+    radial-gradient(760px 520px at 92% 6%, rgba(205,162,60,.05), rgba(205,162,60,0) 60%),
+    linear-gradient(180deg, #1a1510 0%, #17130f 40%, #100d09 100%);
+  background-attachment: fixed;
+}
+
+/* cork grain texture */
+.grain::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: .35;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.62 0 0 0 0 0.42 0 0 0 0 0.20 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* header rail */
+.cork-rail {
+  border-bottom: 1px solid rgba(221,208,172,.14);
+  box-shadow: 0 1px 0 rgba(0,0,0,.5);
+}
+
+/* ---------- pinned index card ---------- */
+.idx-card {
+  position: relative;
+  border-radius: 4px;
+  background: var(--color-card);
+  box-shadow: var(--shadow-pin);
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 22px, rgba(111,134,176,.20) 23px);
+  background-position: 0 40px;
+  background-repeat: repeat-y;
+}
+.idx-card::before {
+  content: "";
+  position: absolute;
+  left: 12px; right: 12px; top: 34px;
+  height: 1px;
+  background: rgba(198,84,66,.45);
+}
+.idx-pin {
+  position: absolute;
+  top: -8px; left: 18px;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  box-shadow:
+    inset -2px -2px 3px rgba(0,0,0,.45),
+    inset 2px 2px 3px rgba(255,255,255,.55),
+    0 3px 5px rgba(0,0,0,.55);
+}
+
+/* stage column surface */
+.stage-col {
+  background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0) 40%), var(--color-panel);
+  border: 1px solid rgba(221,208,172,.10);
+  box-shadow: var(--shadow-panel);
+}
+
+/* copilot rail */
+.copilot-rail {
+  background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0) 30%), var(--color-panel-2);
+  border: 1px solid rgba(205,162,60,.22);
+  box-shadow: var(--shadow-panel);
+}
+
+.font-hand { font-family: var(--font-hand); }
+
+/* ---------- utility chrome ---------- */
+.btn-focus, button, [role="tab"], input, select, textarea, a, [tabindex] { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--color-string);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+::selection { background: rgba(213,64,44,.35); color: #fff; }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(221,208,172,.35) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: rgba(221,208,172,.28); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+.snap-cols { scroll-snap-type: x proximity; }
+.snap-col { scroll-snap-align: start; }
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(14px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.anim-rise { animation: rise-in .35s cubic-bezier(.22,.9,.3,1) both; }
+.anim-fade { animation: fade-in .25s ease both; }
+.anim-toast { animation: toast-in .28s cubic-bezier(.22,.9,.3,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+/* ---------- print: the read-through is the artifact ---------- */
+.print-artifact { display: none; }
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  .grain::before { display: none; }
+  .app-shell { display: none !important; }
+  .print-artifact { display: block !important; }
+  .print-artifact .p-card { break-inside: avoid; border: 1px solid #999; box-shadow: none !important; }
+}
