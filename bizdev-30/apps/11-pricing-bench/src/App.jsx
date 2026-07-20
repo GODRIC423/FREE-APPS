@@ -4,8 +4,27 @@ import {
   ChevronLeft, ChevronRight, Copy, Download, Upload, FileText, HelpCircle,
   RotateCcw, Sparkles, FlaskConical, Check, X, AlertTriangle, Undo2, Scale,
   ListChecks, PencilRuler, CircleDollarSign, BadgeCheck, Flag, NotebookPen,
-  ClipboardPaste, Gauge as GaugeIcon, TrendingUp, Star, Info,
+  ClipboardPaste, Gauge as GaugeIcon, TrendingUp, Star, Info, Cable,
 } from 'lucide-react';
+
+/* ------------------------------------------------------------------ */
+/* console bus (optional link to the BizDev Console Deck host)         */
+/* ------------------------------------------------------------------ */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '11-pricing-bench' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 /* ------------------------------------------------------------------ */
 /* utils                                                               */
@@ -247,28 +266,55 @@ function stateMarkdown(s) {
 }
 
 const PROMPT_TAIL = '\n\nPaste into claude.ai — works with the standard Claude subscription.';
-function buildPrompts(s) {
+
+/** Builds the "## Shared context (from BizDev Console)" markdown block to prepend to
+ * every Copilot prompt when this app is linked to the Console Deck. Only non-empty
+ * fields are included; returns '' when there is nothing to share (or no console). */
+function buildSharedContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  if (claude.userName || claude.voiceNotes) {
+    const bits = [claude.userName, claude.voiceNotes].filter(Boolean);
+    lines.push(`- My name / voice: ${bits.join(' — ')}`);
+  }
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const acc = roster.accounts.slice(0, 12).map((a) => `${a.name}${a.segment ? ` (${a.segment})` : ''}`).join(', ');
+    lines.push(`- Accounts on file: ${acc}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+function buildPrompts(s, consoleCtx) {
   const md = stateMarkdown(s);
+  const ctxHeader = buildSharedContextHeader(consoleCtx);
   return [
     {
       id: 'structures', icon: Hammer, title: 'Propose 3 packaging structures',
       desc: 'Three alternative good/better/best lineups for your service, with anchor logic and price points.',
-      prompt: `You are a pricing strategist who has packaged 100+ B2B service businesses. You think in value metrics, anchoring, and buyer psychology — and you are allergic to underpricing.\n\nHere is my current pricing bench (my working state, as markdown):\n\n---\n${md}\n---\n\nYour task: propose THREE alternative packaging structures for this service, each a complete good/better/best lineup. For each structure give:\n1. A name for the structure and the strategic bet behind it (one sentence).\n2. The three tiers: name, price + unit, one-line positioning, and 4-6 features per tier (reuse or reshape my features; invent only what is plausible).\n3. The anchor logic: which tier anchors, which is the lead, and why the ratios work.\n4. The biggest risk of this structure and the one signal that would tell me it is working.\n\nThen finish with a verdict: which of the three you would ship first for my ICP, in 3 sentences.\n\nFormat: markdown with a ## heading per structure and a final ## Verdict section. Be concrete with numbers — no ranges wider than 20%.`,
+      prompt: ctxHeader + `You are a pricing strategist who has packaged 100+ B2B service businesses. You think in value metrics, anchoring, and buyer psychology — and you are allergic to underpricing.\n\nHere is my current pricing bench (my working state, as markdown):\n\n---\n${md}\n---\n\nYour task: propose THREE alternative packaging structures for this service, each a complete good/better/best lineup. For each structure give:\n1. A name for the structure and the strategic bet behind it (one sentence).\n2. The three tiers: name, price + unit, one-line positioning, and 4-6 features per tier (reuse or reshape my features; invent only what is plausible).\n3. The anchor logic: which tier anchors, which is the lead, and why the ratios work.\n4. The biggest risk of this structure and the one signal that would tell me it is working.\n\nThen finish with a verdict: which of the three you would ship first for my ICP, in 3 sentences.\n\nFormat: markdown with a ## heading per structure and a final ## Verdict section. Be concrete with numbers — no ranges wider than 20%.`,
     },
     {
       id: 'stress', icon: Scale, title: 'Stress-test pricing vs my ICP',
       desc: 'A hostile review: where the ladder leaks money, where it will meet resistance, what to test next.',
-      prompt: `You are a skeptical buyer-side procurement advisor AND a pricing consultant, in one head. Your job is to attack my pricing ladder from the buyer's chair, then repair it from the seller's.\n\nMy current pricing bench:\n\n---\n${md}\n---\n\nDo this, in order:\n1. **Buyer attack** — as my exact ICP, list the 5 strongest objections or exploits against this ladder (cheap-tier squatting, anchor disbelief, missing value metric leverage, etc.). Quote my own tier names.\n2. **Margin audit** — using my cost model numbers, flag any tier where the margin or effective hourly rate is a problem, and say what number it should be.\n3. **Price-test read** — read my test log like data: what do the outcomes at each price point actually support? Where am I leaving money?\n4. **Repairs** — the 5 highest-leverage changes, each with: the change, the expected effect, and how I would verify it within 3 sales conversations.\n\nFormat: four ## sections matching the steps. Be blunt; do not pad. If my data is too thin to conclude something, say exactly what to log next.`,
+      prompt: ctxHeader + `You are a skeptical buyer-side procurement advisor AND a pricing consultant, in one head. Your job is to attack my pricing ladder from the buyer's chair, then repair it from the seller's.\n\nMy current pricing bench:\n\n---\n${md}\n---\n\nDo this, in order:\n1. **Buyer attack** — as my exact ICP, list the 5 strongest objections or exploits against this ladder (cheap-tier squatting, anchor disbelief, missing value metric leverage, etc.). Quote my own tier names.\n2. **Margin audit** — using my cost model numbers, flag any tier where the margin or effective hourly rate is a problem, and say what number it should be.\n3. **Price-test read** — read my test log like data: what do the outcomes at each price point actually support? Where am I leaving money?\n4. **Repairs** — the 5 highest-leverage changes, each with: the change, the expected effect, and how I would verify it within 3 sales conversations.\n\nFormat: four ## sections matching the steps. Be blunt; do not pad. If my data is too thin to conclude something, say exactly what to log next.`,
     },
     {
       id: 'copy', icon: PencilRuler, title: 'Write the pricing-page copy',
       desc: 'Full pricing-page draft: headline, tier cards, FAQ, and the anchor framed the way you designed it.',
-      prompt: `You are a conversion copywriter who specializes in B2B service pricing pages. Plain words, concrete outcomes, zero hype-words ("unleash", "supercharge" are banned).\n\nMy pricing bench (source of truth — do not invent tiers or prices):\n\n---\n${md}\n---\n\nWrite the complete pricing page:\n1. **Headline + subhead** that frame the value metric, not the deliverables.\n2. **Tier cards** — for each package: name, price, one-line promise, 4-6 bullet features (rewrite mine for scannability, keep meaning), and a CTA label. Mark the lead tier with a "Most teams pick this" style badge line and give the anchor tier copy that makes the lead feel safe.\n3. **Comparison row ideas** — 5 rows for a feature table that make the differences legible.\n4. **FAQ** — 6 questions a real buyer from my ICP would ask (price justification, switching, contract terms, what happens if usage grows), with tight answers.\n5. **Objection-softening line** to sit under the CTA.\n\nFormat: markdown, ready to paste into a page builder. Keep every price exactly as given.`,
+      prompt: ctxHeader + `You are a conversion copywriter who specializes in B2B service pricing pages. Plain words, concrete outcomes, zero hype-words ("unleash", "supercharge" are banned).\n\nMy pricing bench (source of truth — do not invent tiers or prices):\n\n---\n${md}\n---\n\nWrite the complete pricing page:\n1. **Headline + subhead** that frame the value metric, not the deliverables.\n2. **Tier cards** — for each package: name, price, one-line promise, 4-6 bullet features (rewrite mine for scannability, keep meaning), and a CTA label. Mark the lead tier with a "Most teams pick this" style badge line and give the anchor tier copy that makes the lead feel safe.\n3. **Comparison row ideas** — 5 rows for a feature table that make the differences legible.\n4. **FAQ** — 6 questions a real buyer from my ICP would ask (price justification, switching, contract terms, what happens if usage grows), with tight answers.\n5. **Objection-softening line** to sit under the CTA.\n\nFormat: markdown, ready to paste into a page builder. Keep every price exactly as given.`,
     },
     {
       id: 'nexttest', icon: FlaskConical, title: 'Design my next price test',
       desc: 'Reads your test log and prescribes the next experiment: who, what price, what script, what counts as a result.',
-      prompt: `You are a pricing researcher who runs Van Westendorp and simple A/B price tests for service businesses with small sample sizes. You are honest about what small n can and cannot prove.\n\nMy pricing bench, including my full price test log:\n\n---\n${md}\n---\n\nDesign my single next price test:\n1. **Hypothesis** — one falsifiable sentence grounded in my existing log.\n2. **Design** — which package, what price point(s), which segment, how many conversations before reading results, and why that n is enough to act on (or what caveat applies).\n3. **The script** — the exact words to present the price in the sales conversation, including the anchor setup and the 4-second pause instruction.\n4. **Decision rule** — written BEFORE the test: if X happens, raise/keep/lower to specific numbers.\n5. **Log template** — the fields I should capture per conversation so the next analysis is better than this one.\n\nFormat: markdown with those five ## sections. One test only — do not hedge with alternatives.`,
+      prompt: ctxHeader + `You are a pricing researcher who runs Van Westendorp and simple A/B price tests for service businesses with small sample sizes. You are honest about what small n can and cannot prove.\n\nMy pricing bench, including my full price test log:\n\n---\n${md}\n---\n\nDesign my single next price test:\n1. **Hypothesis** — one falsifiable sentence grounded in my existing log.\n2. **Design** — which package, what price point(s), which segment, how many conversations before reading results, and why that n is enough to act on (or what caveat applies).\n3. **The script** — the exact words to present the price in the sales conversation, including the anchor setup and the 4-second pause instruction.\n4. **Decision rule** — written BEFORE the test: if X happens, raise/keep/lower to specific numbers.\n5. **Log template** — the fields I should capture per conversation so the next analysis is better than this one.\n\nFormat: markdown with those five ## sections. One test only — do not hedge with alternatives.`,
     },
   ];
 }
@@ -438,6 +484,7 @@ function Wordmark() {
 /* main app                                                            */
 /* ------------------------------------------------------------------ */
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadInitial);
   const [tab, setTab] = useState('bench');
   const [help, setHelp] = useState(false);
@@ -561,7 +608,7 @@ export default function App() {
     }),
   }));
 
-  const prompts = useMemo(() => buildPrompts(state), [state]);
+  const prompts = useMemo(() => buildPrompts(state, consoleCtx), [state, consoleCtx]);
   const checks = useMemo(() => ladderChecks(state.tiers), [state.tiers]);
   const testStats = useMemo(() => {
     const n = state.tests.length;
@@ -592,7 +639,17 @@ export default function App() {
       {/* ---------------- header ---------------- */}
       <header className="no-print bench-top relative border-b-4 border-wood-700 text-paper">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
-          <Wordmark />
+          <div className="flex flex-wrap items-center gap-3">
+            <Wordmark />
+            {consoleCtx && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-brass-400/50 bg-wood-900/40 px-2.5 py-1 text-xs font-medium text-wood-100"
+                title="Linked to the BizDev Console">
+                <Cable className="h-3.5 w-3.5 text-brass-400" aria-hidden />
+                Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+              </span>
+            )}
+          </div>
           <p className="hidden max-w-xs text-sm leading-snug text-wood-100/90 md:block">
             Engineer your packages, price points, and margins — then test them like an instrument, not a guess.
           </p>

@@ -4,8 +4,26 @@ import {
   Download, Upload, RotateCcw, HelpCircle, X, ChevronUp, ChevronDown, ChevronRight,
   FileJson, FileSpreadsheet, FileText, Sparkles, ClipboardPaste, Undo2, DoorOpen,
   CalendarClock, Scale, HeartHandshake, AlertTriangle, ListMusic, Library, Files,
-  PencilLine, Keyboard,
+  PencilLine, Keyboard, Link2,
 } from 'lucide-react';
+
+/* ============================== console bus =============================== */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '13-cadence-composer' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 /* ================================ constants =============================== */
 
@@ -176,6 +194,28 @@ function download(filename, text, type) {
 }
 
 /* ============================== copilot prompts =========================== */
+
+function sharedContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  if (claude.userName || claude.voiceNotes) {
+    const bits = [claude.userName, claude.voiceNotes].filter(Boolean);
+    lines.push(`- My name / voice: ${bits.join(' — ')}`);
+  }
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const accts = roster.accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
 
 function promptDraftStep(c, stepIndex) {
   const s = c.steps[stepIndex];
@@ -447,6 +487,7 @@ function MixMeter({ stats }) {
 /* ================================== app =================================== */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [helpOpen, setHelpOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -679,25 +720,25 @@ export default function App() {
           ))}
         </select>
       ),
-      build: () => promptDraftStep(active, Math.min(copilotStep, active.steps.length - 1)),
+      build: () => sharedContextHeader(consoleCtx) + promptDraftStep(active, Math.min(copilotStep, active.steps.length - 1)),
       disabled: !active.steps.length,
     },
     {
       key: 'balance', Icon: Scale, title: 'Balance my channel mix',
       desc: 'Audit pacing, mix and gaps; get a rebalanced timeline.',
-      build: () => promptBalanceMix(active, stats),
+      build: () => sharedContextHeader(consoleCtx) + promptBalanceMix(active, stats),
       disabled: !active.steps.length,
     },
     {
       key: 'breakup', Icon: DoorOpen, title: 'Break-up message variants',
       desc: 'Three closers for the final touch: gracious, honest, pattern-interrupt.',
-      build: () => promptBreakup(active),
+      build: () => sharedContextHeader(consoleCtx) + promptBreakup(active),
       disabled: false,
     },
     {
       key: 'critique', Icon: Sparkles, title: 'Critique the whole cadence',
       desc: 'Report card, weakest-line rewrites, the one big change.',
-      build: () => promptCritique(active),
+      build: () => sharedContextHeader(consoleCtx) + promptCritique(active),
       disabled: !active.steps.length,
     },
   ] : [];
@@ -714,6 +755,15 @@ export default function App() {
             Compose multi-channel follow-up sequences with the pacing of a score — not the panic of a to-do list.
           </p>
           <div className="flex flex-wrap items-center gap-2">
+            {consoleCtx && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-viridian/40 bg-viridian/10 px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-wider text-viridian"
+                title={`Linked to BizDev Console${consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}`}
+              >
+                <Link2 className="h-3 w-3" aria-hidden />
+                Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+              </span>
+            )}
             <button onClick={loadDemo}
               className="inline-flex items-center gap-1.5 rounded-lg border border-brass/50 bg-brass/10 px-3 py-2 font-mono text-[11.5px] font-medium uppercase tracking-wider text-brassdeep transition hover:bg-brass/20 focus-visible:outline-2 focus-visible:outline-brass">
               <ListMusic className="h-3.5 w-3.5" aria-hidden /> Load demo

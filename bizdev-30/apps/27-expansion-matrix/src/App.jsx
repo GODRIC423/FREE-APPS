@@ -3,8 +3,56 @@ import {
   Rocket, Check, Circle, Ban, X, ChevronUp, ChevronDown, Pencil, Trash2,
   HelpCircle, Download, Upload, Copy, Sparkles, FileJson, FileText,
   FileSpreadsheet, Undo2, RotateCcw, Search, Printer, LayoutGrid, Crosshair,
-  Building2, Layers, ListOrdered, NotebookPen, Plus, Target, ScrollText,
+  Building2, Layers, ListOrdered, NotebookPen, Plus, Target, ScrollText, Cable,
 } from 'lucide-react';
+
+/* ============================== console bus (BizDev Console link) ============================== */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '27-expansion-matrix' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  if (ctx.roster?.accounts?.length) {
+    const accts = ctx.roster.accounts.slice(0, 12)
+      .map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+function ConsoleLinkedPill({ ctx }) {
+  if (!ctx) return null;
+  const company = ctx.profile?.company;
+  return (
+    <span
+      title={company ? `Linked to BizDev Console — ${company}` : 'Linked to BizDev Console'}
+      className="inline-flex items-center gap-1.5 rounded-sm border border-joy-500/60 bg-joy-400/10 px-2.5 py-1.5 font-mono text-[11px] font-semibold text-joy-700">
+      <Cable className="h-3.5 w-3.5 shrink-0" aria-hidden /> Console linked{company ? ` · ${company}` : ''}
+    </span>
+  );
+}
 
 /* ============================== constants ============================== */
 
@@ -771,9 +819,11 @@ function CellInspector({ state, selected, rollup, onSetState, onPatchCell, onCle
 /* ============================== main app ============================== */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [showGuide, setShowGuide] = useState(() => !loadState().seenGuide);
   const [showExport, setShowExport] = useState(false);
+  const [showRoster, setShowRoster] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [toast, setToast] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -959,6 +1009,7 @@ export default function App() {
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable;
       if (e.key === 'Escape') {
         if (showExport) setShowExport(false);
+        else if (showRoster) setShowRoster(false);
         else if (showGuide) closeGuide();
         else if (confirmReset) setConfirmReset(false);
         else if (selected) setSelected(null);
@@ -985,6 +1036,7 @@ export default function App() {
               <h1 className="font-display text-2xl font-black leading-none tracking-tight text-ink-900">Expansion Matrix</h1>
               <p className="mt-1 font-body text-[13px] italic text-ink-500">Chart every account against every offer — score the whitespace, size it, work the best cells first.</p>
             </div>
+            <ConsoleLinkedPill ctx={consoleCtx} />
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <BtnGhost onClick={loadDemo}><Rocket className="h-4 w-4" aria-hidden /> Load demo</BtnGhost>
@@ -1111,7 +1163,30 @@ export default function App() {
         {/* ======================= accounts ======================= */}
         <section className="no-print mt-10">
           <SectionHead icon={Building2} kicker="Who you already sell to" title="Accounts"
-            aside={<BtnPrimary onClick={() => { setAddingAccount(true); setEditingAccountId(null); }}><Plus className="h-4 w-4" aria-hidden /> Add account</BtnPrimary>} />
+            aside={
+              <div className="flex flex-wrap items-center gap-2">
+                {consoleCtx?.roster?.accounts?.length > 0 && (
+                  <div className="relative">
+                    <BtnGhost onClick={() => setShowRoster((v) => !v)} aria-expanded={showRoster} aria-haspopup="menu">
+                      <Cable className="h-4 w-4" aria-hidden /> Pull from console roster
+                    </BtnGhost>
+                    {showRoster && (
+                      <div role="menu" className="em-rise absolute right-0 z-40 mt-2 max-h-72 w-64 overflow-y-auto rounded-sm border-2 border-ink-800 bg-paper-50 p-1.5 shadow-deep">
+                        {consoleCtx.roster.accounts.map((a, i) => (
+                          <button key={`${a.name}-${i}`} role="menuitem" type="button"
+                            onClick={() => { saveAccount(normalizeAccount({ name: a.name, segment: a.segment || '', notes: a.notes || '' })); setShowRoster(false); }}
+                            className="flex w-full items-center justify-between gap-2 rounded-sm px-2.5 py-2 text-left font-body text-sm text-ink-800 hover:bg-paper-100">
+                            <span className="truncate">{a.name}</span>
+                            {a.segment && <span className="shrink-0 font-mono text-[10px] text-ink-400">{a.segment}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <BtnPrimary onClick={() => { setAddingAccount(true); setEditingAccountId(null); }}><Plus className="h-4 w-4" aria-hidden /> Add account</BtnPrimary>
+              </div>
+            } />
           {addingAccount && (
             <div className="mb-4 rounded-sm border-2 border-dashed border-ink-300 bg-paper-50/80 p-4 shadow-card">
               <AccountEditor account={normalizeAccount({})} onSave={saveAccount} onCancel={() => setAddingAccount(false)} />
@@ -1315,9 +1390,9 @@ export default function App() {
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {[
-                { k: 'rank', icon: ListOrdered, title: 'Rank my whitespace cells', desc: 'Claude re-ranks by value, ease, and urgency, calls out mis-sized cells, and names your top 3 for the next two weeks.', need: true, get: () => promptRankCells(state) },
-                { k: 'ref', icon: Building2, title: 'Draft the internal-referral ask', desc: 'A warm, short email to your existing champion asking for an introduction to the new offer or department.', need: !!copilotCell, get: () => promptReferralAsk(state, copilotCell) },
-                { k: 'pitch', icon: Target, title: 'Write the expansion pitch', desc: 'A proof-first pitch for the selected cell, plus the likely objection and a one-line pre-empt.', need: !!copilotCell, get: () => promptExpansionPitch(state, copilotCell) },
+                { k: 'rank', icon: ListOrdered, title: 'Rank my whitespace cells', desc: 'Claude re-ranks by value, ease, and urgency, calls out mis-sized cells, and names your top 3 for the next two weeks.', need: true, get: () => consoleContextHeader(consoleCtx) + promptRankCells(state) },
+                { k: 'ref', icon: Building2, title: 'Draft the internal-referral ask', desc: 'A warm, short email to your existing champion asking for an introduction to the new offer or department.', need: !!copilotCell, get: () => consoleContextHeader(consoleCtx) + promptReferralAsk(state, copilotCell) },
+                { k: 'pitch', icon: Target, title: 'Write the expansion pitch', desc: 'A proof-first pitch for the selected cell, plus the likely objection and a one-line pre-empt.', need: !!copilotCell, get: () => consoleContextHeader(consoleCtx) + promptExpansionPitch(state, copilotCell) },
               ].map((c) => (
                 <div key={c.k} className="flex flex-col rounded-sm border border-ink-600 bg-ink-900/40 p-4">
                   <div className="flex items-center gap-2">

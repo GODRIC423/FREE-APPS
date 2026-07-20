@@ -4,8 +4,56 @@ import {
   ChevronLeft, Search, ShieldCheck, ShieldAlert, MessageSquare, Columns3,
   Pickaxe, Telescope, ClipboardList, Copy, Check, Download, Upload, FileText, FileDown,
   HelpCircle, RotateCcw, X, Sparkles, Undo2, Keyboard, BookOpen, AlertTriangle, Stamp,
-  Gauge, Filter, ListChecks,
+  Gauge, Filter, ListChecks, Cable,
 } from 'lucide-react';
+
+/* ================================ console bus (BizDev Console link) ================================ */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '24-niche-validator' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  if (ctx.roster?.accounts?.length) {
+    const accts = ctx.roster.accounts.slice(0, 12)
+      .map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+function ConsoleLinkedPill({ ctx }) {
+  if (!ctx) return null;
+  const company = ctx.profile?.company;
+  return (
+    <span
+      title={company ? `Linked to BizDev Console — ${company}` : 'Linked to BizDev Console'}
+      className="inline-flex items-center gap-1.5 rounded-md border border-brass/50 bg-brass/10 px-2.5 py-1.5 text-[11px] font-semibold text-brass">
+      <Cable className="h-3.5 w-3.5 shrink-0" aria-hidden /> Console linked{company ? ` · ${company}` : ''}
+    </span>
+  );
+}
 
 /* ================================ constants ================================ */
 
@@ -1205,13 +1253,14 @@ function CompareView({ niches, weights, onClose, onRemove }) {
 
 /* ================================ copilot drawer ================================ */
 
-function CopilotDrawer({ state, onClose, onNotes, onToast }) {
+function CopilotDrawer({ state, consoleCtx, onClose, onNotes, onToast }) {
   const [nicheId, setNicheId] = useState(state.selectedId || state.niches[0]?.id || '');
   const [activeId, setActiveId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const n = state.niches.find((x) => x.id === nicheId) || null;
   const active = COPILOT_ACTIONS.find((a) => a.id === activeId) || null;
-  const prompt = active ? (active.needsNiche ? (n ? active.build(state, n) : '') : active.build(state)) : '';
+  const basePrompt = active ? (active.needsNiche ? (n ? active.build(state, n) : '') : active.build(state)) : '';
+  const prompt = basePrompt ? consoleContextHeader(consoleCtx) + basePrompt : '';
 
   const doCopy = async () => {
     if (!prompt) return;
@@ -1380,6 +1429,7 @@ function PrintSheet({ state }) {
 /* ================================ App ================================ */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [view, setView] = useState('board'); // board | detail
   const [helpOpen, setHelpOpen] = useState(() => !loadStateSeen());
@@ -1578,7 +1628,10 @@ export default function App() {
         {/* ============ header ============ */}
         <header className="sticky top-0 z-40 border-b border-line bg-leatherdeep/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <Wordmark />
+            <div className="flex flex-wrap items-center gap-3">
+              <Wordmark />
+              <ConsoleLinkedPill ctx={consoleCtx} />
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <IconBtn icon={Columns3} label={`Compare selected specimens (${compareIds.length} chosen)`}
                 tone={compareIds.length >= 2 ? 'brass' : 'ghost'}
@@ -1653,7 +1706,7 @@ export default function App() {
             onRemove={(id) => setCompareIds((ids) => ids.filter((x) => x !== id))} />
         )}
         {copilotOpen && (
-          <CopilotDrawer state={state} onClose={() => setCopilotOpen(false)}
+          <CopilotDrawer state={state} consoleCtx={consoleCtx} onClose={() => setCopilotOpen(false)}
             onNotes={(v) => patch({ copilotNotes: v })} onToast={showToast} />
         )}
         {sealRequest && (

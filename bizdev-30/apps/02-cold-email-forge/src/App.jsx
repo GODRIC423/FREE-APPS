@@ -4,7 +4,52 @@ import {
   RotateCcw, Plus, Trash2, ChevronUp, ChevronDown, Mail, FileJson, FileText, X,
   Undo2, Wand2, TriangleAlert, Scale, Zap, BookOpen, ClipboardPaste,
   MessageSquareQuote, Split, FlaskConical, Eye, GripVertical, ChevronDown as Caret,
+  Link2,
 } from 'lucide-react';
+
+/* ---- BizDev Console bus (postMessage v1) — see /bizdev-30/PROTOCOL.md ---- */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '02-cold-email-forge' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const p = ctx.profile || {};
+  const c = ctx.claude || {};
+  const r = ctx.roster || {};
+  const lines = [];
+  if (p.company) lines.push(`- My company: ${p.company}`);
+  if (p.offer) lines.push(`- What I sell: ${p.offer}`);
+  if (p.icp) lines.push(`- My ICP: ${p.icp}`);
+  if (p.pricingAnchor) lines.push(`- Pricing anchor: ${p.pricingAnchor}`);
+  if (c.userName || c.voiceNotes) {
+    lines.push(`- My name / voice: ${c.userName || ''}${c.userName && c.voiceNotes ? ' — ' : ''}${c.voiceNotes || ''}`);
+  }
+  const accounts = Array.isArray(r.accounts) ? r.accounts.filter((a) => a && a.name) : [];
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return ['## Shared context (from BizDev Console)', ...lines].join('\n');
+}
+
+function withConsoleHeader(ctx, body) {
+  const header = consoleContextHeader(ctx);
+  return header ? `${header}\n\n${body}` : body;
+}
 
 /* ============================== constants ============================== */
 
@@ -764,6 +809,7 @@ function CopyButton({ getText, label, copiedLabel, className, onDone }) {
 /* ============================== app ============================== */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadInitial);
   const [helpOpen, setHelpOpen] = useState(!state.seenGuide);
   const [selectedId, setSelectedId] = useState(state.steps[0] ? state.steps[0].id : null);
@@ -978,14 +1024,14 @@ export default function App() {
   /* ---------- copilot ---------- */
   const openPrompt = (kind) => {
     if (kind === 'critique') {
-      setPromptModal({ kicker: 'Forge hand prompt', title: 'Brutal critique - the delete test', text: promptCritique(state) });
+      setPromptModal({ kicker: 'Forge hand prompt', title: 'Brutal critique - the delete test', text: withConsoleHeader(consoleCtx, promptCritique(state)) });
       return;
     }
     if (!selectedStep) return;
     if (kind === 'rewrite') {
-      setPromptModal({ kicker: 'Forge hand prompt', title: 'Re-strike step ' + (selectedIndex + 1) + ' for ' + (state.prospect.first_name || 'the prospect'), text: promptRewrite(state, selectedStep, selectedIndex) });
+      setPromptModal({ kicker: 'Forge hand prompt', title: 'Re-strike step ' + (selectedIndex + 1) + ' for ' + (state.prospect.first_name || 'the prospect'), text: withConsoleHeader(consoleCtx, promptRewrite(state, selectedStep, selectedIndex)) });
     } else if (kind === 'subjects') {
-      setPromptModal({ kicker: 'Forge hand prompt', title: '5 subject variants for strike ' + (selectedIndex + 1), text: promptSubjects(state, selectedStep, selectedIndex) });
+      setPromptModal({ kicker: 'Forge hand prompt', title: '5 subject variants for strike ' + (selectedIndex + 1), text: withConsoleHeader(consoleCtx, promptSubjects(state, selectedStep, selectedIndex)) });
     }
   };
 
@@ -1013,6 +1059,12 @@ export default function App() {
                   Sequences that survive the delete test
                 </div>
               </div>
+              {consoleCtx && (
+                <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-ember-600/40 bg-coal-800/70 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-heat-300 sm:inline-flex">
+                  <Link2 className="h-3 w-3" aria-hidden="true" />
+                  Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+                </span>
+              )}
             </div>
             <nav className="flex items-center gap-2" aria-label="Primary actions">
               <button type="button" className={btnGhost} onClick={loadDemo}>
@@ -1417,6 +1469,20 @@ export default function App() {
                   <div className={kickerCls}>Prospect ingot</div>
                   <h2 className="font-display text-base font-bold text-bone-100">Sample merge values</h2>
                 </div>
+                {Array.isArray(consoleCtx?.roster?.accounts) && consoleCtx.roster.accounts.length > 0 && (
+                  <div className="px-4 pt-3">
+                    <select className={inputCls + ' w-auto'} value="" aria-label="Pull from console roster"
+                      onChange={(e) => {
+                        const acct = consoleCtx.roster.accounts.find((a) => a.name === e.target.value);
+                        if (acct) setProspect('company', acct.name);
+                      }}>
+                      <option value="">Pull company from console roster…</option>
+                      {consoleCtx.roster.accounts.slice(0, 50).map((a) => (
+                        <option key={a.name} value={a.name}>{a.name}{a.segment ? ` (${a.segment})` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 gap-2.5 px-4 py-4 sm:grid-cols-2">
                   {MERGE_FIELDS.map((f) => (
                     <label key={f.key} className="block">

@@ -3,8 +3,28 @@ import {
   Compass, Flag, MapPin, Plus, Trash2, Pencil, ChevronUp, ChevronDown, X,
   HelpCircle, Download, Upload, Copy, Check, Sparkles, FileJson, FileText,
   FileSpreadsheet, Undo2, RotateCcw, Search, Anchor, Ruler, Map as MapIcon,
-  ScrollText, Ship, Crosshair, Printer,
+  ScrollText, Ship, Crosshair, Printer, Link2,
 } from 'lucide-react';
+
+/* ================================================================
+   CONSOLE BUS — optional link to the BizDev Console Deck host.
+   No-op (ctx stays null) when this app is opened standalone.
+================================================================ */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '15-territory-mapper' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 /* ============================== constants ============================== */
 
@@ -530,8 +550,36 @@ function stateBriefMd(state) {
   return L.join('\n');
 }
 
-function promptSizeSegment(state, seg) {
-  return `You are a senior B2B market analyst who sizes go-to-market segments for boutique firms. Be rigorous, cite reasoning, and flag every assumption. Do not flatter my numbers.
+/* Console Deck integration: when this app is framed inside the Console, prepend
+   a compact shared-context header to every Copilot prompt. Plain text only —
+   never HTML — and a pure no-op when consoleCtx is null (standalone). */
+function buildConsoleContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  const nameVoice = [claude.userName, claude.voiceNotes].filter((v) => v && String(v).trim());
+  if (nameVoice.length) lines.push(`- My name / voice: ${nameVoice.join(' — ')}`);
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const accts = roster.accounts.slice(0, 12).map((a) => `${a.name}${a.segment ? ` (${a.segment})` : ''}`).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}`;
+}
+
+function withConsoleContext(prompt, consoleCtx) {
+  const header = buildConsoleContextHeader(consoleCtx);
+  return header ? `${header}\n\n${prompt}` : prompt;
+}
+
+function promptSizeSegment(state, seg, consoleCtx) {
+  return withConsoleContext(`You are a senior B2B market analyst who sizes go-to-market segments for boutique firms. Be rigorous, cite reasoning, and flag every assumption. Do not flatter my numbers.
 
 ## My context
 ${stateBriefMd(state)}
@@ -550,14 +598,14 @@ ${seg.notes ? `- **Field notes:** ${seg.notes}` : ''}
 5. **Verdict:** is this segment worth a named-account (T1) motion, a clustered (T2) motion, or programmatic-only (T3)?
 
 ## Output format
-Markdown. Sections matching 1–5 above, then a final table: | Metric | My estimate | Your estimate | Delta | Confidence |. End with the top 3 risks that would shrink this segment.`;
+Markdown. Sections matching 1–5 above, then a final table: | Metric | My estimate | Your estimate | Delta | Confidence |. End with the top 3 risks that would shrink this segment.`, consoleCtx);
 }
 
-function promptTiering(state) {
+function promptTiering(state, consoleCtx) {
   const counts = { T1: 0, T2: 0, T3: 0, none: 0 };
   for (const a of state.accounts) counts[a.tier || 'none']++;
   const cap = state.capacity;
-  return `You are a revenue architect who designs account-tiering systems for small B2B teams. You optimize for focus per rep-hour, not vanity coverage.
+  return withConsoleContext(`You are a revenue architect who designs account-tiering systems for small B2B teams. You optimize for focus per rep-hour, not vanity coverage.
 
 ## My context
 ${stateBriefMd(state)}
@@ -575,11 +623,11 @@ ${stateBriefMd(state)}
 4. **The math check:** estimate weekly rep-hours my proposed loads imply; tell me if my per-rep numbers are fantasy for a team of ${cap.reps}.
 
 ## Output format
-Markdown. A rules table per tier (| Criterion | Threshold | Why |), then the weekly motion per tier as short checklists, then rebalancing moves as a numbered action list I can execute this week.`;
+Markdown. A rules table per tier (| Criterion | Threshold | Why |), then the weekly motion per tier as short checklists, then rebalancing moves as a numbered action list I can execute this week.`, consoleCtx);
 }
 
-function promptValueProp(state, seg) {
-  return `You are a positioning strategist in the style of April Dunford, writing for a specific vertical — never generic B2B mush. Plain words, concrete nouns, no buzzwords.
+function promptValueProp(state, seg, consoleCtx) {
+  return withConsoleContext(`You are a positioning strategist in the style of April Dunford, writing for a specific vertical — never generic B2B mush. Plain words, concrete nouns, no buzzwords.
 
 ## My context
 ${stateBriefMd(state)}
@@ -597,7 +645,7 @@ ${seg.notes ? `- **Field notes:** ${seg.notes}` : ''}
 5. **What NOT to say** — 3 phrases this vertical is numb to.
 
 ## Output format
-Markdown with sections 1–5. Keep the one-liner and openers inside code fences so I can copy them verbatim.`;
+Markdown with sections 1–5. Keep the one-liner and openers inside code fences so I can copy them verbatim.`, consoleCtx);
 }
 
 /* ============================== modal + toast ============================== */
@@ -696,8 +744,19 @@ export default function App() {
   const [segFilter, setSegFilter] = useState('all');
   const [newAcct, setNewAcct] = useState({ name: '', segmentId: '', tier: 'T2', value: '' });
   const [copilotSegId, setCopilotSegId] = useState('');
+  const [rosterOpen, setRosterOpen] = useState(false);
   const fileRef = useRef(null);
   const toastTimer = useRef(null);
+  const rosterRef = useRef(null);
+  const consoleCtx = useConsoleBus();
+
+  /* close roster dropdown on outside click */
+  useEffect(() => {
+    if (!rosterOpen) return;
+    const onDown = (e) => { if (!rosterRef.current?.contains(e.target)) setRosterOpen(false); };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [rosterOpen]);
 
   /* autosave (debounced) */
   useEffect(() => {
@@ -791,6 +850,22 @@ export default function App() {
     setState((s) => ({ ...s, accounts: [acct, ...s.accounts] }));
     setNewAcct({ name: '', segmentId: newAcct.segmentId, tier: newAcct.tier, value: '' });
   };
+  /* console-linked convenience: pull an account straight from the console roster onto the ledger */
+  const addAccountFromRoster = (rosterAcct) => {
+    const matchSeg = rosterAcct.segment
+      ? state.segments.find((s) => s.name.trim().toLowerCase() === String(rosterAcct.segment).trim().toLowerCase())
+      : null;
+    const acct = normalizeAccount({
+      id: uid(),
+      name: rosterAcct.name || '',
+      segmentId: matchSeg ? matchSeg.id : (newAcct.segmentId || null),
+      tier: newAcct.tier,
+      value: 0,
+      notes: rosterAcct.notes || '',
+    }, new Set(state.segments.map((s) => s.id)));
+    setState((s) => ({ ...s, accounts: [acct, ...s.accounts] }));
+    fireToast(`“${acct.name}” pulled onto the ledger from the console roster.`);
+  };
   const patchCapacity = (k) => (e) => setState((s) => ({ ...s, capacity: { ...s.capacity, [k]: clamp(num(e.target.value), 0, 1000000) } }));
 
   const doCopy = async (key, text, msg) => {
@@ -821,6 +896,7 @@ export default function App() {
       const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target?.isContentEditable;
       if (e.key === 'Escape') {
         if (showExport) setShowExport(false);
+        else if (rosterOpen) setRosterOpen(false);
         else if (showGuide) closeGuide();
         else if (confirmReset) setConfirmReset(false);
         return;
@@ -865,6 +941,15 @@ export default function App() {
               <p className="mt-1 font-body text-[13px] italic text-sepia-500">Chart your segments, tier the accounts, plant the flag where the money is.</p>
             </div>
           </div>
+          {consoleCtx && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-sm border border-oxide-500/50 bg-oxide-500/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-oxide-600"
+              title="Linked to the BizDev Console Deck"
+            >
+              <Link2 className="h-3 w-3" aria-hidden /> Console linked
+              {consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+            </span>
+          )}
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <BtnGhost onClick={loadDemo}><Ship className="h-4 w-4" aria-hidden /> Load demo</BtnGhost>
             {confirmReset ? (
@@ -1042,7 +1127,25 @@ export default function App() {
         {/* ======================= accounts + coverage ======================= */}
         <div className="mt-10 grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <section className="no-print min-w-0">
-            <SectionHead icon={Anchor} kicker="The ship's manifest" title="Account Ledger" />
+            <SectionHead icon={Anchor} kicker="The ship's manifest" title="Account Ledger"
+              aside={consoleCtx?.roster?.accounts?.length > 0 && (
+                <div className="relative" ref={rosterRef}>
+                  <BtnGhost onClick={() => setRosterOpen((v) => !v)} aria-haspopup="menu" aria-expanded={rosterOpen}>
+                    <Link2 className="h-4 w-4" aria-hidden /> Pull from roster <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                  </BtnGhost>
+                  {rosterOpen && (
+                    <div role="menu" className="tm-rise absolute right-0 z-40 mt-2 max-h-64 w-64 overflow-y-auto rounded-sm border-2 border-sepia-700 bg-parch-50 p-1.5 shadow-deep">
+                      {consoleCtx.roster.accounts.slice(0, 50).map((a, i) => (
+                        <button key={i} role="menuitem" onClick={() => { addAccountFromRoster(a); setRosterOpen(false); }}
+                          className="flex w-full items-center justify-between gap-2 rounded-sm px-2.5 py-2 text-left font-body text-sm text-sepia-800 hover:bg-parch-200">
+                          <span className="truncate">{a.name}</span>
+                          {a.segment && <span className="ml-2 shrink-0 font-mono text-[10px] text-sepia-500">{a.segment}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )} />
             {/* add row */}
             <div className="mb-3 grid grid-cols-2 gap-2 rounded-sm border border-sepia-400/70 bg-parch-50/80 p-3 shadow-card sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_6rem_6rem_auto]">
               <input className={inputCls} placeholder="Account name…" value={newAcct.name}
@@ -1178,17 +1281,17 @@ export default function App() {
                 {
                   k: 'size', icon: Crosshair, title: 'Survey a segment',
                   desc: 'Claude sanity-checks your account count, layers TAM→SAM→SOM, and hands you 5 data sources to verify with.',
-                  need: !!copilotSeg, get: () => promptSizeSegment(state, copilotSeg),
+                  need: !!copilotSeg, get: () => promptSizeSegment(state, copilotSeg, consoleCtx),
                 },
                 {
                   k: 'tier', icon: Ruler, title: 'Tune my tiering rules',
                   desc: 'Mechanical tier criteria, a weekly motion per tier, and rebalancing moves sized to your rep capacity.',
-                  need: true, get: () => promptTiering(state),
+                  need: true, get: () => promptTiering(state, consoleCtx),
                 },
                 {
                   k: 'vp', icon: Flag, title: 'Draft the vertical value prop',
                   desc: 'Pains in the buyer\'s vocabulary, a vertical one-liner, cold-open lines, and what NOT to say.',
-                  need: !!copilotSeg, get: () => promptValueProp(state, copilotSeg),
+                  need: !!copilotSeg, get: () => promptValueProp(state, copilotSeg, consoleCtx),
                 },
               ].map((c) => (
                 <div key={c.k} className="flex flex-col rounded-sm border border-sepia-600 bg-sepia-900/40 p-4">

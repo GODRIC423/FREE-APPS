@@ -3,8 +3,52 @@ import {
   Anchor, Radar, Plus, Trash2, ChevronUp, ChevronDown, ChevronLeft, Search,
   Crosshair, Shield, ShieldAlert, Bomb, Swords, ClipboardList, Copy, Check,
   Download, Upload, FileText, HelpCircle, RotateCcw, X, Sparkles, Undo2,
-  Target, Flag, Ship, FileDown, Keyboard, BookOpen, AlertTriangle,
+  Target, Flag, Ship, FileDown, Keyboard, BookOpen, AlertTriangle, Link2,
 } from 'lucide-react';
+
+/* ---- BizDev Console bus (postMessage v1) — see /bizdev-30/PROTOCOL.md ---- */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '06-battlecard-bay' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const p = ctx.profile || {};
+  const c = ctx.claude || {};
+  const r = ctx.roster || {};
+  const lines = [];
+  if (p.company) lines.push(`- My company: ${p.company}`);
+  if (p.offer) lines.push(`- What I sell: ${p.offer}`);
+  if (p.icp) lines.push(`- My ICP: ${p.icp}`);
+  if (p.pricingAnchor) lines.push(`- Pricing anchor: ${p.pricingAnchor}`);
+  if (c.userName || c.voiceNotes) {
+    lines.push(`- My name / voice: ${c.userName || ''}${c.userName && c.voiceNotes ? ' — ' : ''}${c.voiceNotes || ''}`);
+  }
+  const accounts = Array.isArray(r.accounts) ? r.accounts.filter((a) => a && a.name) : [];
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return ['## Shared context (from BizDev Console)', ...lines].join('\n');
+}
+
+function withConsoleHeader(ctx, body) {
+  const header = consoleContextHeader(ctx);
+  return header ? `${header}\n\n${body}` : body;
+}
 
 /* ================================ constants ================================ */
 
@@ -690,6 +734,7 @@ function ListEditor({ items, onChange, onDelete, placeholder, accent = 'chartdim
 /* ================================ App ================================ */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [view, setView] = useState('fleet'); // fleet | card
   const [helpOpen, setHelpOpen] = useState(() => !loadStateSeen());
@@ -837,7 +882,15 @@ export default function App() {
         {/* ============ header ============ */}
         <header className="sticky top-0 z-40 border-b border-line bg-abyss/85 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <Wordmark />
+            <div className="flex flex-wrap items-center gap-3">
+              <Wordmark />
+              {consoleCtx && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-brass/40 bg-hull px-2.5 py-1 text-[11px] font-semibold text-brass">
+                  <Link2 className="h-3 w-3" aria-hidden="true" />
+                  Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <IconBtn icon={Crosshair} label="Action Stations — quick-draw for live calls (Q)" tone="signal" onClick={() => setQuickDraw(true)}>
                 Action stations
@@ -912,6 +965,7 @@ export default function App() {
             onClose={() => setCopilotOpen(false)}
             onNotes={(v) => patch({ copilotNotes: v })}
             onToast={showToast}
+            consoleCtx={consoleCtx}
           />
         )}
 
@@ -1368,13 +1422,14 @@ function QuickDraw({ competitors, initialId, onClose }) {
 
 /* ================================ copilot ================================ */
 
-function CopilotDrawer({ state, onClose, onNotes, onToast }) {
+function CopilotDrawer({ state, onClose, onNotes, onToast, consoleCtx }) {
   const [compId, setCompId] = useState(state.selectedId || state.competitors[0]?.id || '');
   const [activeId, setActiveId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const comp = state.competitors.find((c) => c.id === compId) || null;
   const active = COPILOT_ACTIONS.find((a) => a.id === activeId) || null;
-  const prompt = active ? (active.needsCompetitor ? (comp ? active.build(state, comp) : '') : active.build(state)) : '';
+  const rawPrompt = active ? (active.needsCompetitor ? (comp ? active.build(state, comp) : '') : active.build(state)) : '';
+  const prompt = rawPrompt ? withConsoleHeader(consoleCtx, rawPrompt) : '';
 
   const doCopy = async () => {
     if (!prompt) return;

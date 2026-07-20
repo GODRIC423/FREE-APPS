@@ -2,8 +2,45 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Archive, ClipboardList, Sparkles, Library, HelpCircle, Download, FileText, FileDown, Upload, RotateCcw,
   BookOpen, AlertTriangle, X, Undo2, Search, Plus, ShieldCheck, RefreshCw, Boxes, ChevronLeft, Copy, Trash2,
-  Stamp, ChevronUp, ChevronDown, FolderOpen, FolderPlus, Check, Layers, Gauge, Keyboard,
+  Stamp, ChevronUp, ChevronDown, FolderOpen, FolderPlus, Check, Layers, Gauge, Keyboard, Cable,
 } from 'lucide-react';
+
+/* ================================ BizDev Console bus (postMessage v1) ================================ */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '23-rfp-answer-vault' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+/* Compact context header prepended to every Claude Copilot prompt when linked to the console. */
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  const accounts = (ctx.roster?.accounts || []).filter((a) => a && a.name);
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
 
 /* ================================ constants ================================ */
 
@@ -543,7 +580,7 @@ function TagEditor({ tags, onChange }) {
 
 /* ================================ hero graphics ================================ */
 
-function Wordmark() {
+function Wordmark({ consoleCtx }) {
   return (
     <div className="flex items-center gap-3">
       <svg viewBox="0 0 40 40" className="h-10 w-10" role="img" aria-label="RFP Answer Vault mark">
@@ -568,6 +605,11 @@ function Wordmark() {
         </div>
         <div className="label-caps mt-1 text-[10px] text-dim">Answer RFPs in hours, not weeks</div>
       </div>
+      {consoleCtx && (
+        <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-brassdeep/60 bg-brass/10 px-2.5 py-1 text-[11px] font-semibold text-brass">
+          <Cable className="h-3 w-3" aria-hidden /> Console linked{consoleCtx.profile?.company ? ` — ${consoleCtx.profile.company}` : ''}
+        </span>
+      )}
     </div>
   );
 }
@@ -854,6 +896,7 @@ function EntryEditor({ a, usage, onBack, onPatch, onRemove, onMarkVerified, onCo
 function AssembleView({
   state, onPatchResponse, onAddResponse, onRemoveResponse, onSelectResponse,
   onAddItem, onAddGap, onPatchItem, onRemoveItem, onMoveItem, onPromoteGap, onOpenAnswer, onCopyResponse,
+  rosterAccounts,
 }) {
   const selected = state.responses.find((r) => r.id === state.selectedResponseId) || null;
   return (
@@ -862,7 +905,7 @@ function AssembleView({
         onSelect={onSelectResponse} onAdd={onAddResponse} onRemove={onRemoveResponse} />
       {selected ? (
         <ResponseDetail
-          state={state} r={selected}
+          state={state} r={selected} rosterAccounts={rosterAccounts}
           onPatch={(p) => onPatchResponse(selected.id, p)}
           onAddItem={(a) => onAddItem(selected.id, a)}
           onAddGap={() => onAddGap(selected.id)}
@@ -960,10 +1003,11 @@ function PickFromVault({ answers, items, onAdd }) {
   );
 }
 
-function ResponseDetail({ state, r, onPatch, onAddItem, onAddGap, onPatchItem, onRemoveItem, onMoveItem, onPromoteGap, onOpenAnswer, onCopy }) {
+function ResponseDetail({ state, r, onPatch, onAddItem, onAddGap, onPatchItem, onRemoveItem, onMoveItem, onPromoteGap, onOpenAnswer, onCopy, rosterAccounts }) {
   const cov = coverage(r);
   const gaps = r.items.filter((it) => !it.text.trim());
   const md = responseToMarkdown(state, r);
+  const hasRoster = Array.isArray(rosterAccounts) && rosterAccounts.length > 0;
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-lg border border-line bg-steel-800/80 p-4 shadow-raised">
@@ -973,7 +1017,13 @@ function ResponseDetail({ state, r, onPatch, onAddItem, onAddGap, onPatchItem, o
               className="font-display block w-full rounded-md border border-linesoft bg-steel-900 px-3 py-2 text-lg font-extrabold text-ink outline-none focus:border-brassglow/60" />
             <div className="flex flex-wrap gap-2">
               <input value={r.client} onChange={(e) => onPatch({ client: e.target.value })} placeholder="Client / prospect" aria-label="Client"
+                list={hasRoster ? 'console-roster-accounts' : undefined}
                 className="min-w-[160px] flex-1 rounded-md border border-linesoft bg-steel-900 px-2.5 py-1.5 text-sm text-ink outline-none placeholder:text-faint focus:border-brassglow/60" />
+              {hasRoster && (
+                <datalist id="console-roster-accounts">
+                  {rosterAccounts.map((a, i) => a?.name ? <option key={i} value={a.name} /> : null)}
+                </datalist>
+              )}
               <input type="date" value={r.dueDate} onChange={(e) => onPatch({ dueDate: e.target.value })} aria-label="Due date"
                 className="rounded-md border border-linesoft bg-steel-900 px-2.5 py-1.5 text-sm text-ink outline-none focus:border-brassglow/60" />
             </div>
@@ -1083,13 +1133,14 @@ function ResponseDetail({ state, r, onPatch, onAddItem, onAddGap, onPatchItem, o
 
 /* ================================ copilot ================================ */
 
-function CopilotDrawer({ state, onClose, onNotes, onToast }) {
+function CopilotDrawer({ state, onClose, onNotes, onToast, consoleCtx }) {
   const [responseId, setResponseId] = useState(state.selectedResponseId || state.responses[0]?.id || '');
   const [activeId, setActiveId] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
   const r = state.responses.find((x) => x.id === responseId) || null;
   const active = COPILOT_ACTIONS.find((a) => a.id === activeId) || null;
-  const prompt = active ? (active.needsResponse ? (r ? active.build(state, r) : '') : active.build(state)) : '';
+  const basePrompt = active ? (active.needsResponse ? (r ? active.build(state, r) : '') : active.build(state)) : '';
+  const prompt = basePrompt ? consoleContextHeader(consoleCtx) + basePrompt : '';
 
   const doCopy = async () => {
     if (!prompt) return;
@@ -1264,6 +1315,7 @@ function PrintSheet({ state }) {
 /* ================================ App ================================ */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [view, setView] = useState('vault'); // vault | entry | assemble
   const [openAnswerId, setOpenAnswerId] = useState(null);
@@ -1456,7 +1508,7 @@ export default function App() {
       <div className="app-chrome">
         <header className="sticky top-0 z-40 border-b border-line bg-vault/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <Wordmark />
+            <Wordmark consoleCtx={consoleCtx} />
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex overflow-hidden rounded-md border border-line">
                 <button type="button" onClick={() => setView('vault')} aria-pressed={view === 'vault' || view === 'entry'}
@@ -1511,7 +1563,7 @@ export default function App() {
               onMarkVerified={() => markVerifiedToday(openAnswer.id)}
               onCopy={() => doCopyAnswer(openAnswer)} />
           ) : view === 'assemble' ? (
-            <AssembleView state={state}
+            <AssembleView state={state} rosterAccounts={consoleCtx?.roster?.accounts}
               onPatchResponse={patchResponse}
               onAddResponse={addResponse}
               onRemoveResponse={removeResponse}
@@ -1534,7 +1586,7 @@ export default function App() {
         </main>
 
         {copilotOpen && (
-          <CopilotDrawer state={state} onClose={() => setCopilotOpen(false)} onNotes={(v) => patch({ copilotNotes: v })} onToast={showToast} />
+          <CopilotDrawer state={state} onClose={() => setCopilotOpen(false)} onNotes={(v) => patch({ copilotNotes: v })} onToast={showToast} consoleCtx={consoleCtx} />
         )}
 
         <Modal open={helpOpen} onClose={closeHelp} title="How to run the vault" icon={BookOpen} wide>

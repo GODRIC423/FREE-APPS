@@ -3,8 +3,57 @@ import {
   Plus, Trash2, RotateCcw, BookOpen, Search, Copy, Check, X, ChevronDown,
   Bot, Undo2, ClipboardCopy, Printer, FileDown, FileUp, FileText,
   CheckCircle2, XCircle, Compass, Gauge, TrendingUp, Wallet, ClipboardList,
-  PlaneTakeoff, PlaneLanding,
+  PlaneTakeoff, PlaneLanding, Cable,
 } from 'lucide-react';
+
+/* ================================================================
+   CONSOLE BUS — BizDev Console link
+================================================================ */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '28-conference-roi-planner' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  if (ctx.roster?.accounts?.length) {
+    const accts = ctx.roster.accounts.slice(0, 12)
+      .map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+function ConsoleLinkedPill({ ctx }) {
+  if (!ctx) return null;
+  const company = ctx.profile?.company;
+  return (
+    <span
+      title={company ? `Linked to BizDev Console — ${company}` : 'Linked to BizDev Console'}
+      className="label-tape inline-flex items-center gap-1.5 rounded border border-runway/50 bg-runway/10 px-2.5 py-1.5 text-[11px] font-semibold text-runway">
+      <Cable className="h-3.5 w-3.5 shrink-0" aria-hidden /> Console linked{company ? ` · ${company}` : ''}
+    </span>
+  );
+}
 
 /* ================================================================
    CONSTANTS — the flight plan's rulebook
@@ -1190,15 +1239,15 @@ function Modal({ label, onClose, children, wide = false }) {
   );
 }
 
-function CopilotModal({ events, defaultEventId, onClose, onToast, onNotesChange }) {
+function CopilotModal({ events, consoleCtx, defaultEventId, onClose, onToast, onNotesChange }) {
   const [eventId, setEventId] = useState(defaultEventId || (events[0] && events[0].id) || null);
   const [copied, setCopied] = useState(null);
   const ev = events.find((e) => e.id === eventId) || null;
   const actions = [
-    { id: 'targets', title: 'Build my target list', desc: 'Turns the event profile into a 20-name target list with a research checklist and booth/session strategy.', build: () => promptTargetList(ev) },
-    { id: 'outreach', title: 'Draft pre-event outreach', desc: 'LinkedIn, email, warm re-engagement, and follow-up nudge templates sized to the meetings you need to book.', build: () => promptOutreach(ev) },
-    { id: 'report', title: 'Write the post-event report', desc: 'A CFO-trusted readout: headline verdict, plan vs. actual, what worked, what to change, the recommendation.', build: () => promptPostEventReport(ev) },
-    { id: 'pressure', title: 'Pressure-test this business case', desc: 'A skeptical CFO stress-tests your assumptions and gives a blunt GO / HOLD / NO-GO.', build: () => promptPressureTest(ev) },
+    { id: 'targets', title: 'Build my target list', desc: 'Turns the event profile into a 20-name target list with a research checklist and booth/session strategy.', build: () => consoleContextHeader(consoleCtx) + promptTargetList(ev) },
+    { id: 'outreach', title: 'Draft pre-event outreach', desc: 'LinkedIn, email, warm re-engagement, and follow-up nudge templates sized to the meetings you need to book.', build: () => consoleContextHeader(consoleCtx) + promptOutreach(ev) },
+    { id: 'report', title: 'Write the post-event report', desc: 'A CFO-trusted readout: headline verdict, plan vs. actual, what worked, what to change, the recommendation.', build: () => consoleContextHeader(consoleCtx) + promptPostEventReport(ev) },
+    { id: 'pressure', title: 'Pressure-test this business case', desc: 'A skeptical CFO stress-tests your assumptions and gives a blunt GO / HOLD / NO-GO.', build: () => consoleContextHeader(consoleCtx) + promptPressureTest(ev) },
   ];
   return (
     <Modal label="Claude Copilot" onClose={onClose} wide>
@@ -1375,6 +1424,7 @@ function PrintLog({ state }) {
    APP
 ================================================================ */
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [selectedId, setSelectedId] = useState(null);
   const [tab, setTab] = useState('cost');
@@ -1591,6 +1641,7 @@ export default function App() {
               </h1>
               <p className="label-tape mt-0.5 text-[10px] text-sky-400">Decide events with math, not FOMO</p>
             </div>
+            <ConsoleLinkedPill ctx={consoleCtx} />
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <button onClick={loadDemo} className="label-tape rounded border border-sky-700 bg-sky-900 px-2.5 py-1.5 text-[11px] text-sky-200 hover:border-sky-300/70 hover:text-sky-100">
@@ -1734,7 +1785,7 @@ export default function App() {
       {/* ============ MODALS ============ */}
       {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
       {copilotOpen && (
-        <CopilotModal events={events} defaultEventId={selectedId} onClose={() => setCopilotOpen(false)} onToast={showToast} onNotesChange={setCopilotNotes} />
+        <CopilotModal events={events} consoleCtx={consoleCtx} defaultEventId={selectedId} onClose={() => setCopilotOpen(false)} onToast={showToast} onNotesChange={setCopilotNotes} />
       )}
       {resetOpen && (
         <Modal label="Confirm reset" onClose={() => setResetOpen(false)}>

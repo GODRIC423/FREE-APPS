@@ -3,8 +3,56 @@ import {
   AlertTriangle, Ban, BookOpen, CalendarClock, CheckCircle2, ChevronDown, ChevronLeft, ChevronUp,
   Circle, ClipboardList, Copy, Download, FileDown, FileText, Gauge, HelpCircle, Keyboard, LifeBuoy,
   Mail, Plus, Radar, Radio, RotateCcw, Search, ShieldAlert, ShieldCheck, SlidersHorizontal, Sparkles,
-  Star, Trash2, TrendingUp, TriangleAlert, Undo2, Upload, Users, X,
+  Star, Trash2, TrendingUp, TriangleAlert, Undo2, Upload, Users, X, Cable,
 } from 'lucide-react';
+
+/* ================================ console bus (BizDev Console link) ================================ */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '26-renewal-radar' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  if (ctx.roster?.accounts?.length) {
+    const accts = ctx.roster.accounts.slice(0, 12)
+      .map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+function ConsoleLinkedPill({ ctx }) {
+  if (!ctx) return null;
+  const company = ctx.profile?.company;
+  return (
+    <span
+      title={company ? `Linked to BizDev Console — ${company}` : 'Linked to BizDev Console'}
+      className="inline-flex items-center gap-1.5 rounded-md border border-phosphor/50 bg-phosphor/10 px-2.5 py-1.5 text-[11px] font-semibold text-phosphor">
+      <Cable className="h-3.5 w-3.5 shrink-0" aria-hidden /> Console linked{company ? ` · ${company}` : ''}
+    </span>
+  );
+}
 
 /* ================================ constants ================================ */
 
@@ -1243,12 +1291,13 @@ function ExpansionList({ clients, onOpen }) {
 
 /* ================================ copilot drawer ================================ */
 
-function CopilotDrawer({ state, initialClientId, onClose, onNotes, onToast }) {
+function CopilotDrawer({ state, consoleCtx, initialClientId, onClose, onNotes, onToast }) {
   const [clientId, setClientId] = useState(initialClientId || state.clients[0]?.id || '');
   const [actionId, setActionId] = useState(null);
   const client = state.clients.find((c) => c.id === clientId) || null;
   const action = COPILOT_ACTIONS.find((a) => a.id === actionId) || null;
-  const prompt = action && client ? action.build(state, client) : '';
+  const basePrompt = action && client ? action.build(state, client) : '';
+  const prompt = basePrompt ? consoleContextHeader(consoleCtx) + basePrompt : '';
   const copy = async () => { const ok = await copyText(prompt); onToast(ok ? "Prompt copied — paste into claude.ai" : 'Copy failed'); };
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-void/70 backdrop-blur-sm" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -1354,12 +1403,14 @@ const TABS = [
 ];
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [view, setView] = useState('scope'); // scope | client
   const [tab, setTab] = useState('roster');
   const [helpOpen, setHelpOpen] = useState(() => !loadSeen());
   const [resetOpen, setResetOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [query, setQuery] = useState('');
@@ -1367,6 +1418,7 @@ export default function App() {
   const toastTimer = useRef(null);
   const fileRef = useRef(null);
   const exportRef = useRef(null);
+  const rosterRef = useRef(null);
   const searchRef = useRef(null);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -1417,10 +1469,10 @@ export default function App() {
     showToast(label, () => setState(prev));
   };
 
-  const addClient = () => {
+  const addClient = (name) => {
     const renewal = addDaysStr(today(), 90);
     const c = normClient({
-      name: 'New client', renewalDate: renewal,
+      name: name || 'New client', renewalDate: renewal,
       plays: {
         t90: PLAY_TEMPLATES.t90.map((t) => ({ id: uid(), text: t, done: false })),
         t60: PLAY_TEMPLATES.t60.map((t) => ({ id: uid(), text: t, done: false })),
@@ -1493,6 +1545,7 @@ export default function App() {
       const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
       if (e.key === 'Escape') {
         if (exportOpen) { setExportOpen(false); return; }
+        if (rosterOpen) { setRosterOpen(false); return; }
         if (copilotOpen) { setCopilotOpen(false); return; }
         if (helpOpen) { closeHelp(); return; }
         if (resetOpen) { setResetOpen(false); return; }
@@ -1517,6 +1570,14 @@ export default function App() {
     return () => window.removeEventListener('mousedown', onDown);
   }, [exportOpen]);
 
+  /* close roster menu on outside click */
+  useEffect(() => {
+    if (!rosterOpen) return undefined;
+    const onDown = (e) => { if (rosterRef.current && !rosterRef.current.contains(e.target)) setRosterOpen(false); };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [rosterOpen]);
+
   const r = portfolioRollups(state);
 
   return (
@@ -1525,9 +1586,29 @@ export default function App() {
         {/* ============ header ============ */}
         <header className="sticky top-0 z-40 border-b border-line bg-void/90 backdrop-blur-md">
           <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <Wordmark />
+            <div className="flex flex-wrap items-center gap-3">
+              <Wordmark />
+              <ConsoleLinkedPill ctx={consoleCtx} />
+            </div>
             <div className="flex flex-wrap items-center gap-2">
-              <IconBtn icon={Plus} label="New client (N)" onClick={addClient}>New client</IconBtn>
+              <IconBtn icon={Plus} label="New client (N)" onClick={() => addClient()}>New client</IconBtn>
+              {consoleCtx?.roster?.accounts?.length > 0 && (
+                <div className="relative" ref={rosterRef}>
+                  <IconBtn icon={Cable} label="Pull from console roster" onClick={() => setRosterOpen((v) => !v)} aria-expanded={rosterOpen}>From roster</IconBtn>
+                  {rosterOpen && (
+                    <div className="toast-in absolute right-0 z-50 mt-1.5 w-64 max-h-72 overflow-y-auto rounded-md border border-line bg-deep p-1.5 shadow-deck">
+                      {consoleCtx.roster.accounts.map((a, i) => (
+                        <button key={`${a.name}-${i}`} type="button"
+                          onClick={() => { addClient(a.name); setRosterOpen(false); }}
+                          className="flex w-full items-center justify-between gap-2 rounded px-2.5 py-2 text-left text-sm text-text hover:bg-panel">
+                          <span className="truncate">{a.name}</span>
+                          {a.segment && <span className="label-caps shrink-0 text-[10px] text-muted">{a.segment}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <IconBtn icon={Sparkles} label="Claude Copilot (C)" tone="phosphor" onClick={() => setCopilotOpen(true)}>Copilot</IconBtn>
               <IconBtn icon={Radar} label="Load demo portfolio" onClick={doLoadDemo}>Load demo</IconBtn>
               <IconBtn icon={HelpCircle} label="How to use (?)" onClick={() => setHelpOpen(true)}>How to use</IconBtn>
@@ -1629,7 +1710,7 @@ export default function App() {
 
         {/* ============ overlays ============ */}
         {copilotOpen && (
-          <CopilotDrawer state={state} initialClientId={state.selectedId} onClose={() => setCopilotOpen(false)}
+          <CopilotDrawer state={state} consoleCtx={consoleCtx} initialClientId={state.selectedId} onClose={() => setCopilotOpen(false)}
             onNotes={(v) => patch({ copilotNotes: v })} onToast={showToast} />
         )}
 

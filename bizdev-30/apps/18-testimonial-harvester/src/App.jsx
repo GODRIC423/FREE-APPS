@@ -4,13 +4,35 @@ import {
   Copy, Check, Download, Upload, RotateCcw, HelpCircle, X, Plus, Trash2,
   ChevronRight, ChevronDown, PenLine, Undo2, FileJson, FileText, FileSpreadsheet,
   Keyboard, ClipboardPaste, Scale, LayoutGrid, ScrollText, Users,
-  CircleDot, Printer, Lightbulb, Search
+  CircleDot, Printer, Lightbulb, Search, Link2
 } from 'lucide-react';
 
 /* ================================================================
    Testimonial Harvester — collect & deploy social proof
    World: gallery wall — warm plaster, museum labels, framed quotes.
    ================================================================ */
+
+/* ---------------- BizDev Console bus (postMessage, v1) ----------------
+   Standalone by default: if this app is not framed by the Console Deck,
+   window.parent === window and nothing is sent or listened for. When
+   framed, we announce readiness and wait for a context message; until
+   one arrives (or if it never does) consoleCtx stays null and every
+   consumer below treats that as "no console, behave exactly as usual". */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '18-testimonial-harvester' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 const LS_KEY = 'bizdev:18-testimonial-harvester:v1';
 
@@ -333,6 +355,33 @@ function mergeScript(template, ask, myName) {
     .replace(/\{\{result_hint\}\}/g, ask.resultHint || 'the result you noticed most')
     .replace(/\{\{my_name\}\}/g, myName || 'Me');
 }
+
+/* ---------------- console context (BizDev Console bus) ---------------- */
+
+function consoleContextBlock(ctx) {
+  if (!ctx) return '';
+  const profile = (ctx.profile && typeof ctx.profile === 'object') ? ctx.profile : {};
+  const claude = (ctx.claude && typeof ctx.claude === 'object') ? ctx.claude : {};
+  const roster = (ctx.roster && typeof ctx.roster === 'object') ? ctx.roster : {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  if (claude.userName || claude.voiceNotes) {
+    lines.push(`- My name / voice: ${claude.userName || ''} — ${claude.voiceNotes || ''}`);
+  }
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const list = roster.accounts.slice(0, 12)
+      .map(a => `${a.name}${a.segment ? ` (${a.segment})` : ''}`)
+      .join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+const withConsoleContext = (ctx, prompt) => consoleContextBlock(ctx) + prompt;
 
 /* ---------------- copilot prompt builders ---------------- */
 
@@ -732,6 +781,7 @@ function FramedQuote({ ask, onFrame, compact = false }) {
    ================================================================ */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [tab, setTab] = useState('pipeline');
   const [modal, setModal] = useState(() => (loadState().seenGuide ? null : 'help'));
@@ -786,6 +836,20 @@ export default function App() {
 
   const addAsk = () => {
     const a = normalizeAsk({ id: uid(), status: 'shortlist' });
+    patch(s => ({ ...s, asks: [a, ...s.asks] }));
+    setExpanded(a.id);
+    setStatusFilter('all');
+    setTab('pipeline');
+  };
+
+  const addAskFromRoster = account => {
+    const a = normalizeAsk({
+      id: uid(),
+      status: 'shortlist',
+      company: account.name || '',
+      notes: ['Pulled from console roster', account.segment ? `segment: ${account.segment}` : '', account.notes || '']
+        .filter(Boolean).join(' · '),
+    });
     patch(s => ({ ...s, asks: [a, ...s.asks] }));
     setExpanded(a.id);
     setStatusFilter('all');
@@ -916,6 +980,14 @@ export default function App() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {consoleCtx && (
+              <span
+                title={consoleCtx.profile?.company ? `Linked to BizDev Console · ${consoleCtx.profile.company}` : 'Linked to BizDev Console'}
+                className="inline-flex items-center gap-1.5 rounded-full border border-gilt/40 bg-linen px-2.5 py-1 text-[11px] font-semibold tracking-wide text-umber">
+                <Link2 size={12} className="text-gilt" aria-hidden="true" />
+                Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+              </span>
+            )}
             <Btn kind="gilt" onClick={loadDemo}><Sparkles size={14} /> Load demo</Btn>
             <Btn onClick={() => setModal('reset')}><RotateCcw size={14} /> Reset</Btn>
             <Btn onClick={() => setModal('help')}><HelpCircle size={14} /> How to use</Btn>
@@ -971,6 +1043,23 @@ export default function App() {
 
                 <div className="mt-5 flex flex-wrap items-center gap-2">
                   <Btn kind="primary" onClick={addAsk}><Plus size={14} /> Add a person</Btn>
+                  {consoleCtx?.roster?.accounts?.length > 0 && (
+                    <select
+                      aria-label="Pull a new person from the console roster"
+                      className={inputCls + ' w-56'}
+                      value=""
+                      onChange={e => {
+                        const acc = consoleCtx.roster.accounts.find(x => x.name === e.target.value);
+                        if (acc) addAskFromRoster(acc);
+                      }}>
+                      <option value="">Pull from console roster…</option>
+                      {consoleCtx.roster.accounts.map((acc, i) => (
+                        <option key={acc.name + i} value={acc.name}>
+                          {acc.name}{acc.segment ? ` (${acc.segment})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <div className="relative">
                     <Search size={13} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-faded" aria-hidden="true" />
                     <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search names, notes, quotes"
@@ -1214,7 +1303,7 @@ export default function App() {
           </main>
 
           {/* ============ COPILOT RAIL ============ */}
-          <CopilotPanel state={state} copy={copy} copied={copied}
+          <CopilotPanel state={state} copy={copy} copied={copied} consoleCtx={consoleCtx}
             onNotes={v => patch(s => ({ ...s, copilotNotes: v }))} />
         </div>
 
@@ -1358,7 +1447,7 @@ function CoverageBar({ placements }) {
    Copilot panel
    ================================================================ */
 
-function CopilotPanel({ state, copy, copied, onNotes }) {
+function CopilotPanel({ state, copy, copied, consoleCtx, onNotes }) {
   const [open, setOpen] = useState('ask');
   const [askId, setAskId] = useState('');
   const [polishId, setPolishId] = useState('');
@@ -1380,7 +1469,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
         </select>
       ) : null,
       ready: !!askTarget,
-      build: () => buildAskPrompt(state, askTarget),
+      build: () => withConsoleContext(consoleCtx, buildAskPrompt(state, askTarget)),
       empty: 'Add a person to the pipeline first.',
     },
     {
@@ -1392,7 +1481,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
         </select>
       ) : null,
       ready: !!(polishTarget && polishTarget.quote.trim()),
-      build: () => buildPolishPrompt(state, polishTarget),
+      build: () => withConsoleContext(consoleCtx, buildPolishPrompt(state, polishTarget)),
       empty: 'Paste a received testimonial into a pipeline entry first.',
     },
     {
@@ -1404,7 +1493,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
         </select>
       ) : null,
       ready: !!placeTarget,
-      build: () => buildCastPrompt(state, placeTarget),
+      build: () => withConsoleContext(consoleCtx, buildCastPrompt(state, placeTarget)),
       empty: 'Add a placement in the Placements tab first.',
     },
     {
@@ -1412,7 +1501,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
       blurb: 'Find the doubts, industries, and pages your wall leaves naked.',
       picker: null,
       ready: state.asks.length > 0 || state.placements.length > 0,
-      build: () => buildCoveragePrompt(state),
+      build: () => withConsoleContext(consoleCtx, buildCoveragePrompt(state)),
       empty: 'Add some pipeline or placements first — the audit needs material.',
     },
   ];

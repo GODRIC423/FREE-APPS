@@ -4,7 +4,26 @@ import {
   Upload, HelpCircle, RotateCcw, Sparkles, FileText, FileJson, Table2,
   Search, ClipboardPaste, CheckCircle2, AlertTriangle, Scale, BookOpenCheck,
   Mail, UserPlus, Phone, MessageSquare, ChevronDown, ChevronUp, Gavel, Keyboard,
+  Link2,
 } from 'lucide-react';
+
+/* ================= console bus (BizDev Console Deck link) ================= */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '16-outreach-ab-journal' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 /* ================= constants & helpers ================= */
 
@@ -355,6 +374,35 @@ function promptPlaybook(state) {
   ].join('\n');
 }
 
+/* console context header, prepended to Claude Copilot prompts when linked to the Console Deck */
+function consoleContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  if (claude.userName || claude.voiceNotes) {
+    lines.push(`- My name / voice: ${[claude.userName, claude.voiceNotes].filter(Boolean).join(' — ')}`);
+  }
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const accts = roster.accounts.slice(0, 12)
+      .map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name))
+      .join(', ');
+    if (accts) lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return [`## Shared context (from BizDev Console)`, ...lines].join('\n');
+}
+
+function withConsoleContext(promptText, consoleCtx) {
+  const header = consoleContextHeader(consoleCtx);
+  return header ? `${header}\n\n${promptText}` : promptText;
+}
+
 /* ================= small components ================= */
 
 function Btn({ children, onClick, kind = 'ghost', title, ariaLabel, className = '', disabled }) {
@@ -500,7 +548,8 @@ function VariantFields({ arm, v, onChange, color }) {
   );
 }
 
-function EditorDrawer({ draft, setDraft, onSave, onClose }) {
+function EditorDrawer({ draft, setDraft, onSave, onClose, consoleCtx }) {
+  const rosterAccounts = consoleCtx?.roster?.accounts;
   return (
     <div role="dialog" aria-modal="true" aria-label={draft.id ? 'Edit experiment' : 'New experiment'}
       className="fixed inset-0 z-40 flex justify-end bg-inkdark/45" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -543,6 +592,21 @@ function EditorDrawer({ draft, setDraft, onSave, onClose }) {
             <input value={draft.audience} onChange={(e) => setDraft({ ...draft, audience: e.target.value })} placeholder="Who exactly received this?"
               className="mt-1 w-full rounded-sm border border-rule bg-card px-2 py-1.5 text-[13px]" />
           </label>
+          {Array.isArray(rosterAccounts) && rosterAccounts.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Link2 className="h-3.5 w-3.5 shrink-0 text-pencil" aria-hidden />
+              <select value="" onChange={(e) => {
+                const acc = rosterAccounts.find((a) => a.name === e.target.value);
+                if (acc) setDraft({ ...draft, audience: acc.segment ? `${acc.name} (${acc.segment})` : acc.name });
+              }} aria-label="Pull audience from console roster"
+                className="w-full rounded-sm border border-rule bg-card px-2 py-1 font-mono text-[11px] text-pencil">
+                <option value="">Pull from console roster…</option>
+                {rosterAccounts.map((a) => (
+                  <option key={a.name} value={a.name}>{a.segment ? `${a.name} (${a.segment})` : a.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <VariantFields arm="A" color="#2b66c4" v={draft.variants.A} onChange={(A) => setDraft({ ...draft, variants: { ...draft.variants, A } })} />
           <VariantFields arm="B" color="#d0432e" v={draft.variants.B} onChange={(B) => setDraft({ ...draft, variants: { ...draft.variants, B } })} />
           <div className="flex justify-end gap-2 pb-6 pt-2">
@@ -697,6 +761,7 @@ function ExperimentCard({ ex, onEdit, onDelete, onBump, onConclude, onPin, defau
 /* ================= main app ================= */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(() => {
     let raw = null;
     try { raw = localStorage.getItem(LS_KEY); } catch { /* private mode */ }
@@ -853,21 +918,21 @@ export default function App() {
     {
       id: 'next', title: 'Design my next A/B test', Icon: FlaskConical,
       desc: 'Sends your full journal; Claude proposes one rigorous next test with copy, sample size, and a decision rule.',
-      build: () => promptNextTest(state), disabled: false,
+      build: () => withConsoleContext(promptNextTest(state), consoleCtx), disabled: false,
     },
     {
       id: 'explain', title: 'Explain why the winner won', Icon: Scale,
       desc: 'Pick an experiment; Claude dissects the mechanism, checks your sample, and lists confounds.',
       build: () => {
         const ex = state.experiments.find((e) => e.id === copilotExp) || state.experiments[0];
-        return ex ? promptExplain(state, ex) : '';
+        return ex ? withConsoleContext(promptExplain(state, ex), consoleCtx) : '';
       },
       disabled: !state.experiments.length,
     },
     {
       id: 'playbook', title: 'Turn learnings into a playbook', Icon: BookOpenCheck,
       desc: 'Compiles concluded tests and pinned insights into team rules, do/don’t tables, and templates.',
-      build: () => promptPlaybook(state), disabled: false,
+      build: () => withConsoleContext(promptPlaybook(state), consoleCtx), disabled: false,
     },
   ];
 
@@ -899,6 +964,11 @@ export default function App() {
                 Outreach <span className="font-mono text-vara">A</span><span className="font-mono text-pencil">/</span><span className="font-mono text-varb">B</span> Journal
               </h1>
               <p className="mt-1 text-[13.5px] text-pencil">Test messages like a scientist — <span className="hilite font-semibold">log every trial, respect small samples, keep only proven patterns</span>.</p>
+              {consoleCtx && (
+                <span className="mt-1.5 inline-flex items-center gap-1 rounded-[3px] border border-vara/40 bg-vara/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-vara">
+                  <Link2 className="h-3 w-3" aria-hidden /> Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+                </span>
+              )}
             </div>
           </div>
           <nav className="no-print flex flex-wrap items-center gap-2" aria-label="Primary actions">
@@ -1160,7 +1230,7 @@ export default function App() {
         </div>
       )}
 
-      {draft && <EditorDrawer draft={draft} setDraft={setDraft} onSave={saveDraft} onClose={() => setDraft(null)} />}
+      {draft && <EditorDrawer draft={draft} setDraft={setDraft} onSave={saveDraft} onClose={() => setDraft(null)} consoleCtx={consoleCtx} />}
 
       {/* toast */}
       {toast && (
