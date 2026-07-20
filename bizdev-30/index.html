@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BizDev 30 — a suite of monetizable business-development apps</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230f766e'/%3E%3Ctext x='50' y='66' font-size='44' font-family='sans-serif' font-weight='800' fill='white' text-anchor='middle'%3E30%3C/text%3E%3C/svg%3E" />
+<style>
+:root { --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --radius: 14px; }
+[data-theme="dark"] { --bg:#0a1210; --panel:#101c19; --inset:#0c1614; --text:#e7f0ec; --dim:#93a8a0; --line:#1e312c; --accent:#2dd4bf; --accent-deep:#0f766e; }
+[data-theme="light"] { --bg:#f2f6f4; --panel:#ffffff; --inset:#e9efec; --text:#122019; --dim:#5a6e66; --line:#d8e2dd; --accent:#0f766e; --accent-deep:#0f766e; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:var(--font); background:var(--bg); color:var(--text); line-height:1.55; }
+.shell { max-width:1240px; margin:0 auto; padding:0 20px 64px; }
+header.top { position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:14px; padding:14px 20px; margin:0 -20px 26px;
+  background:color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+.mark { width:40px; height:40px; border-radius:11px; display:grid; place-items:center; font-weight:800; color:#fff; flex:none;
+  background:linear-gradient(135deg, var(--accent-deep), var(--accent)); }
+header.top h1 { font-size:17px; margin:0; }
+header.top p { margin:0; font-size:12.5px; color:var(--dim); }
+.top-actions { margin-left:auto; display:flex; gap:10px; }
+.btn { font:inherit; font-size:13.5px; padding:8px 14px; border-radius:9px; border:1px solid var(--line); background:var(--panel); color:var(--text); cursor:pointer; }
+.btn:hover { border-color:var(--dim); }
+.hero { max-width:820px; padding:22px 0 6px; }
+.eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; color:var(--accent); margin:0 0 10px; }
+.hero h2 { font-size:clamp(26px,4vw,40px); line-height:1.1; margin:0 0 12px; letter-spacing:-.02em; }
+.hero p { color:var(--dim); font-size:16px; margin:0 0 16px; }
+.badges { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 26px; }
+.badge { font-size:12.5px; padding:5px 11px; border-radius:999px; border:1px solid var(--line); background:var(--panel); color:var(--dim); }
+.toolbar { display:flex; gap:12px; align-items:center; margin:4px 0 18px; flex-wrap:wrap; }
+.search { flex:1 1 260px; max-width:420px; font:inherit; font-size:14px; padding:10px 14px; border-radius:9px; border:1px solid var(--line); background:var(--panel); color:var(--text); }
+.search:focus { outline:2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset:1px; }
+.count { font-size:13px; color:var(--dim); }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:14px; }
+.card { display:flex; flex-direction:column; gap:9px; padding:16px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); transition:transform .15s ease, box-shadow .15s ease; }
+.card:hover { transform:translateY(-2px); box-shadow:0 10px 30px rgb(0 0 0 / .22); }
+.card-head { display:flex; gap:11px; align-items:center; }
+.num { width:36px; height:36px; border-radius:9px; display:grid; place-items:center; font-weight:800; font-size:13px; color:#fff; flex:none;
+  background:linear-gradient(135deg, var(--accent-deep), var(--accent)); }
+.card h3 { margin:0; font-size:15px; line-height:1.25; }
+.card p { margin:0; font-size:13px; color:var(--dim); flex:1; }
+.row { display:flex; gap:8px; }
+.row a { font-size:12.5px; font-weight:600; text-decoration:none; padding:7px 11px; border-radius:8px; }
+.open { background:var(--accent-deep); color:#fff; }
+.doc { border:1px solid var(--line); color:var(--text); }
+.hidden { display:none; }
+.empty { color:var(--dim); padding:36px 0; text-align:center; }
+footer { margin-top:44px; padding-top:18px; border-top:1px solid var(--line); font-size:13px; color:var(--dim); display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; }
+footer a { color:var(--dim); }
+@media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="mark" aria-hidden="true">30</div>
+    <div>
+      <h1>BizDev 30</h1>
+      <p>Thirty monetizable business-development apps — React, self-contained, local-first</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn" href="../index.html">← FREE APPS</a>
+      <button class="btn" id="themeToggle" type="button" aria-pressed="false">Light mode</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <p class="eyebrow">Runs on a $20 Claude subscription + free tools · nothing else to buy</p>
+    <h2>A business-development suite you can use today — and sell tomorrow.</h2>
+    <p>Every app is a single self-contained HTML file: React UI, full custom graphics, your data in your browser. Each one has a built-in Claude Copilot panel that turns your working data into expert prompts for claude.ai — no API keys, no paid services. And each ships with a GUIDE.md walkthrough and a MONETIZE.md playbook for selling it as its own product.</p>
+    <div class="badges">
+      <span class="badge">Single-file apps</span>
+      <span class="badge">React + Tailwind + Lucide</span>
+      <span class="badge">Claude Copilot prompts</span>
+      <span class="badge">Works offline</span>
+      <span class="badge">Sellable individually</span>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <input class="search" id="search" type="search" placeholder="Filter apps… (e.g. pricing, outreach, referral)" aria-label="Filter apps" />
+    <span class="count" id="count" aria-live="polite">30 apps</span>
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <p class="empty hidden" id="empty">No apps match that filter.</p>
+
+  <footer>
+    <span>Local-first · no accounts · no tracking — data stays in this browser</span>
+    <span>Each app: <code>GUIDE.md</code> how-to · <code>MONETIZE.md</code> sales playbook</span>
+  </footer>
+</div>
+
+<script>
+const APPS = [
+  ["01-icp-architect","ICP Architect","Define and score Ideal Customer Profiles, then rank real prospects against a weighted fit matrix."],
+  ["02-cold-email-forge","Cold Email Forge","Build cold email sequences with merge fields, spam/length lint, and subject A/B slots."],
+  ["03-discovery-call-copilot","Discovery Call Copilot","Question banks, a live call sheet with timer and notes, and post-call scorecards."],
+  ["04-proposal-studio","Proposal Studio","Assemble winning service proposals with section libraries, pricing tables, and print-perfect output."],
+  ["05-case-study-factory","Case Study Factory","Turn client wins into case studies: interview capture, story assembly, consent tracking."],
+  ["06-battlecard-bay","Battlecard Bay","Competitor battlecards with landmines, objection counters, and a quick-draw mode for live calls."],
+  ["07-partner-pipeline","Partner Pipeline","Source and manage channel partnerships with fit scoring and co-marketing idea lists."],
+  ["08-referral-engine","Referral Engine","Design a referral program and work a weekly ask queue with scripts and funnel tracking."],
+  ["09-linkedin-cadence-planner","LinkedIn Cadence Planner","A BD content engine: calendar, hook bank, drafts with counters, repost queue."],
+  ["10-lead-magnet-lab","Lead Magnet Lab","Score lead-magnet concepts, outline the winner, and draft the landing copy."],
+  ["11-pricing-bench","Pricing Bench","Engineer good/better/best packages with margin math and a price-test log."],
+  ["12-objection-dojo","Objection Dojo","Drill sales objections with spaced-repetition flashcards and confidence heat."],
+  ["13-cadence-composer","Cadence Composer","Compose multi-channel follow-up sequences on a visual timeline with exit rules."],
+  ["14-deal-qualifier","Deal Qualifier","MEDDICC-style qualification wizard with gap flags and honest deal scores."],
+  ["15-territory-mapper","Territory Mapper","Plan segments, verticals, and account tiers with coverage math."],
+  ["16-outreach-ab-journal","Outreach A/B Journal","Test outreach variants like a scientist: reply-rate math, verdicts, insight board."],
+  ["17-event-prep-kit","Event Prep Kit","Extract pipeline from events: target lists, talk tracks, day-of cards, follow-up queue."],
+  ["18-testimonial-harvester","Testimonial Harvester","Collect social proof: ask pipeline, rights checklist, styled proof wall."],
+  ["19-narrative-deck-builder","Narrative Deck Builder","Structure the sales story beat-by-beat before you touch slides."],
+  ["20-win-loss-ledger","Win/Loss Ledger","Post-mortem every closed deal and surface the patterns that decide them."],
+  ["21-meeting-roi-auditor","Meeting ROI Auditor","Cost every meeting against pipeline impact; keep, shrink, kill, or async."],
+  ["22-champion-tracker","Champion Tracker","Map stakeholders on an influence×support grid and build real champions."],
+  ["23-rfp-answer-vault","RFP Answer Vault","A reusable answer library with freshness dates and a response assembler."],
+  ["24-niche-validator","Niche Validator","Score niche candidates on pain, budget, reachability, competition, and your edge."],
+  ["25-service-productizer","Service Productizer","Turn custom work into fixed-scope offers with scope-creep lint."],
+  ["26-renewal-radar","Renewal Radar","Client health signals, renewal timelines, and save-plays before it's too late."],
+  ["27-expansion-matrix","Expansion Matrix","A whitespace grid of accounts × offers that finds revenue you already earned."],
+  ["28-conference-roi-planner","Conference ROI Planner","Decide events with a full cost model and expected-pipeline math."],
+  ["29-traction-bullseye","Traction Bullseye","Run cheap channel experiments through the bullseye to your first 100 customers."],
+  ["30-bd-command-deck","BD Command Deck","The weekly BD scorecard: activity targets, conversion waterfall, review ritual."]
+];
+const grid = document.getElementById("grid");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+function render(q) {
+  q = (q || "").trim().toLowerCase();
+  const shown = APPS.filter(([slug, name, d]) => !q || (name + " " + d).toLowerCase().includes(q));
+  grid.innerHTML = shown.map(([slug, name, d]) => `
+    <article class="card">
+      <div class="card-head">
+        <div class="num" aria-hidden="true">${esc(slug.slice(0,2))}</div>
+        <h3>${esc(name)}</h3>
+      </div>
+      <p>${esc(d)}</p>
+      <div class="row">
+        <a class="open" href="apps/${esc(slug)}/index.html">Open app</a>
+        <a class="doc" href="apps/${esc(slug)}/GUIDE.md">Guide</a>
+        <a class="doc" href="apps/${esc(slug)}/MONETIZE.md">Sell it</a>
+      </div>
+    </article>`).join("");
+  document.getElementById("count").textContent = `${shown.length} app${shown.length === 1 ? "" : "s"}`;
+  document.getElementById("empty").classList.toggle("hidden", shown.length > 0);
+}
+const KEY = "bizdev:catalog:theme";
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  const b = document.getElementById("themeToggle");
+  b.textContent = t === "dark" ? "Light mode" : "Dark mode";
+  b.setAttribute("aria-pressed", String(t === "light"));
+}
+let theme = localStorage.getItem(KEY) || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+applyTheme(theme);
+document.getElementById("themeToggle").addEventListener("click", () => { theme = theme === "dark" ? "light" : "dark"; localStorage.setItem(KEY, theme); applyTheme(theme); });
+document.getElementById("search").addEventListener("input", e => render(e.target.value));
+render("");
+</script>
+</body>
+</html>
