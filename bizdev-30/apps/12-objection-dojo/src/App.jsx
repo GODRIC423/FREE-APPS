@@ -3,7 +3,45 @@ import {
   Plus, Trash2, Pencil, X, Copy, Check, Download, Upload,
   CircleHelp, RotateCcw, Play, Sparkles, Search, Undo2, Printer,
   Flame, Swords, ScrollText, Eye, ChevronDown, Table2, MessageSquareQuote,
+  Cable,
 } from 'lucide-react';
+
+/* ─────────────────────────────── console bus ───────────────────────────── */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '12-objection-dojo' }, '*'); } catch { /* no console host */ }
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const { claude, profile, roster } = consoleCtx;
+  const lines = [];
+  if (profile?.company) lines.push(`- My company: ${profile.company}`);
+  if (profile?.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile?.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile?.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  const voice = [claude?.userName, claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (voice) lines.push(`- My name / voice: ${voice}`);
+  if (roster?.accounts?.length) {
+    const accounts = roster.accounts.slice(0, 12)
+      .map((a) => `${a.name}${a.segment ? ` (${a.segment})` : ''}`).join(', ');
+    lines.push(`- Accounts on file: ${accounts}`);
+  }
+  if (!lines.length) return '';
+  return ['## Shared context (from BizDev Console)', ...lines].join('\n');
+}
 
 /* ─────────────────────────────── constants ─────────────────────────────── */
 
@@ -258,8 +296,10 @@ function libraryMarkdown(state) {
   return lines.join('\n');
 }
 
-function promptGenerate(state) {
+function promptGenerate(state, consoleCtx) {
+  const header = consoleContextHeader(consoleCtx);
   return [
+    ...(header ? [header, ''] : []),
     'You are a veteran B2B sales coach who has run thousands of deal reviews. You specialize in objection handling that sounds human, not scripted.',
     '',
     '## My offer',
@@ -286,8 +326,10 @@ function promptGenerate(state) {
   ].join('\n');
 }
 
-function promptGrade(state, ob) {
+function promptGrade(state, ob, consoleCtx) {
+  const header = consoleContextHeader(consoleCtx);
   return [
+    ...(header ? [header, ''] : []),
     'You are a ruthless but fair sales-coaching sensei. You grade objection counters the way a fight judge scores rounds: on what would actually land, not what sounds polished.',
     '',
     '## My offer',
@@ -315,7 +357,7 @@ function promptGrade(state, ob) {
   ].join('\n');
 }
 
-function promptSpar(state) {
+function promptSpar(state, consoleCtx) {
   const weak = [...CATEGORIES]
     .map((c) => {
       const items = state.objections.filter((o) => o.category === c.id);
@@ -325,7 +367,9 @@ function promptSpar(state) {
     .filter(Boolean)
     .sort((a, b) => a.m - b.m)
     .slice(0, 3);
+  const header = consoleContextHeader(consoleCtx);
   return [
+    ...(header ? [header, ''] : []),
     'You are role-playing a HARD B2B prospect on a discovery call. Stay fully in character until I say "end sparring". Do not coach me mid-scene. Do not be conveniently persuadable.',
     '',
     '## The seller (me) and my offer',
@@ -457,6 +501,7 @@ function Modal({ title, onClose, children, wide }) {
 /* ─────────────────────────────── main app ──────────────────────────────── */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [helpOpen, setHelpOpen] = useState(() => !loadStateSeen());
   const [query, setQuery] = useState('');
@@ -665,6 +710,15 @@ export default function App() {
                 Drill sales objections until they're reflexes.
               </p>
             </div>
+            {consoleCtx && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-ink/25 bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-ink-soft"
+                title="Linked to BizDev Console"
+              >
+                <Cable className="h-3.5 w-3.5 text-vermilion" aria-hidden />
+                Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+              </span>
+            )}
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <Btn onClick={() => { setState(demoState()); setCatFilter('all'); setQuery(''); showToast('Demo dojo loaded — Clearlane RevOps.'); }}>
@@ -931,7 +985,7 @@ export default function App() {
                 title="Scout new objections"
                 desc="Claude generates 10 objections for your offer — with root causes, counters, and proof points to gather."
                 copied={copied === 'cp1'}
-                onCopy={() => { copyText(promptGenerate(state)); flashCopied('cp1'); }}
+                onCopy={() => { copyText(promptGenerate(state, consoleCtx)); flashCopied('cp1'); }}
               />
               <div className="rounded-md border border-ink/20 bg-tatami/60 p-3">
                 <p className="text-[13px] font-bold">Grade my counter</p>
@@ -948,7 +1002,7 @@ export default function App() {
                     disabled={!copilotObId}
                     onClick={() => {
                       const ob = objections.find((o) => o.id === copilotObId);
-                      if (ob) { copyText(promptGrade(state, ob)); flashCopied('cp2'); }
+                      if (ob) { copyText(promptGrade(state, ob, consoleCtx)); flashCopied('cp2'); }
                     }}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-ink bg-ink px-3 py-1.5 text-[12px] font-semibold text-paper hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-vermilion focus-visible:outline-offset-2">
                     {copied === 'cp2' ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />} Copy prompt
@@ -959,7 +1013,7 @@ export default function App() {
                 title="Spar with a hard prospect"
                 desc="A full roleplay brief: Claude plays a skeptical buyer who presses your weakest categories for 5+ rounds, then scores you."
                 copied={copied === 'cp3'}
-                onCopy={() => { copyText(promptSpar(state)); flashCopied('cp3'); }}
+                onCopy={() => { copyText(promptSpar(state, consoleCtx)); flashCopied('cp3'); }}
               />
             </div>
             <div className="mt-4 border-t border-ink/15 pt-3">

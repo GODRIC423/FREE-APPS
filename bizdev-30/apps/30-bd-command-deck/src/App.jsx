@@ -5,8 +5,57 @@ import {
   ArrowUp, ArrowDown, CircleHelp, BookOpen, Bot, FileDown,
   FileUp, FileText, ClipboardCopy, Printer, X, ChevronDown, ChevronUp,
   ChevronLeft, ChevronRight, Check, Undo2, Search, SlidersHorizontal, Plus,
-  Trash2, RotateCcw, Binoculars,
+  Trash2, RotateCcw, Binoculars, Cable,
 } from 'lucide-react';
+
+/* ================================================================
+   CONSOLE BUS — BizDev Console link
+================================================================ */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '30-bd-command-deck' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  if (ctx.roster?.accounts?.length) {
+    const accts = ctx.roster.accounts.slice(0, 12)
+      .map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
+
+function ConsoleLinkedPill({ ctx }) {
+  if (!ctx) return null;
+  const company = ctx.profile?.company;
+  return (
+    <span
+      title={company ? `Linked to BizDev Console — ${company}` : 'Linked to BizDev Console'}
+      className="label-cap inline-flex items-center gap-1.5 rounded border border-brass/50 bg-brass/10 px-2.5 py-1.5 text-[11px] font-semibold text-brass">
+      <Cable className="h-3.5 w-3.5 shrink-0" aria-hidden /> Console linked{company ? ` · ${company}` : ''}
+    </span>
+  );
+}
 
 /* ================================================================
    CONSTANTS — the bridge's instrument roster
@@ -1342,13 +1391,13 @@ function HelpModal({ onClose }) {
 /* ================================================================
    COPILOT MODAL
 ================================================================ */
-function CopilotModal({ state, onClose, showToast, notes, onNotesChange }) {
+function CopilotModal({ state, consoleCtx, onClose, showToast, notes, onNotesChange }) {
   const [openKey, setOpenKey] = useState(null);
   const actions = [
-    { key: 'weak', icon: AlertTriangle, title: 'Analyze my weakest stage', blurb: 'Diagnose the funnel bottleneck from your last 8 weeks and rank fixes by leverage.', build: () => promptWeakestStage(state) },
-    { key: 'plan', icon: Compass, title: 'Plan next week from my numbers', blurb: 'Turns recent weeks, streak, and open bets into numeric targets and 3 priority actions.', build: () => promptPlanNextWeek(state) },
-    { key: 'update', icon: Radio, title: 'Write my accountability update', blurb: 'A short, human status note for a manager, partner, or mastermind group.', build: () => promptAccountabilityUpdate(state) },
-    { key: 'ritual', icon: BookOpen, title: 'Synthesize my review ritual', blurb: 'Finds recurring blockers and deferred bets across your last 6 weekly reviews.', build: () => promptRitualSynthesis(state) },
+    { key: 'weak', icon: AlertTriangle, title: 'Analyze my weakest stage', blurb: 'Diagnose the funnel bottleneck from your last 8 weeks and rank fixes by leverage.', build: () => consoleContextHeader(consoleCtx) + promptWeakestStage(state) },
+    { key: 'plan', icon: Compass, title: 'Plan next week from my numbers', blurb: 'Turns recent weeks, streak, and open bets into numeric targets and 3 priority actions.', build: () => consoleContextHeader(consoleCtx) + promptPlanNextWeek(state) },
+    { key: 'update', icon: Radio, title: 'Write my accountability update', blurb: 'A short, human status note for a manager, partner, or mastermind group.', build: () => consoleContextHeader(consoleCtx) + promptAccountabilityUpdate(state) },
+    { key: 'ritual', icon: BookOpen, title: 'Synthesize my review ritual', blurb: 'Finds recurring blockers and deferred bets across your last 6 weekly reviews.', build: () => consoleContextHeader(consoleCtx) + promptRitualSynthesis(state) },
   ];
   return (
     <Modal label="Claude Copilot" onClose={onClose} wide>
@@ -1484,6 +1533,7 @@ function Toast({ toast, onUndo, onDismiss }) {
    APP
 ================================================================ */
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [selectedId, setSelectedId] = useState(null);
   const [view, setView] = useState('log'); // 'log' | 'quarter'
@@ -1780,6 +1830,7 @@ export default function App() {
               </h1>
               <p className="label-cap mt-0.5 text-[10px] text-bridge-400">Run business development like a bridge watch</p>
             </div>
+            <ConsoleLinkedPill ctx={consoleCtx} />
           </div>
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <button onClick={loadDemo}
@@ -1942,7 +1993,7 @@ export default function App() {
       {/* ============ MODALS ============ */}
       {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
       {copilotOpen && (
-        <CopilotModal state={state} onClose={() => setCopilotOpen(false)} showToast={showToast}
+        <CopilotModal state={state} consoleCtx={consoleCtx} onClose={() => setCopilotOpen(false)} showToast={showToast}
           notes={state.copilotNotes} onNotesChange={(v) => setState((s) => ({ ...s, copilotNotes: v }))} />
       )}
       {targetsOpen && <TargetsModal targets={targets} onClose={() => setTargetsOpen(false)} onSave={saveTargets} />}

@@ -3,8 +3,28 @@ import {
   Plus, Trash2, RotateCcw, BookOpen, Search, Copy, Check, X,
   ChevronLeft, ChevronRight, ChevronDown, Flag, ShieldCheck, CircleHelp,
   MessageSquareQuote, FileDown, FileUp, FileText, Stamp, Bot, Undo2,
-  SlidersHorizontal, TriangleAlert, ClipboardCopy, Printer,
+  SlidersHorizontal, TriangleAlert, ClipboardCopy, Printer, Link2,
 } from 'lucide-react';
+
+/* ================================================================
+   CONSOLE BUS — optional link to the BizDev Console Deck host.
+   No-op (ctx stays null) when this app is opened standalone.
+================================================================ */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '14-deal-qualifier' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 /* ================================================================
    CONSTANTS — the checkpoint's rulebook
@@ -366,8 +386,36 @@ function csvOf(state) {
 /* ---- Copilot prompt builders ---- */
 const COPILOT_HINT = 'Paste into claude.ai — works with the standard Claude subscription. No API key needed.';
 
-function promptInterrogate(deal, weights) {
-  return `You are a ruthless enterprise deal inspector trained on MEDDICC. You have reviewed thousands of qualification sheets and you know that sellers systematically over-trust friendly signals and under-collect hard evidence. Your job is to find where this deal will actually die.
+/* Console Deck integration: when this app is framed inside the Console, prepend
+   a compact shared-context header to every Copilot prompt. Plain text only —
+   never HTML — and a pure no-op when consoleCtx is null (standalone). */
+function buildConsoleContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  const nameVoice = [claude.userName, claude.voiceNotes].filter((v) => v && String(v).trim());
+  if (nameVoice.length) lines.push(`- My name / voice: ${nameVoice.join(' — ')}`);
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const accts = roster.accounts.slice(0, 12).map((a) => `${a.name}${a.segment ? ` (${a.segment})` : ''}`).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}`;
+}
+
+function withConsoleContext(prompt, consoleCtx) {
+  const header = buildConsoleContextHeader(consoleCtx);
+  return header ? `${header}\n\n${prompt}` : prompt;
+}
+
+function promptInterrogate(deal, weights, consoleCtx) {
+  return withConsoleContext(`You are a ruthless enterprise deal inspector trained on MEDDICC. You have reviewed thousands of qualification sheets and you know that sellers systematically over-trust friendly signals and under-collect hard evidence. Your job is to find where this deal will actually die.
 
 Below is my qualification sheet for one live deal, exported from my Deal Qualifier checkpoint. Status meanings: "Verified" = confirmed with evidence, "Claimed" = someone said it but it is unconfirmed, "No papers" = we know nothing.
 
@@ -380,15 +428,15 @@ Interrogate this deal:
 3. **Evidence audit** — any pillar marked Verified whose evidence looks thinner than the status implies. Be blunt.
 4. **Score challenge** — do you agree with the ${inspect(deal, weights).score}/100 score and the ${inspect(deal, weights).recStage} stage? If not, what stage does the evidence actually support?
 
-Format: four numbered sections with bold headers, tight bullets, no pleasantries. If information is missing, say what is missing rather than inventing facts about the account.`;
+Format: four numbered sections with bold headers, tight bullets, no pleasantries. If information is missing, say what is missing rather than inventing facts about the account.`, consoleCtx);
 }
 
-function promptGapQuestions(deal, weights) {
+function promptGapQuestions(deal, weights, consoleCtx) {
   const r = inspect(deal, weights);
   const gapList = r.gaps.length
     ? r.gaps.map((g) => `- ${g.pillar.title} (${STATUS_META[deal.pillars[g.pillar.key].status].label}): ${g.label}`).join('\n')
     : '- No open gaps flagged — stress-test the verified pillars instead.';
-  return `You are a sales coach who writes discovery questions that real buyers answer honestly — specific, low-pressure, impossible to bluff past. I need to close the information gaps on one deal before my next call.
+  return withConsoleContext(`You are a sales coach who writes discovery questions that real buyers answer honestly — specific, low-pressure, impossible to bluff past. I need to close the information gaps on one deal before my next call.
 
 My qualification sheet:
 
@@ -404,12 +452,12 @@ For each gap, draft:
 
 Then finish with a **call plan**: the 3 questions I should ask first in a single 30-minute call if I can only cover three, and why those three.
 
-Format: one short section per gap with the gap name as a bold header, then the call plan. Keep every question under 25 words.`;
+Format: one short section per gap with the gap name as a bold header, then the call plan. Keep every question under 25 words.`, consoleCtx);
 }
 
-function promptMemo(deal, weights) {
+function promptMemo(deal, weights, consoleCtx) {
   const r = inspect(deal, weights);
-  return `You are a revenue leader writing an internal go/no-go memo about one deal. You are honest to the point of discomfort: the memo's job is to protect the team's time and the forecast's credibility, not to keep a deal alive.
+  return withConsoleContext(`You are a revenue leader writing an internal go/no-go memo about one deal. You are honest to the point of discomfort: the memo's job is to protect the team's time and the forecast's credibility, not to keep a deal alive.
 
 The qualification sheet, exported from my Deal Qualifier checkpoint:
 
@@ -427,11 +475,11 @@ Write the go/no-go memo:
 - **Next three actions** — owner, action, deadline.
 - **Forecast instruction** — which forecast category this belongs in (commit / best case / pipeline / omit) and the honest close date.
 
-Format: memo style, plain language, under 400 words. No hedging phrases like "it depends". Base every claim on the sheet above; where the sheet is silent, mark it UNKNOWN rather than guessing.`;
+Format: memo style, plain language, under 400 words. No hedging phrases like "it depends". Base every claim on the sheet above; where the sheet is silent, mark it UNKNOWN rather than guessing.`, consoleCtx);
 }
 
-function promptForecastAudit(state) {
-  return `You are a CRO running a Friday forecast scrub. You have seen every trick: happy-ears staging, ghost economic buyers, "verbal commits", and pipelines padded with hope. Audit my book with that eye.
+function promptForecastAudit(state, consoleCtx) {
+  return withConsoleContext(`You are a CRO running a Friday forecast scrub. You have seen every trick: happy-ears staging, ghost economic buyers, "verbal commits", and pipelines padded with hope. Audit my book with that eye.
 
 My full checkpoint ledger (scores are evidence-weighted: Verified = full credit, Claimed = half, No papers = zero):
 
@@ -445,7 +493,7 @@ Run the scrub:
 4. **The 30-day plan** — if I can only work three deals hard for 30 days, which three, and the one move on each that most changes its probability.
 5. **Forecast call** — a number: which deals you would submit as commit, best case, and pipeline, and the evidence-weighted total you would put your name on.
 
-Format: five numbered sections, tables where useful, no motivational filler. Use only the data in the ledger; where evidence is missing, treat the claim as unproven.`;
+Format: five numbered sections, tables where useful, no motivational filler. Use only the data in the ledger; where evidence is missing, treat the claim as unproven.`, consoleCtx);
 }
 
 /* ================================================================
@@ -622,6 +670,7 @@ function Modal({ label, onClose, children, wide = false }) {
    APP
 ================================================================ */
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [selectedId, setSelectedId] = useState(null);
   const [step, setStep] = useState(0); // 0 intake, 1..6 pillars, 7 verdict
@@ -630,6 +679,7 @@ export default function App() {
   const [calibOpen, setCalibOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [rosterOpen, setRosterOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [query, setQuery] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
@@ -638,6 +688,7 @@ export default function App() {
   const toastTimer = useRef(null);
   const fileRef = useRef(null);
   const exportRef = useRef(null);
+  const rosterRef = useRef(null);
 
   const { deals, weights } = state;
   const selected = deals.find((d) => d.id === selectedId) || null;
@@ -684,6 +735,17 @@ export default function App() {
 
   const newDeal = useCallback(() => {
     const d = blankDeal();
+    setState((s) => ({ ...s, deals: [d, ...s.deals] }));
+    setSelectedId(d.id);
+    setStep(0);
+  }, []);
+
+  /* console-linked convenience: prefill a new dossier from a roster account */
+  const newDealFromRoster = useCallback((account) => {
+    const d = blankDeal({
+      company: account.name || '',
+      notes: account.notes ? account.notes : '',
+    });
     setState((s) => ({ ...s, deals: [d, ...s.deals] }));
     setSelectedId(d.id);
     setStep(0);
@@ -753,6 +815,7 @@ export default function App() {
       const inField = e.target.closest?.('input, textarea, select, [contenteditable="true"]');
       if (e.key === 'Escape') {
         if (exportOpen) setExportOpen(false);
+        else if (rosterOpen) setRosterOpen(false);
         else if (copilotOpen) setCopilotOpen(false);
         else if (calibOpen) setCalibOpen(false);
         else if (resetOpen) setResetOpen(false);
@@ -777,7 +840,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [helpOpen, copilotOpen, calibOpen, resetOpen, exportOpen, selectedId, step, copyLedger, newDeal, patchPillar]);
+  }, [helpOpen, copilotOpen, calibOpen, resetOpen, exportOpen, rosterOpen, selectedId, step, copyLedger, newDeal, patchPillar]);
 
   /* close export dropdown on outside click */
   useEffect(() => {
@@ -786,6 +849,14 @@ export default function App() {
     window.addEventListener('mousedown', onDown);
     return () => window.removeEventListener('mousedown', onDown);
   }, [exportOpen]);
+
+  /* close roster dropdown on outside click */
+  useEffect(() => {
+    if (!rosterOpen) return;
+    const onDown = (e) => { if (!rosterRef.current?.contains(e.target)) setRosterOpen(false); };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [rosterOpen]);
 
   /* queue math */
   const rows = useMemo(() => {
@@ -832,6 +903,15 @@ export default function App() {
               <p className="label-cap mt-0.5 text-[10px] text-concrete-400">Qualify hard · Forecast honestly</p>
             </div>
           </div>
+          {consoleCtx && (
+            <span
+              className="label-cap inline-flex items-center gap-1.5 rounded-full border border-caution/50 bg-caution/10 px-2.5 py-1 text-[10px] text-caution"
+              title="Linked to the BizDev Console Deck"
+            >
+              <Link2 className="h-3 w-3" aria-hidden /> Console linked
+              {consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+            </span>
+          )}
           <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <button onClick={() => { setState(demoState()); setSelectedId(null); showToast('Demo pipeline loaded — six dossiers at the gate'); }}
               className="label-cap rounded border border-concrete-600 bg-concrete-800 px-2.5 py-1.5 text-[11px] text-concrete-200 hover:border-caution/70 hover:text-caution">
@@ -899,10 +979,31 @@ export default function App() {
           <div className="flex items-center justify-between gap-2 border-b border-concrete-700 px-3.5 py-2.5">
             <h2 className="label-cap text-xs text-concrete-300">The Queue</h2>
             <span className="label-cap hidden text-[9px] text-concrete-500 sm:inline">sorted by truth, not hope</span>
-            <button onClick={newDeal}
-              className="label-cap inline-flex items-center gap-1 rounded bg-caution px-2 py-1 text-[11px] font-bold text-ink hover:bg-caution-bright">
-              <Plus className="h-3.5 w-3.5" aria-hidden /> New dossier
-            </button>
+            <div className="flex items-center gap-1.5">
+              {consoleCtx?.roster?.accounts?.length > 0 && (
+                <div className="relative" ref={rosterRef}>
+                  <button onClick={() => setRosterOpen((v) => !v)} aria-haspopup="menu" aria-expanded={rosterOpen}
+                    className="label-cap inline-flex items-center gap-1 rounded border border-concrete-600 bg-concrete-800 px-2 py-1 text-[11px] text-concrete-200 hover:border-caution/70 hover:text-caution">
+                    <Link2 className="h-3.5 w-3.5" aria-hidden /> From roster <ChevronDown className="h-3 w-3" aria-hidden />
+                  </button>
+                  {rosterOpen && (
+                    <div role="menu" className="panel absolute left-0 z-50 mt-1.5 w-56 max-h-64 overflow-y-auto rounded-md p-1.5">
+                      {consoleCtx.roster.accounts.slice(0, 50).map((a, i) => (
+                        <button key={i} role="menuitem" onClick={() => { newDealFromRoster(a); setRosterOpen(false); }}
+                          className="flex w-full items-center justify-between gap-2 rounded px-2.5 py-2 text-left text-xs text-concrete-200 hover:bg-concrete-700">
+                          <span className="truncate">{a.name}</span>
+                          {a.segment && <span className="label-cap shrink-0 text-[9px] text-concrete-500">{a.segment}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <button onClick={newDeal}
+                className="label-cap inline-flex items-center gap-1 rounded bg-caution px-2 py-1 text-[11px] font-bold text-ink hover:bg-caution-bright">
+                <Plus className="h-3.5 w-3.5" aria-hidden /> New dossier
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5 border-b border-concrete-800 px-3 py-2">
@@ -1100,7 +1201,7 @@ export default function App() {
       )}
       {copilotOpen && (
         <CopilotModal
-          state={state} selected={selected} onClose={() => setCopilotOpen(false)}
+          state={state} selected={selected} consoleCtx={consoleCtx} onClose={() => setCopilotOpen(false)}
           onToast={showToast}
           onDebrief={(text) => {
             if (selected) patchDeal(selected.id, { debrief: text });
@@ -1440,29 +1541,29 @@ function CalibrationModal({ weights, onChange, onReset, onClose }) {
   );
 }
 
-function CopilotModal({ state, selected, onClose, onToast, onDebrief }) {
+function CopilotModal({ state, selected, consoleCtx, onClose, onToast, onDebrief }) {
   const [copied, setCopied] = useState(null);
   const needDeal = !selected;
   const actions = [
     {
       id: 'interrogate', title: 'Interrogate this deal', needsDeal: true,
       desc: 'A ruthless MEDDICC inspector hunts the blind spots, kill risks and thin evidence in the selected dossier.',
-      build: () => promptInterrogate(selected, state.weights),
+      build: () => promptInterrogate(selected, state.weights, consoleCtx),
     },
     {
       id: 'gaps', title: 'Draft gap-closing questions', needsDeal: true,
       desc: 'Turns every hold flag into live-call and written questions, plus a 3-question plan for your next 30 minutes.',
-      build: () => promptGapQuestions(selected, state.weights),
+      build: () => promptGapQuestions(selected, state.weights, consoleCtx),
     },
     {
       id: 'memo', title: 'Write the go/no-go memo', needsDeal: true,
       desc: 'A revenue leader drafts the internal memo: verdict, evidence for and against, conditions, next three actions.',
-      build: () => promptMemo(selected, state.weights),
+      build: () => promptMemo(selected, state.weights, consoleCtx),
     },
     {
       id: 'audit', title: 'Audit my forecast', needsDeal: false,
       desc: 'A CRO scrubs the whole queue: honest ranking, hope audit, sandbag check, 30-day plan, forecast call.',
-      build: () => promptForecastAudit(state),
+      build: () => promptForecastAudit(state, consoleCtx),
     },
   ];
   const debriefValue = selected ? selected.debrief : state.portfolioDebrief;

@@ -3,13 +3,57 @@ import {
   DraftingCompass, Ruler, PenLine, Plus, Trash2, Copy, Check, Download, Upload,
   HelpCircle, RotateCcw, X, ChevronDown, ChevronRight, ArrowUp, ArrowDown,
   Search, Undo2, Layers, Target, Ban, FileText, FileJson, FileSpreadsheet,
-  Printer, Microscope, Eraser, Users, NotebookPen, Stamp, TriangleAlert,
+  Printer, Microscope, Eraser, Users, NotebookPen, Stamp, TriangleAlert, Link2,
 } from 'lucide-react';
 
 /* ================================================================== *
  *  ICP ARCHITECT — draft, weight & score Ideal Customer Profiles     *
  *  World: the architect's studio. Graphite on ivory, drafting lines. *
  * ================================================================== */
+
+/* ---- BizDev Console bus (postMessage v1) — see /bizdev-30/PROTOCOL.md ---- */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '01-icp-architect' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const p = ctx.profile || {};
+  const c = ctx.claude || {};
+  const r = ctx.roster || {};
+  const lines = [];
+  if (p.company) lines.push(`- My company: ${p.company}`);
+  if (p.offer) lines.push(`- What I sell: ${p.offer}`);
+  if (p.icp) lines.push(`- My ICP: ${p.icp}`);
+  if (p.pricingAnchor) lines.push(`- Pricing anchor: ${p.pricingAnchor}`);
+  if (c.userName || c.voiceNotes) {
+    lines.push(`- My name / voice: ${c.userName || ''}${c.userName && c.voiceNotes ? ' — ' : ''}${c.voiceNotes || ''}`);
+  }
+  const accounts = Array.isArray(r.accounts) ? r.accounts.filter((a) => a && a.name) : [];
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return ['## Shared context (from BizDev Console)', ...lines].join('\n');
+}
+
+function withConsoleHeader(ctx, body) {
+  const header = consoleContextHeader(ctx);
+  return header ? `${header}\n\n${body}` : body;
+}
 
 const LS_KEY = 'bizdev:01-icp-architect:v1';
 const APP_NAME = 'ICP Architect';
@@ -691,6 +735,7 @@ function ListEditor({ code, title, tone, items, onItems, onRemove, placeholder, 
 /* ============================== APP =============================== */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_KEY);
@@ -784,6 +829,20 @@ export default function App() {
       return;
     }
     const p = normalizeProspect({ id: uid(), icpId: activeIcp?.id || state.icps[0].id });
+    setState((s) => ({ ...s, prospects: [p, ...s.prospects], tab: 'survey' }));
+    setDrawerId(p.id);
+  };
+  const addProspectFromRoster = (acct) => {
+    if (!acct) return;
+    if (!state.icps.length) {
+      pushToast('Draft a sheet first — a survey needs a drawing to measure against.');
+      setTab('sheets');
+      return;
+    }
+    const p = normalizeProspect({
+      id: uid(), icpId: activeIcp?.id || state.icps[0].id,
+      name: acct.name, note: [acct.segment ? `Segment: ${acct.segment}` : '', acct.notes || ''].filter(Boolean).join(' — '),
+    });
     setState((s) => ({ ...s, prospects: [p, ...s.prospects], tab: 'survey' }));
     setDrawerId(p.id);
   };
@@ -888,6 +947,12 @@ export default function App() {
                   <h1 className="font-display text-[34px] font-extrabold leading-none tracking-tight sm:text-[42px]">
                     ICP&nbsp;Architect
                   </h1>
+                  {consoleCtx && (
+                    <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-graphite/40 bg-vellum2 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-pencil">
+                      <Link2 className="h-3 w-3" aria-hidden="true" />
+                      Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+                    </span>
+                  )}
                 </div>
                 <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-pencil">
                   Draft your Ideal Customer Profiles like working drawings — firmographics, pains, triggers,
@@ -994,13 +1059,14 @@ export default function App() {
                 state={state} enriched={enriched} survey={survey} setSurvey={setSurvey}
                 searchRef={searchRef}
                 onAdd={addProspect} onOpen={setDrawerId} onDelete={deleteProspect}
+                rosterAccounts={consoleCtx?.roster?.accounts} onAddFromRoster={addProspectFromRoster}
               />
             )}
             {state.tab === 'copilot' && (
               <CopilotDesk
                 state={state} activeIcp={activeIcp}
                 onSelect={(id) => setState((s) => ({ ...s, activeIcpId: id }))}
-                onPatch={patchIcp} pushToast={pushToast}
+                onPatch={patchIcp} pushToast={pushToast} consoleCtx={consoleCtx}
               />
             )}
           </main>
@@ -1312,7 +1378,8 @@ function SheetEditor({ icp, onPatch, enriched, mutateWithUndo, gotoSurvey }) {
 
 /* =========================== site survey ========================== */
 
-function SiteSurvey({ state, enriched, survey, setSurvey, searchRef, onAdd, onOpen, onDelete }) {
+function SiteSurvey({ state, enriched, survey, setSurvey, searchRef, onAdd, onOpen, onDelete, rosterAccounts, onAddFromRoster }) {
+  const hasRoster = Array.isArray(rosterAccounts) && rosterAccounts.length > 0;
   const q = survey.q.trim().toLowerCase();
   const filtered = enriched
     .filter((e) => survey.icpId === 'all' || e.p.icpId === survey.icpId)
@@ -1361,6 +1428,15 @@ function SiteSurvey({ state, enriched, survey, setSurvey, searchRef, onAdd, onOp
           <option value="name">Sort: name A–Z</option>
         </select>
         <button className={BTN_DARK} onClick={onAdd}><Plus className="h-3.5 w-3.5" aria-hidden="true" /> Log prospect</button>
+        {hasRoster && (
+          <select className="field w-auto text-[12px]" value="" aria-label="Pull from console roster"
+            onChange={(e) => { const acct = rosterAccounts.find((a) => a.name === e.target.value); if (acct) onAddFromRoster(acct); }}>
+            <option value="">Pull from console roster…</option>
+            {rosterAccounts.slice(0, 50).map((a) => (
+              <option key={a.name} value={a.name}>{a.name}{a.segment ? ` (${a.segment})` : ''}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* list */}
@@ -1569,7 +1645,7 @@ function ScoreDrawer({ prospect, icps, icpById, onPatch, onDelete, onClose }) {
 
 /* ========================== copilot desk ========================== */
 
-function CopilotDesk({ state, activeIcp, onSelect, onPatch, pushToast }) {
+function CopilotDesk({ state, activeIcp, onSelect, onPatch, pushToast, consoleCtx }) {
   const [copied, setCopied] = useState(null);
   const [viewing, setViewing] = useState(null);
   const icp = activeIcp;
@@ -1588,7 +1664,7 @@ function CopilotDesk({ state, activeIcp, onSelect, onPatch, pushToast }) {
   }
 
   const doCopy = async (action) => {
-    const ok = await copyText(action.build(state, icp));
+    const ok = await copyText(withConsoleHeader(consoleCtx, action.build(state, icp)));
     if (ok) {
       setCopied(action.id);
       setTimeout(() => setCopied((c) => (c === action.id ? null : c)), 2000);
@@ -1641,7 +1717,7 @@ function CopilotDesk({ state, activeIcp, onSelect, onPatch, pushToast }) {
               </div>
               <p className="mt-2.5 text-[13px] leading-relaxed text-pencil">{a.desc}</p>
               {viewing === a.id && (
-                <textarea readOnly value={a.build(state, icp)}
+                <textarea readOnly value={withConsoleHeader(consoleCtx, a.build(state, icp))}
                   className="field mt-3 h-52 w-full resize-y font-mono text-[11px] leading-relaxed"
                   aria-label={`Prompt preview: ${a.title}`} onFocus={(e) => e.target.select()} />
               )}

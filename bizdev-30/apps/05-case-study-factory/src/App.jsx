@@ -3,7 +3,7 @@ import {
   Clapperboard, Film, Plus, Trash2, Copy, Check, Download, Upload, HelpCircle,
   RotateCcw, X, Undo2, Quote, ChevronUp, ChevronDown, Sparkles, FileText,
   FileJson, Printer, Scissors, ShieldCheck, NotebookPen, Share2, Wand2,
-  ClipboardPaste, Table2, CircleDot,
+  ClipboardPaste, Table2, CircleDot, Link2,
 } from 'lucide-react';
 
 /* ================================================================
@@ -11,6 +11,50 @@ import {
    World: film studio. Charcoal soundstage, projector amber,
    clapperboard motifs, Bricolage Grotesque display.
    ================================================================ */
+
+/* ---- BizDev Console bus (postMessage v1) — see /bizdev-30/PROTOCOL.md ---- */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '05-case-study-factory' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const p = ctx.profile || {};
+  const c = ctx.claude || {};
+  const r = ctx.roster || {};
+  const lines = [];
+  if (p.company) lines.push(`- My company: ${p.company}`);
+  if (p.offer) lines.push(`- What I sell: ${p.offer}`);
+  if (p.icp) lines.push(`- My ICP: ${p.icp}`);
+  if (p.pricingAnchor) lines.push(`- Pricing anchor: ${p.pricingAnchor}`);
+  if (c.userName || c.voiceNotes) {
+    lines.push(`- My name / voice: ${c.userName || ''}${c.userName && c.voiceNotes ? ' — ' : ''}${c.voiceNotes || ''}`);
+  }
+  const accounts = Array.isArray(r.accounts) ? r.accounts.filter((a) => a && a.name) : [];
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return ['## Shared context (from BizDev Console)', ...lines].join('\n');
+}
+
+function withConsoleHeader(ctx, body) {
+  const header = consoleContextHeader(ctx);
+  return header ? `${header}\n\n${body}` : body;
+}
 
 const STORAGE_KEY = 'bizdev:05-case-study-factory:v1';
 
@@ -574,6 +618,7 @@ function Modal({ title, kicker, onClose, children, wide = false }) {
    APP
    ================================================================ */
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(() => {
     try { return normalize(JSON.parse(localStorage.getItem(STORAGE_KEY))); }
     catch { return normalize(null); }
@@ -728,6 +773,12 @@ export default function App() {
                 </h1>
                 <p className="mt-1 text-[12.5px] text-faded">Turn client wins into box-office proof — capture, cut, clear, release.</p>
               </div>
+              {consoleCtx && (
+                <span className="inline-flex items-center gap-1.5 self-start rounded-full border border-amber/40 bg-card px-2.5 py-1 text-[11px] font-semibold text-amber-hot">
+                  <Link2 className="h-3 w-3" aria-hidden="true" />
+                  Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={loadDemo} className="inline-flex items-center gap-1.5 rounded-md border border-seam2 bg-card px-3 py-2 text-[12.5px] font-semibold text-bone hover:border-amber/60 hover:text-amber-hot">
@@ -874,7 +925,7 @@ export default function App() {
                   ))}
                 </div>
                 <div className="p-4 sm:p-5">
-                  {state.tab === 'capture' && <CaptureTab study={selected} update={updateStudy} showToast={showToast} />}
+                  {state.tab === 'capture' && <CaptureTab study={selected} update={updateStudy} showToast={showToast} rosterAccounts={consoleCtx?.roster?.accounts} />}
                   {state.tab === 'assemble' && <AssembleTab study={selected} update={updateStudy} />}
                   {state.tab === 'cuts' && <CutsTab study={selected} showToast={showToast} />}
                   {state.tab === 'release' && <ReleaseTab study={selected} update={updateStudy} />}
@@ -885,7 +936,7 @@ export default function App() {
 
           {/* -------- Copilot: the Writers' Room -------- */}
           <aside className="min-w-0">
-            <CopilotPanel study={selected} update={updateStudy} showToast={showToast} />
+            <CopilotPanel study={selected} update={updateStudy} showToast={showToast} consoleCtx={consoleCtx} />
           </aside>
         </div>
 
@@ -1001,12 +1052,24 @@ function EmptyStage({ onDemo, onNew }) {
 /* ================================================================
    TAB: The Shoot (capture)
    ================================================================ */
-function CaptureTab({ study, update, showToast }) {
+function CaptureTab({ study, update, showToast, rosterAccounts }) {
   const set = (fn) => update(study.id, fn);
+  const hasRoster = Array.isArray(rosterAccounts) && rosterAccounts.length > 0;
   return (
     <div className="space-y-5">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Client"><input className={inputCls} value={study.client} placeholder="Meridian Freight Co." onChange={(e) => set((s) => ({ ...s, client: e.target.value }))} /></Field>
+        <Field label="Client">
+          <input className={inputCls} value={study.client} placeholder="Meridian Freight Co." onChange={(e) => set((s) => ({ ...s, client: e.target.value }))} />
+          {hasRoster && (
+            <select className={inputCls + ' mt-1.5'} value="" aria-label="Pull client from console roster"
+              onChange={(e) => { if (e.target.value) set((s) => ({ ...s, client: e.target.value })); }}>
+              <option value="">Pull from console roster…</option>
+              {rosterAccounts.slice(0, 50).map((a) => (
+                <option key={a.name} value={a.name}>{a.name}{a.segment ? ` (${a.segment})` : ''}</option>
+              ))}
+            </select>
+          )}
+        </Field>
         <Field label="Industry"><input className={inputCls} value={study.industry} placeholder="Mid-market logistics" onChange={(e) => set((s) => ({ ...s, industry: e.target.value }))} /></Field>
         <Field label="Service delivered"><input className={inputCls} value={study.service} placeholder="Outbound revamp" onChange={(e) => set((s) => ({ ...s, service: e.target.value }))} /></Field>
         <Field label="Timeframe"><input className={inputCls} value={study.timeframe} placeholder="14 weeks, Q1 2026" onChange={(e) => set((s) => ({ ...s, timeframe: e.target.value }))} /></Field>
@@ -1288,7 +1351,7 @@ function ReleaseTab({ study, update }) {
 /* ================================================================
    Copilot panel — the Writers' Room
    ================================================================ */
-function CopilotPanel({ study, update, showToast }) {
+function CopilotPanel({ study, update, showToast, consoleCtx }) {
   return (
     <div className="rounded-xl border border-amber/25 bg-booth shadow-marquee">
       <div className="border-b border-seam px-4 py-3">
@@ -1310,7 +1373,7 @@ function CopilotPanel({ study, update, showToast }) {
             </div>
             <p className="mt-1 text-[11.5px] leading-snug text-faded">{a.desc}</p>
             <div className="mt-2">
-              <CopyBtn getText={() => a.build(study)} label="Copy prompt" onCopied={() => showToast(`Prompt ready — paste into claude.ai (${a.title})`)} />
+              <CopyBtn getText={() => withConsoleHeader(consoleCtx, a.build(study))} label="Copy prompt" onCopied={() => showToast(`Prompt ready — paste into claude.ai (${a.title})`)} />
             </div>
           </div>
         ))}

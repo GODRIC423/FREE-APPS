@@ -4,8 +4,45 @@ import {
   RotateCcw, Sparkles, FileText, FileJson, Table2, Search, ClipboardPaste,
   CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Keyboard, Filter,
   Building2, Swords, CalendarRange, ScrollText, Receipt, Landmark, Stamp,
-  MessageSquareQuote,
+  MessageSquareQuote, Cable,
 } from 'lucide-react';
+
+/* ================= BizDev Console bus (postMessage v1) ================= */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '20-win-loss-ledger' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+/* Compact context header prepended to every Claude Copilot prompt when linked to the console. */
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  const accounts = (ctx.roster?.accounts || []).filter((a) => a && a.name);
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
 
 /* ================= constants & helpers ================= */
 
@@ -548,9 +585,10 @@ function DriverToggle({ selected, onToggle }) {
   );
 }
 
-function EditorDrawer({ draft, setDraft, onSave, onClose }) {
+function EditorDrawer({ draft, setDraft, onSave, onClose, rosterAccounts }) {
   const inputCls = 'mt-1 w-full rounded-sm border border-rule bg-card px-2 py-1.5 text-[13px]';
   const labelCls = 'block text-[11px] font-semibold uppercase tracking-wider text-pencil';
+  const hasRoster = Array.isArray(rosterAccounts) && rosterAccounts.length > 0;
   const toggleDriver = (dr) => setDraft({ ...draft, drivers: draft.drivers.includes(dr) ? draft.drivers.filter((x) => x !== dr) : [...draft.drivers, dr] });
   return (
     <div role="dialog" aria-modal="true" aria-label={draft.id ? 'Edit deal' : 'New deal'}
@@ -572,7 +610,17 @@ function EditorDrawer({ draft, setDraft, onSave, onClose }) {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className={labelCls}>Account
-              <input value={draft.account} onChange={(e) => setDraft({ ...draft, account: e.target.value })} placeholder="e.g. Anchor Freight" className={inputCls} />
+              <input value={draft.account} onChange={(e) => setDraft({ ...draft, account: e.target.value })} placeholder="e.g. Anchor Freight" className={inputCls} list={hasRoster ? 'console-roster-accounts' : undefined} />
+              {hasRoster && (
+                <datalist id="console-roster-accounts">
+                  {rosterAccounts.map((a, i) => a?.name ? <option key={i} value={a.name} /> : null)}
+                </datalist>
+              )}
+              {hasRoster && (
+                <span className="mt-1 block text-[10px] font-normal normal-case text-faint">
+                  <Cable className="mr-1 inline h-3 w-3 align-[-1px]" aria-hidden /> Start typing to pull from console roster
+                </span>
+              )}
             </label>
             <label className={labelCls}>Deal / opportunity name
               <input value={draft.dealName} onChange={(e) => setDraft({ ...draft, dealName: e.target.value })} placeholder="e.g. Dock scheduling rollout" className={inputCls} />
@@ -711,6 +759,7 @@ function DealCard({ deal, onEdit, onDelete, onPin, defaultOpen }) {
 /* ================= main app ================= */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(() => {
     let raw = null;
     try { raw = localStorage.getItem(LS_KEY); } catch { /* private mode */ }
@@ -874,18 +923,18 @@ export default function App() {
     {
       id: 'interview', title: 'Run a win/loss interview script', Icon: MessageSquareQuote,
       desc: 'Pick a closed deal; Claude writes a phased interview script tailored to what you already know and don’t.',
-      build: () => { const d = state.deals.find((x) => x.id === copilotDeal) || state.deals[0]; return d ? promptInterview(d) : ''; },
+      build: () => { const d = state.deals.find((x) => x.id === copilotDeal) || state.deals[0]; return d ? consoleContextHeader(consoleCtx) + promptInterview(d) : ''; },
       disabled: !state.deals.length,
     },
     {
       id: 'patterns', title: 'Find patterns across my entries', Icon: Filter,
       desc: 'Sends your full ledger and computed win rates; Claude surfaces the strongest patterns and three actions.',
-      build: () => promptPatterns(state), disabled: !state.deals.length,
+      build: () => consoleContextHeader(consoleCtx) + promptPatterns(state), disabled: !state.deals.length,
     },
     {
       id: 'quarterly', title: 'Write the quarterly readout', Icon: CalendarRange,
       desc: `Compiles the ${activeQuarter} deals and stats into a leadership-ready readout document.`,
-      build: () => promptQuarterly(activeQuarter, quarterDeals, quarterStats), disabled: !quarterDeals.length,
+      build: () => consoleContextHeader(consoleCtx) + promptQuarterly(activeQuarter, quarterDeals, quarterStats), disabled: !quarterDeals.length,
     },
   ];
 
@@ -918,6 +967,11 @@ export default function App() {
                 <span style={{ color: C.win }}>Win</span><span className="font-mono text-pencil">/</span><span style={{ color: C.loss }}>Loss</span> Ledger
               </h1>
               <p className="mt-1 text-[13.5px] text-pencil">Learn from every closed deal — <span className="hilite font-semibold">post-mortem it, find the pattern, promote the lesson</span>.</p>
+              {consoleCtx && (
+                <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-visor/40 bg-visor/10 px-2.5 py-1 text-[11px] font-semibold text-visor">
+                  <Cable className="h-3 w-3" aria-hidden /> Console linked{consoleCtx.profile?.company ? ` — ${consoleCtx.profile.company}` : ''}
+                </span>
+              )}
             </div>
           </div>
           <nav className="no-print flex flex-wrap items-center gap-2" aria-label="Primary actions">
@@ -1224,7 +1278,7 @@ export default function App() {
         </div>
       )}
 
-      {draft && <EditorDrawer draft={draft} setDraft={setDraft} onSave={saveDraft} onClose={() => setDraft(null)} />}
+      {draft && <EditorDrawer draft={draft} setDraft={setDraft} onSave={saveDraft} onClose={() => setDraft(null)} rosterAccounts={consoleCtx?.roster?.accounts} />}
 
       {toast && (
         <div className="toast-in fixed bottom-5 left-1/2 z-[70] flex -translate-x-1/2 items-center gap-3 rounded-sm border border-rule bg-inkdark px-4 py-2.5 text-[13px] text-paper shadow-2xl" role="status">

@@ -6,7 +6,45 @@ import {
   FileJson, FileText, FileSpreadsheet, Keyboard, ClipboardPaste,
   Lightbulb, Search, ArrowUp, ArrowDown, Undo2, Printer, Pin,
   ListOrdered, Waypoints, Wand2, Type, Presentation, LayoutPanelTop,
+  Cable,
 } from 'lucide-react';
+
+/* ---------------- BizDev Console bus (postMessage v1) ---------------- */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '19-narrative-deck-builder' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+/* Compact context header prepended to every Claude Copilot prompt when linked to the console. */
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  const accounts = (ctx.roster?.accounts || []).filter(a => a && a.name);
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map(a => a.segment ? `${a.name} (${a.segment})` : a.name).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
 
 /* ================================================================
    Narrative Deck Builder — structure the sales story before slides
@@ -761,6 +799,7 @@ function StageColumn({ stage, beats, expanded, onToggle, onAdd, onPatch, onDelet
    ================================================================ */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const [tab, setTab] = useState('board');
   const [modal, setModal] = useState(() => (loadState().seenGuide ? null : 'help'));
@@ -933,6 +972,11 @@ export default function App() {
               </h1>
               <p className="text-[12px] italic text-fog">Pin the arc before you touch a single slide.</p>
             </div>
+            {consoleCtx && (
+              <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-brass/40 bg-brass/10 px-2.5 py-1 text-[11px] font-semibold text-brass">
+                <Cable size={12} aria-hidden="true" /> Console linked{consoleCtx.profile?.company ? ` — ${consoleCtx.profile.company}` : ''}
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Btn kind="brass" onClick={loadDemo}><Sparkles size={14} /> Load demo</Btn>
@@ -1079,7 +1123,7 @@ export default function App() {
           </main>
 
           {/* ============ COPILOT RAIL ============ */}
-          <CopilotPanel state={state} copy={copy} copied={copied}
+          <CopilotPanel state={state} copy={copy} copied={copied} consoleCtx={consoleCtx}
             onNotes={v => patch(s => ({ ...s, copilotNotes: v }))} />
         </div>
 
@@ -1151,7 +1195,7 @@ export default function App() {
    Copilot panel
    ================================================================ */
 
-function CopilotPanel({ state, copy, copied, onNotes }) {
+function CopilotPanel({ state, copy, copied, onNotes, consoleCtx }) {
   const [open, setOpen] = useState('sharpen');
   const [plId, setPlId] = useState('');
   const [expandId, setExpandId] = useState('');
@@ -1171,7 +1215,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
         </select>
       ) : null,
       ready: !!plTarget,
-      build: () => buildSharpenPrompt(state, plTarget),
+      build: () => consoleContextHeader(consoleCtx) + buildSharpenPrompt(state, plTarget),
       empty: 'Pin a Promised Land beat first.',
     },
     {
@@ -1179,7 +1223,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
       blurb: 'Turn every beat into a punchy, presentable title.',
       picker: null,
       ready: state.beats.length > 0,
-      build: () => buildHeadlinesPrompt(state),
+      build: () => consoleContextHeader(consoleCtx) + buildHeadlinesPrompt(state),
       empty: 'Pin at least one beat first.',
     },
     {
@@ -1187,7 +1231,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
       blurb: 'An honest audit of gaps, weak links, and pacing.',
       picker: null,
       ready: state.beats.length > 0,
-      build: () => buildHolesPrompt(state),
+      build: () => consoleContextHeader(consoleCtx) + buildHolesPrompt(state),
       empty: 'Pin at least one beat first — the audit needs material.',
     },
     {
@@ -1199,7 +1243,7 @@ function CopilotPanel({ state, copy, copied, onNotes }) {
         </select>
       ) : null,
       ready: !!expandTarget,
-      build: () => buildExpandPrompt(state, expandTarget),
+      build: () => consoleContextHeader(consoleCtx) + buildExpandPrompt(state, expandTarget),
       empty: 'Pin a beat first.',
     },
   ];

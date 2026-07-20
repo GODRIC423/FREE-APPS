@@ -3,8 +3,28 @@ import {
   Plus, Trash2, Copy, Check, Download, Upload, FileJson, FileText, HelpCircle,
   RotateCcw, Sparkles, X, ChevronDown, MapPin, CalendarDays, ClipboardList,
   Send, Gauge, Undo2, Search, Ticket, Printer, Zap, Users, Mail, Phone,
-  MessageSquare, StickyNote, BadgeCheck, QrCode, ArrowRight, Megaphone, NotebookPen,
+  MessageSquare, StickyNote, BadgeCheck, QrCode, ArrowRight, Megaphone, NotebookPen, Link2,
 } from 'lucide-react';
+
+/* ================================================================
+   CONSOLE BUS — optional link to the BizDev Console Deck host.
+   No-op (ctx stays null) when this app is opened standalone.
+================================================================ */
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '17-event-prep-kit' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 /* ================================ constants ================================ */
 
@@ -230,8 +250,36 @@ function followUpsToCsv(ev) {
 
 /* ================================ copilot prompts ================================ */
 
-function promptResearchTarget(ev, t) {
-  return `You are a senior business-development researcher prepping me for a conference conversation.
+/* Console Deck integration: when this app is framed inside the Console, prepend
+   a compact shared-context header to every Copilot prompt. Plain text only —
+   never HTML — and a pure no-op when consoleCtx is null (standalone). */
+function buildConsoleContextHeader(consoleCtx) {
+  if (!consoleCtx) return '';
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  const nameVoice = [claude.userName, claude.voiceNotes].filter((v) => v && String(v).trim());
+  if (nameVoice.length) lines.push(`- My name / voice: ${nameVoice.join(' — ')}`);
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const accts = roster.accounts.slice(0, 12).map((a) => `${a.name}${a.segment ? ` (${a.segment})` : ''}`).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}`;
+}
+
+function withConsoleContext(prompt, consoleCtx) {
+  const header = buildConsoleContextHeader(consoleCtx);
+  return header ? `${header}\n\n${prompt}` : prompt;
+}
+
+function promptResearchTarget(ev, t, consoleCtx) {
+  return withConsoleContext(`You are a senior business-development researcher prepping me for a conference conversation.
 
 ## The event
 ${ev.name}${ev.dates ? ` (${ev.dates})` : ''}${ev.city ? `, ${ev.city}` : ''}.
@@ -252,12 +300,12 @@ My mission there: ${ev.goal || '(not set)'}
 5. Suggest one better opener than mine, in one sentence I could actually say out loud.
 
 ## Output format
-Markdown with the 5 numbered sections above. Keep every bullet under 25 words - this gets read on my phone in a hallway.`;
+Markdown with the 5 numbered sections above. Keep every bullet under 25 words - this gets read on my phone in a hallway.`, consoleCtx);
 }
 
-function promptIntro(ev) {
+function promptIntro(ev, consoleCtx) {
   const tracks = ev.talkTracks.map((t) => `- ${t.title}: ${t.body}`).join('\n') || '(none written yet)';
-  return `You are a sales-messaging coach who cuts fluff ruthlessly.
+  return withConsoleContext(`You are a sales-messaging coach who cuts fluff ruthlessly.
 
 ## Context
 I'm attending ${ev.name}${ev.dates ? ` (${ev.dates})` : ''}. My mission: ${ev.goal || '(not set)'}
@@ -277,16 +325,16 @@ Then give:
 3. The single biggest weakness in my current talk tracks, in one blunt sentence.
 
 ## Output format
-Markdown. Spoken lines in quotes. No corporate vocabulary (no "solutions", "leverage", "synergy").`;
+Markdown. Spoken lines in quotes. No corporate vocabulary (no "solutions", "leverage", "synergy").`, consoleCtx);
 }
 
-function promptFollowUps(ev) {
+function promptFollowUps(ev, consoleCtx) {
   const met = ev.targets.filter((t) => t.status === 'met');
   const scr = met.map((t) => `### ${t.name} — ${t.role || '?'} @ ${t.company || '?'}
 - Why targeted: ${t.whyThem || '(none)'}
 - My scribbles from the conversation: ${t.scribbles || '(no notes - I will have to wing it)'}`).join('\n') || '(I met no logged targets - work from the queue below)';
   const queue = ev.followUps.map((f) => `- ${f.person} (${f.company || '?'}) · ${f.channel} · ${F_STATUS[f.status]}${f.due ? ' · due ' + f.due : ''} — context: ${f.context || 'none'}`).join('\n') || '(queue is empty)';
-  return `You are my BD copilot turning messy conference scribbles into follow-ups people actually answer.
+  return withConsoleContext(`You are my BD copilot turning messy conference scribbles into follow-ups people actually answer.
 
 ## Event
 ${ev.name}${ev.dates ? ` (${ev.dates})` : ''}. Mission: ${ev.goal || '(not set)'}
@@ -307,12 +355,12 @@ For each person with a Draft or unsent follow-up:
 Then add a "Sequencing" section: who to send first and why, in 3 bullets.
 
 ## Output format
-Markdown, one section per person, message text in code blocks so I can copy cleanly.`;
+Markdown, one section per person, message text in code blocks so I can copy cleanly.`, consoleCtx);
 }
 
-function promptRoi(ev) {
+function promptRoi(ev, consoleCtx) {
   const s = eventStats(ev);
-  return `You are a revenue analyst who tells founders the truth about event spend.
+  return withConsoleContext(`You are a revenue analyst who tells founders the truth about event spend.
 
 ## The numbers from ${ev.name}
 - Cost: ${fmtMoney(ev.cost)} · Pipeline target going in: ${fmtMoney(ev.pipelineTarget)}
@@ -333,7 +381,7 @@ ${ev.goal || '(not set)'}
 5. A 5-line recap I can paste into Slack for my team - honest, no spin.
 
 ## Output format
-Markdown with those 5 numbered sections. Be direct - I would rather hear "skip it next year" than comfort.`;
+Markdown with those 5 numbered sections. Be direct - I would rather hear "skip it next year" than comfort.`, consoleCtx);
 }
 
 /* ================================ tiny UI atoms ================================ */
@@ -473,6 +521,7 @@ export default function App() {
   const saveTimer = useRef(null);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const consoleCtx = useConsoleBus();
 
   /* autosave (debounced) */
   useEffect(() => {
@@ -595,7 +644,18 @@ export default function App() {
       {/* ======= header ======= */}
       <header className="no-print border-b border-line-700/70 bg-tarmac-900/70 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Wordmark />
+          <div className="flex flex-wrap items-center gap-3">
+            <Wordmark />
+            {consoleCtx && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-signal-500/50 bg-signal-950 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-signal-300"
+                title="Linked to the BizDev Console Deck"
+              >
+                <Link2 className="h-3 w-3" aria-hidden /> Console linked
+                {consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <button className={btnGhost} onClick={loadDemo}>
               <Zap className="h-3.5 w-3.5 text-signal-400" aria-hidden /> Load demo
@@ -750,7 +810,7 @@ export default function App() {
               {state.tab === 'dossier' && (
                 <DossierTab ev={ev} patchEvent={patchEvent} deleteWithUndo={deleteWithUndo}
                   targetQuery={targetQuery} setTargetQuery={setTargetQuery}
-                  targetFilter={targetFilter} setTargetFilter={setTargetFilter} />
+                  targetFilter={targetFilter} setTargetFilter={setTargetFilter} consoleCtx={consoleCtx} />
               )}
               {state.tab === 'dayof' && <DayOfTab ev={ev} patchEvent={patchEvent} deleteWithUndo={deleteWithUndo} />}
               {state.tab === 'followup' && (
@@ -761,7 +821,7 @@ export default function App() {
             </div>
 
             {/* =========== RIGHT: Copilot staff pass =========== */}
-            <CopilotPanel ev={ev} copyText={copyText} copied={copied} patchEvent={patchEvent} />
+            <CopilotPanel ev={ev} copyText={copyText} copied={copied} patchEvent={patchEvent} consoleCtx={consoleCtx} />
           </div>
         </main>
       )}
@@ -810,8 +870,10 @@ export default function App() {
 
 /* ================================ Dossier tab ================================ */
 
-function DossierTab({ ev, patchEvent, deleteWithUndo, targetQuery, setTargetQuery, targetFilter, setTargetFilter }) {
+function DossierTab({ ev, patchEvent, deleteWithUndo, targetQuery, setTargetQuery, targetFilter, setTargetFilter, consoleCtx }) {
   const [openId, setOpenId] = useState(null);
+  const [rosterOpen, setRosterOpen] = useState(false);
+  const rosterRef = useRef(null);
 
   const shown = ev.targets.filter((t) => {
     const q = targetQuery.trim().toLowerCase();
@@ -826,12 +888,50 @@ function DossierTab({ ev, patchEvent, deleteWithUndo, targetQuery, setTargetQuer
     setOpenId(id);
   };
 
+  /* console-linked convenience: pull a target straight from the console roster */
+  const addTargetFromRoster = (rosterAcct) => {
+    const id = uid();
+    patchEvent((e) => e.targets.unshift({
+      id, name: rosterAcct.name || '', company: rosterAcct.segment || '', role: '',
+      whyThem: rosterAcct.notes || '', icebreaker: '', priority: 'A', status: 'scouted', scribbles: '',
+    }));
+    setOpenId(id);
+  };
+
+  /* close roster dropdown on outside click */
+  useEffect(() => {
+    if (!rosterOpen) return;
+    const onDown = (e) => { if (!rosterRef.current?.contains(e.target)) setRosterOpen(false); };
+    window.addEventListener('mousedown', onDown);
+    return () => window.removeEventListener('mousedown', onDown);
+  }, [rosterOpen]);
+
   return (
     <div className="grid gap-8">
       {/* ---- target list ---- */}
       <section>
         <SectionTitle icon={Users} right={
-          <button className={btnSignal} onClick={addTarget}><Plus className="h-3.5 w-3.5" aria-hidden /> Add target</button>
+          <div className="flex items-center gap-1.5">
+            {consoleCtx?.roster?.accounts?.length > 0 && (
+              <div className="relative" ref={rosterRef}>
+                <button className={btnGhost} onClick={() => setRosterOpen((v) => !v)} aria-haspopup="menu" aria-expanded={rosterOpen}>
+                  <Link2 className="h-3.5 w-3.5" aria-hidden /> Pull from roster <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                </button>
+                {rosterOpen && (
+                  <div role="menu" className="absolute right-0 z-40 mt-2 max-h-64 w-64 overflow-y-auto rounded-lg border border-line-700 bg-slab-900 shadow-badge">
+                    {consoleCtx.roster.accounts.slice(0, 50).map((a, i) => (
+                      <button key={i} role="menuitem" onClick={() => { addTargetFromRoster(a); setRosterOpen(false); }}
+                        className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-[13px] text-chalk-100 hover:bg-slab-700">
+                        <span className="truncate">{a.name}</span>
+                        {a.segment && <span className="ml-2 shrink-0 font-mono text-[10px] text-dim-500">{a.segment}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <button className={btnSignal} onClick={addTarget}><Plus className="h-3.5 w-3.5" aria-hidden /> Add target</button>
+          </div>
         }>
           Target list — who you are there for
         </SectionTitle>
@@ -1427,7 +1527,7 @@ function RoiTab({ ev, stats, patchEvent, copyText, copied }) {
 
 /* ================================ Copilot panel ================================ */
 
-function CopilotPanel({ ev, copyText, copied, patchEvent }) {
+function CopilotPanel({ ev, copyText, copied, patchEvent, consoleCtx }) {
   const [open, setOpen] = useState('research');
   const [targetId, setTargetId] = useState('');
   const target = ev.targets.find((t) => t.id === targetId) || ev.targets[0] || null;
@@ -1437,7 +1537,7 @@ function CopilotPanel({ ev, copyText, copied, patchEvent }) {
       id: 'research', icon: Search, title: 'Research a target',
       desc: 'Talking points, insider questions, and landmines for one person on your list.',
       ready: !!target, notReady: 'Add a target first (Dossier tab).',
-      build: () => promptResearchTarget(ev, target),
+      build: () => promptResearchTarget(ev, target, consoleCtx),
       extra: ev.targets.length > 0 && (
         <select value={target?.id || ''} onChange={(e) => setTargetId(e.target.value)} aria-label="Pick a target to research"
           className="mb-2 w-full rounded-md border border-line-700 bg-tarmac-900 px-2 py-1.5 font-mono text-[12px] text-chalk-100">
@@ -1448,19 +1548,19 @@ function CopilotPanel({ ev, copyText, copied, patchEvent }) {
     {
       id: 'intro', icon: Megaphone, title: 'Write my 20-second intro',
       desc: 'A spoken intro tuned to this event, three variants, and a blunt critique of your tracks.',
-      ready: true, build: () => promptIntro(ev),
+      ready: true, build: () => promptIntro(ev, consoleCtx),
     },
     {
       id: 'followups', icon: Send, title: 'Draft follow-ups from my scribbles',
       desc: 'Turns raw conversation notes into channel-ready messages with one clean ask each.',
       ready: ev.followUps.length > 0 || ev.targets.some((t) => t.status === 'met'),
       notReady: 'Stamp someone MET or add a stub to the queue first.',
-      build: () => promptFollowUps(ev),
+      build: () => promptFollowUps(ev, consoleCtx),
     },
     {
       id: 'roi', icon: Gauge, title: 'Judge my ROI honestly',
       desc: 'Verdict, worst leak, a go/no-go rule for the next invite, and a Slack-ready recap.',
-      ready: true, build: () => promptRoi(ev),
+      ready: true, build: () => promptRoi(ev, consoleCtx),
     },
   ];
 

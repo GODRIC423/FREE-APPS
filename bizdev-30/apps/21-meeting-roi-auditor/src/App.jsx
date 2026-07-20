@@ -6,8 +6,45 @@ import {
   ArrowDown, CheckCircle2, Ban, Scissors, MessageSquareText, CircleDashed,
   Link2, Link2Off, Repeat, ClipboardList, Users, Building2, Megaphone,
   CalendarDays, ListChecks, Zap, ShieldAlert, Printer, UserPlus,
-  DollarSign, Siren,
+  DollarSign, Siren, Cable,
 } from 'lucide-react';
+
+/* ================= BizDev Console bus (postMessage v1) ================= */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '21-meeting-roi-auditor' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
+
+/* Compact context header prepended to every Claude Copilot prompt when linked to the console. */
+function consoleContextHeader(ctx) {
+  if (!ctx) return '';
+  const lines = [];
+  if (ctx.profile?.company) lines.push(`- My company: ${ctx.profile.company}`);
+  if (ctx.profile?.offer) lines.push(`- What I sell: ${ctx.profile.offer}`);
+  if (ctx.profile?.icp) lines.push(`- My ICP: ${ctx.profile.icp}`);
+  if (ctx.profile?.pricingAnchor) lines.push(`- Pricing anchor: ${ctx.profile.pricingAnchor}`);
+  const nameVoice = [ctx.claude?.userName, ctx.claude?.voiceNotes].filter(Boolean).join(' — ');
+  if (nameVoice) lines.push(`- My name / voice: ${nameVoice}`);
+  const accounts = (ctx.roster?.accounts || []).filter((a) => a && a.name);
+  if (accounts.length) {
+    const list = accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${list}`);
+  }
+  if (!lines.length) return '';
+  return `## Shared context (from BizDev Console)\n${lines.join('\n')}\n\n`;
+}
 
 /* ================= constants ================= */
 
@@ -830,6 +867,7 @@ function PolicyRow({ p, onChange, onRemove, onMove, first, last }) {
 /* ================= main app ================= */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(() => {
     let raw = null;
     try { raw = localStorage.getItem(LS_KEY); } catch { /* private mode */ }
@@ -983,24 +1021,24 @@ export default function App() {
     {
       id: 'async', title: 'Draft the async replacement', Icon: MessageSquareText,
       desc: 'Pick a killed or async-verdict meeting; Claude designs the format, cadence, template, and rollout message.',
-      build: () => (asyncTarget ? promptAsyncReplacement(asyncTarget) : ''),
+      build: () => (asyncTarget ? consoleContextHeader(consoleCtx) + promptAsyncReplacement(asyncTarget) : ''),
       disabled: !state.meetings.length,
     },
     {
       id: 'decline', title: 'Write the decline-with-grace message', Icon: Ban,
       desc: 'Pick any meeting; Claude writes the message to send based on its verdict — kill, shrink, async, or a clarifying question.',
-      build: () => (declineTarget ? promptDecline(declineTarget) : ''),
+      build: () => (declineTarget ? consoleContextHeader(consoleCtx) + promptDecline(declineTarget) : ''),
       disabled: !state.meetings.length,
     },
     {
       id: 'policy', title: 'Design my meeting policy', Icon: ShieldAlert,
       desc: 'Sends your audit numbers and draft rules; Claude returns a publish-ready Meeting Policy v1.',
-      build: () => promptPolicy(state, costMap), disabled: false,
+      build: () => consoleContextHeader(consoleCtx) + promptPolicy(state, costMap), disabled: false,
     },
     {
       id: 'audit', title: 'Audit my week for more time to reclaim', Icon: Gauge,
       desc: 'Sends the full log; Claude challenges your Keep verdicts and ranks the next 3 cuts by dollar impact.',
-      build: () => promptWeeklyAudit(state, costMap), disabled: !state.meetings.length,
+      build: () => consoleContextHeader(consoleCtx) + promptWeeklyAudit(state, costMap), disabled: !state.meetings.length,
     },
   ];
 
@@ -1036,6 +1074,11 @@ export default function App() {
                 Meeting <span className="text-alarm">ROI</span> Auditor
               </h1>
               <p className="mt-1 text-[13.5px] text-steel">Cut meetings that don&apos;t move pipeline — <span className="font-semibold text-amber">log the cost, stamp the verdict, reclaim the hours</span>.</p>
+              {consoleCtx && (
+                <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-alarm/40 bg-alarm/10 px-2.5 py-1 text-[11px] font-semibold text-alarm">
+                  <Cable className="h-3 w-3" aria-hidden /> Console linked{consoleCtx.profile?.company ? ` — ${consoleCtx.profile.company}` : ''}
+                </span>
+              )}
             </div>
           </div>
           <nav className="no-print flex flex-wrap items-center gap-2" aria-label="Primary actions">

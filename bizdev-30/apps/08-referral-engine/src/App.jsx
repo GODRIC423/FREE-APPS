@@ -4,13 +4,31 @@ import {
   Trash2, X, Pencil, Undo2, Gift, Users, CalendarClock, TrendingUp, FileText,
   FileJson, Printer, Mail, Phone, MessagesSquare, Handshake, Send,
   Search, ChevronDown, ChevronUp, CircleDollarSign, ClipboardPaste, Table2,
-  ListChecks, Droplets, Target, Share2,
+  ListChecks, Droplets, Target, Share2, Link2,
 } from 'lucide-react';
 
 /* ================================================================
    Referral Engine — design a referral program & work it weekly.
    World: ripple/network. Ink dark, cyan ripples radiating from nodes.
    ================================================================ */
+
+/* ---------------- Console Deck bus (optional host link) ---------------- */
+
+function useConsoleBus() {
+  const [ctx, setCtx] = useState(null);
+  useEffect(() => {
+    if (window.parent === window) return; // standalone, no console
+    const onMsg = (e) => {
+      const m = e.data;
+      if (!m || m.bizdev !== 'context' || m.v !== 1) return; // version-gate + ignore junk
+      setCtx(m.connectors || null);
+    };
+    window.addEventListener('message', onMsg);
+    try { window.parent.postMessage({ bizdev: 'ready', v: 1, slug: '08-referral-engine' }, '*'); } catch {}
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+  return ctx;
+}
 
 const STORAGE_KEY = 'bizdev:08-referral-engine:v1';
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
@@ -365,8 +383,32 @@ function referralsCSV(state) {
 
 /* ---------------- copilot prompt builders ---------------- */
 
-function promptHeader(state) {
+function consoleContextBlock(consoleCtx) {
+  if (!consoleCtx) return null;
+  const profile = consoleCtx.profile || {};
+  const claude = consoleCtx.claude || {};
+  const roster = consoleCtx.roster || {};
+  const lines = [];
+  if (profile.company) lines.push(`- My company: ${profile.company}`);
+  if (profile.offer) lines.push(`- What I sell: ${profile.offer}`);
+  if (profile.icp) lines.push(`- My ICP: ${profile.icp}`);
+  if (profile.pricingAnchor) lines.push(`- Pricing anchor: ${profile.pricingAnchor}`);
+  if (claude.userName || claude.voiceNotes) {
+    const bits = [claude.userName, claude.voiceNotes].filter(Boolean);
+    lines.push(`- My name / voice: ${bits.join(' — ')}`);
+  }
+  if (Array.isArray(roster.accounts) && roster.accounts.length) {
+    const accts = roster.accounts.slice(0, 12).map((a) => (a.segment ? `${a.name} (${a.segment})` : a.name)).join(', ');
+    lines.push(`- Accounts on file: ${accts}`);
+  }
+  if (!lines.length) return null;
+  return ['## Shared context (from BizDev Console)', ...lines].join('\n');
+}
+
+function promptHeader(state, consoleCtx) {
+  const ctxBlock = consoleContextBlock(consoleCtx);
   return [
+    ...(ctxBlock ? [ctxBlock, ''] : []),
     'You are a world-class referral strategist and BD copywriter. You write asks that feel personal, never salesy, and you think in terms of relationship capital.',
     '',
     '# My referral program (current state)',
@@ -374,12 +416,12 @@ function promptHeader(state) {
   ].join('\n');
 }
 
-function promptPersonalizeAsk(state, referrer) {
+function promptPersonalizeAsk(state, referrer, consoleCtx) {
   const q = state.queue.find((x) => x.referrerId === referrer.id && x.week === thisWeekISO());
   const script = q?.script || draftScript(state.program, referrer, q?.channel || state.program.channels[0] || 'email');
   const sent = countReferralsBy(state)[referrer.id] || 0;
   return [
-    promptHeader(state),
+    promptHeader(state, consoleCtx),
     '',
     '# The referrer I am about to ask',
     `- Name: ${referrer.name}${referrer.role ? ` (${referrer.role}${referrer.company ? `, ${referrer.company}` : ''})` : referrer.company ? ` (${referrer.company})` : ''}`,
@@ -405,10 +447,10 @@ function promptPersonalizeAsk(state, referrer) {
   ].filter((l) => l !== null).join('\n');
 }
 
-function promptDesignIncentives(state) {
+function promptDesignIncentives(state, consoleCtx) {
   const mix = REF_TYPES.map((t) => `${t.label}: ${state.referrers.filter((r) => r.type === t.id).length}`).join(', ');
   return [
-    promptHeader(state),
+    promptHeader(state, consoleCtx),
     '',
     '# Extra context',
     `- Referrer mix on my roster: ${mix || 'empty roster'}`,
@@ -424,11 +466,11 @@ function promptDesignIncentives(state) {
   ].join('\n');
 }
 
-function promptThankYou(state) {
+function promptThankYou(state, consoleCtx) {
   const nameOf = (id) => (state.referrers.find((r) => r.id === id) || {}).name || 'a referrer';
   const recent = state.referrals.slice(0, 6).map((r) => `- ${r.prospect} (${r.company || 'n/a'}) via ${nameOf(r.referrerId)} - stage: ${labelOf(STAGES, r.stage)}, value ${money(r.value)}`);
   return [
-    promptHeader(state),
+    promptHeader(state, consoleCtx),
     '',
     '# Recent referrals to thank people for',
     recent.length ? recent.join('\n') : '- (none yet - write templates I can reuse)',
@@ -443,11 +485,11 @@ function promptThankYou(state) {
   ].join('\n');
 }
 
-function promptWeeklyPlan(state) {
+function promptWeeklyPlan(state, consoleCtx) {
   const wk = thisWeekISO();
   const stale = state.referrers.filter((r) => r.strength >= 4 && (daysSince(r.lastAsk) === null || daysSince(r.lastAsk) > 45));
   return [
-    promptHeader(state),
+    promptHeader(state, consoleCtx),
     '',
     '# My funnel right now',
     funnelMarkdown(state),
@@ -769,6 +811,7 @@ function EmptyCoach({ icon: Icon, title, body, action }) {
    ================================================================ */
 
 export default function App() {
+  const consoleCtx = useConsoleBus();
   const [state, setState] = useState(loadState);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -931,6 +974,14 @@ export default function App() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <Wordmark />
               <div className="flex flex-wrap items-center gap-2">
+                {consoleCtx && (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-ripple-800 bg-ink-900/80 px-3 py-1.5 text-xs font-semibold text-ripple-300"
+                    title="Linked to the BizDev Console">
+                    <Link2 className="h-3.5 w-3.5" aria-hidden />
+                    Console linked{consoleCtx.profile?.company ? ` · ${consoleCtx.profile.company}` : ''}
+                  </span>
+                )}
                 <Btn onClick={loadDemo}><Droplets className="h-4 w-4" aria-hidden />Load demo</Btn>
                 <Btn onClick={() => setResetOpen(true)}><RotateCcw className="h-4 w-4" aria-hidden />Reset</Btn>
                 <Btn onClick={() => setHelpOpen(true)}><HelpCircle className="h-4 w-4" aria-hidden />How to use</Btn>
@@ -1053,6 +1104,7 @@ export default function App() {
             notes={state.copilotNotes}
             onNotes={(v) => patch((s) => ({ ...s, copilotNotes: v }))}
             onCopied={(what) => showToast(`${what} prompt copied - paste into claude.ai.`)}
+            consoleCtx={consoleCtx}
           />
         </div>
 
@@ -1110,6 +1162,7 @@ export default function App() {
       {editingReferrer !== null && (
         <ReferrerModal
           initial={editingReferrer === 'new' ? null : editingReferrer}
+          rosterAccounts={consoleCtx?.roster?.accounts}
           onClose={() => setEditingReferrer(null)}
           onSave={(data) => {
             patch((s) => editingReferrer === 'new'
@@ -1578,7 +1631,7 @@ function FunnelTab({ state, funnel, referrerOf, pipelineValue, wonValue, onAdd, 
    Copilot rail
    ================================================================ */
 
-function CopilotRail({ state, notes, onNotes, onCopied }) {
+function CopilotRail({ state, notes, onNotes, onCopied, consoleCtx }) {
   const [refId, setRefId] = useState('');
   const [copied, setCopied] = useState('');
   const [preview, setPreview] = useState('');
@@ -1589,23 +1642,23 @@ function CopilotRail({ state, notes, onNotes, onCopied }) {
       id: 'personalize', icon: Send, title: 'Personalize the ask',
       desc: 'Turn this week’s script into something only this referrer could receive.',
       needsReferrer: true,
-      build: () => (chosen ? promptPersonalizeAsk(state, chosen) : ''),
+      build: () => (chosen ? promptPersonalizeAsk(state, chosen, consoleCtx) : ''),
       disabled: !chosen,
     },
     {
       id: 'incentives', icon: CircleDollarSign, title: 'Design incentives for my price point',
       desc: 'Three structures with real unit economics, one recommendation.',
-      build: () => promptDesignIncentives(state),
+      build: () => promptDesignIncentives(state, consoleCtx),
     },
     {
       id: 'thankyou', icon: Gift, title: 'Write the thank-you sequence',
       desc: 'Three touches: on intro, on close, and the 30-day ripple update.',
-      build: () => promptThankYou(state),
+      build: () => promptThankYou(state, consoleCtx),
     },
     {
       id: 'weekly', icon: ListChecks, title: 'Audit my engine, plan the week',
       desc: 'Weakest funnel stage, next 3 asks, one experiment.',
-      build: () => promptWeeklyPlan(state),
+      build: () => promptWeeklyPlan(state, consoleCtx),
     },
   ];
 
@@ -1695,12 +1748,27 @@ function CopilotRail({ state, notes, onNotes, onCopied }) {
    Editors
    ================================================================ */
 
-function ReferrerModal({ initial, onClose, onSave }) {
+function ReferrerModal({ initial, onClose, onSave, rosterAccounts }) {
   const [form, setForm] = useState(() => initial || { name: '', company: '', role: '', type: 'client', strength: 3, lastAsk: '', notes: '' });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const pullFromRoster = (e) => {
+    const acct = (rosterAccounts || []).find((a) => a.name === e.target.value);
+    if (acct) setForm((f) => ({ ...f, name: acct.name, company: acct.segment || f.company }));
+    e.target.value = '';
+  };
   return (
     <Modal open onClose={onClose} title={initial ? `Edit ${initial.name}` : 'Add a referrer'}>
       <div className="grid gap-4">
+        {!initial && Array.isArray(rosterAccounts) && rosterAccounts.length > 0 && (
+          <Field label="Pull from console roster" hint="Prefills name & company from your BizDev Console accounts.">
+            <select className={inputCls} defaultValue="" onChange={pullFromRoster} aria-label="Pull referrer from console roster">
+              <option value="" disabled>Choose an account…</option>
+              {rosterAccounts.map((a) => (
+                <option key={a.name} value={a.name}>{a.name}{a.segment ? ` (${a.segment})` : ''}</option>
+              ))}
+            </select>
+          </Field>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name"><input className={inputCls} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Maya Chen" autoFocus /></Field>
           <Field label="Company"><input className={inputCls} value={form.company} onChange={(e) => set('company', e.target.value)} placeholder="Alderline Logistics" /></Field>
