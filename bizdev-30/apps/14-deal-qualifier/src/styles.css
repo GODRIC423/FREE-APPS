@@ -1,0 +1,149 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+@theme {
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-label: "Archivo Narrow", "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-asphalt: #0e1013;
+  --color-concrete-950: #14161a;
+  --color-concrete-900: #1a1d22;
+  --color-concrete-850: #20242a;
+  --color-concrete-800: #272c33;
+  --color-concrete-700: #323844;
+  --color-concrete-600: #444c5a;
+  --color-concrete-500: #5b6472;
+  --color-concrete-400: #7c8593;
+  --color-concrete-300: #9ba4b1;
+  --color-concrete-200: #c2c9d3;
+  --color-concrete-100: #e5e8ee;
+
+  --color-caution: #ffb020;
+  --color-caution-bright: #ffcb52;
+  --color-caution-deep: #93691a;
+  --color-clear: #43c583;
+  --color-clear-deep: #1f7a4f;
+  --color-deny: #ef5350;
+  --color-deny-deep: #a03230;
+  --color-paper: #ede8da;
+  --color-paper-dim: #d8d2c0;
+  --color-ink: #23262b;
+}
+
+/* ---------- ambient ground: poured concrete + vignette + faint grid ---------- */
+body {
+  background-color: var(--color-asphalt);
+  background-image:
+    radial-gradient(1200px 600px at 50% -10%, rgb(255 176 32 / 0.05), transparent 60%),
+    radial-gradient(900px 500px at 85% 110%, rgb(68 76 90 / 0.14), transparent 65%),
+    repeating-linear-gradient(0deg, transparent 0 47px, rgb(255 255 255 / 0.018) 47px 48px),
+    repeating-linear-gradient(90deg, transparent 0 47px, rgb(255 255 255 / 0.018) 47px 48px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  color: var(--color-concrete-100);
+  font-family: var(--font-display);
+}
+
+::selection { background: var(--color-caution); color: var(--color-ink); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-concrete-600) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--color-concrete-600); border: 3px solid var(--color-concrete-950); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible { outline: 2px solid var(--color-caution); outline-offset: 2px; border-radius: 2px; }
+
+/* ---------- checkpoint components ---------- */
+@layer components {
+  .hazard {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--color-caution) 0 14px,
+      #191b1f 14px 28px
+    );
+  }
+  .hazard-thin {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(255 176 32 / 0.85) 0 8px,
+      #191b1f 8px 16px
+    );
+  }
+  .panel {
+    background: linear-gradient(180deg, var(--color-concrete-850), var(--color-concrete-900));
+    border: 1px solid var(--color-concrete-700);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.04) inset,
+      0 12px 30px -18px rgb(0 0 0 / 0.9);
+  }
+  .panel-sunk {
+    background: linear-gradient(180deg, var(--color-concrete-950), var(--color-concrete-900));
+    border: 1px solid var(--color-concrete-700);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.5) inset;
+  }
+  .paper {
+    background:
+      radial-gradient(600px 200px at 30% -20%, rgb(255 255 255 / 0.5), transparent 60%),
+      var(--color-paper);
+    color: var(--color-ink);
+    box-shadow: 0 10px 24px -12px rgb(0 0 0 / 0.85), 0 0 0 1px rgb(0 0 0 / 0.35);
+  }
+  .label-cap {
+    font-family: var(--font-label);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .stamp {
+    font-family: var(--font-display);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    border: 3px double currentColor;
+    border-radius: 6px;
+    padding: 0.2em 0.55em;
+    transform: rotate(-5deg);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.16' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0.28'/%3E%3C/filter%3E%3Crect width='120' height='120' fill='white'/%3E%3Crect width='120' height='120' filter='url(%23r)'/%3E%3C/svg%3E");
+    mask-size: 120px 120px;
+  }
+}
+
+/* ---------- motion ---------- */
+@keyframes stamp-in {
+  0% { transform: rotate(-5deg) scale(1.9); opacity: 0; }
+  60% { transform: rotate(-5deg) scale(0.94); opacity: 1; }
+  100% { transform: rotate(-5deg) scale(1); opacity: 1; }
+}
+@keyframes toast-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes lamp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes needle-settle {
+  from { transform: rotate(-90deg); }
+}
+.anim-stamp { animation: stamp-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.anim-toast { animation: toast-up 0.25s ease-out both; }
+.anim-lamp { animation: lamp-pulse 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
+
+/* ---------- print: the checkpoint ledger only ---------- */
+.print-only { display: none; }
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-only h1, .print-only h2, .print-only h3 { color: #111; }
+  .print-only table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .print-only th, .print-only td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+  .print-only .pb { page-break-inside: avoid; }
+}
