@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Loadboard Signal Console</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="console">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 01 · Backhaul / Loadboard</p>
+        <h1>Loadboard Signal Console</h1>
+        <p class="lede">Score aggregated loadboard rows for backhaul fit, margin quality, deadhead risk, carrier friction, and monetizable 3PL action. Local demo data only — no live loadboard scraping or external accounts.</p>
+        <div class="actions">
+          <button id="loadDemo">Load demo board</button>
+          <button id="addLoad">Add load</button>
+          <button id="copyBrief">Copy broker brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="score"><span>Board value</span><strong id="boardValue">$0</strong><small id="boardLabel">Waiting for rows</small></aside>
+    </header>
+
+    <section class="layout">
+      <aside class="panel inputs">
+        <h2>Signal weights</h2>
+        <label>Target origin region<input id="targetOrigin" value="Midwest"></label>
+        <label>Target destination region<input id="targetDestination" value="Southeast"></label>
+        <label>Minimum margin %<input id="minMargin" type="number" value="14"></label>
+        <label>Max deadhead miles<input id="maxDeadhead" type="number" value="125"></label>
+        <label>Risk tolerance<select id="riskTolerance"><option>balanced</option><option>conservative</option><option>aggressive</option></select></label>
+        <hr>
+        <h2>Hour 02 enhancement: ask-floor guardrail</h2>
+        <label>Target sell RPM<input id="floorRpm" type="number" min="0" step="0.05" value="2.20"></label>
+        <label>Target margin %<input id="targetMargin" type="number" min="0" value="17"></label>
+        <label>Reprice severity<select id="floorSeverity"><option value="balanced">balanced</option><option value="strict">strict</option><option value="opportunistic">opportunistic</option></select></label>
+        <hr>
+        <h2>Hour 03 enhancement: lane concentration check</h2>
+        <label>Max single lane share %<input id="laneShareLimit" type="number" min="0" value="40"></label>
+        <hr>
+        <h2>Hour 04 enhancement: carrier readiness check</h2>
+        <label>Minimum ready carriers<input id="carrierReadyMin" type="number" min="0" value="3"></label>
+        <hr>
+        <h2>Hour 05 enhancement: tender readiness gate</h2>
+        <label>Minimum tender readiness %<input id="tenderReadinessMin" type="number" min="0" max="100" value="75"></label>
+        <hr>
+        <h2>Hour 06 enhancement: lifecycle stall forecast</h2>
+        <label>Minimum lifecycle confidence %<input id="lifecycleConfidenceMin" type="number" min="0" max="100" value="68"></label>
+        <hr>
+        <h2>Hour 07 enhancement: detention exposure audit</h2>
+        <label>Detention reserve / hour<input id="detentionReserveHourly" type="number" min="0" value="85"></label>
+        <p class="boundary"><b>Safety boundary:</b> draft signal console only. It does not scrape DAT/Truckstop, post loads, contact carriers, write TMS/CRM, spend money, or expose secrets.</p>
+      </aside>
+      <section class="panel">
+        <div class="panel-head"><h2>Aggregated load rows</h2><span id="rowCount">0 rows</span></div>
+        <div id="loadRows" class="rows"></div>
+      </section>
+      <aside class="panel output">
+        <h2>Broker action brief</h2>
+        <textarea id="brief" readonly></textarea>
+      </aside>
+    </section>
+
+    <section class="panel floor-panel" aria-label="Ask-floor repricing audit">
+      <div class="panel-head"><h2>Ask-floor repricing audit</h2><span id="floorSummary">0 review items</span></div>
+      <div id="floorRows" class="floor-rows"></div>
+    </section>
+
+    <section class="panel exposure-panel" aria-label="Lane concentration audit">
+      <div class="panel-head"><h2>Lane concentration audit</h2><span id="exposureSummary">0 markets</span></div>
+      <div id="exposureRows" class="exposure-rows"></div>
+    </section>
+
+    <section class="panel exposure-panel" aria-label="Carrier readiness audit">
+      <div class="panel-head"><h2>Carrier readiness audit</h2><span id="carrierSummary">0 lanes checked</span></div>
+      <div id="carrierRows" class="exposure-rows"></div>
+    </section>
+
+
+    <section class="panel exposure-panel" aria-label="Tender readiness gate">
+      <div class="panel-head"><h2>Tender readiness gate</h2><span id="tenderSummary">0 loads checked</span></div>
+      <div id="tenderRows" class="exposure-rows"></div>
+    </section>
+
+
+    <section class="panel exposure-panel" aria-label="Lifecycle stall forecast">
+      <div class="panel-head"><h2>Lifecycle stall forecast</h2><span id="lifecycleSummary">0 rows checked</span></div>
+      <div id="lifecycleRows" class="exposure-rows"></div>
+    </section>
+
+
+    <section class="panel exposure-panel" aria-label="Detention exposure audit">
+      <div class="panel-head"><h2>Detention exposure audit</h2><span id="detentionSummary">0 rows checked</span></div>
+      <div id="detentionRows" class="exposure-rows"></div>
+    </section>
+
+
+    <section class="panel exposure-panel" aria-label="Appointment fit audit">
+      <div class="panel-head"><h2>Appointment fit audit</h2><span id="appointmentFitSummary">0 rows checked</span></div>
+      <div id="appointmentFitRows" class="exposure-rows"></div>
+    </section>
+
+
+    <section class="panel exposure-panel" aria-label="Document precheck audit">
+      <div class="panel-head"><h2>Document precheck audit</h2><span id="documentPrecheckSummary">0 rows checked</span></div>
+      <div id="documentPrecheckRows" class="exposure-rows"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

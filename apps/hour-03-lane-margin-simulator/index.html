@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lane Margin Simulator</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="sim-shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 03 · Brokerage pricing lab</p>
+        <h1>Lane Margin Simulator</h1>
+        <p class="lede">Model buy/sell rates, fuel, accessorial exposure, risk buffers, and target margin by lane and equipment. Mock/local data only — no DAT/Truckstop credentials, no posting, no carrier contact, no TMS/CRM writes, and no spend.</p>
+        <div class="actions" aria-label="Primary actions">
+          <button id="loadDemo">Load demo lanes</button>
+          <button id="addLane">Add lane</button>
+          <button id="copyBrief">Copy pricing brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card">
+        <span>Projected margin pool</span>
+        <strong id="marginPool">$0</strong>
+        <small id="marginLabel">Waiting for lanes</small>
+      </aside>
+    </header>
+
+    <section class="control-strip" aria-label="Global pricing controls">
+      <label>Fuel surcharge RPM<input id="fuelRpm" type="number" min="0" step="0.01" value="0.48"></label>
+      <label>Default target margin %<input id="targetMargin" type="number" min="0" step="0.5" value="16"></label>
+      <label>Risk buffer %<input id="riskBuffer" type="number" min="0" step="0.5" value="5"></label>
+      <label>Accessorial reserve %<input id="accessorialReserve" type="number" min="0" step="0.5" value="3"></label>
+      <label>Pricing stance<select id="pricingStance"><option value="balanced">balanced</option><option value="defensive">defensive</option><option value="aggressive">aggressive</option></select></label>
+      <label>Carrier reserve $/thin lane<input id="carrierReserve" type="number" min="0" value="175"></label>
+      <label>Approval band %<input id="approvalBandPct" type="number" min="0" step="0.5" value="4"></label>
+      <label>Average cash cycle days<input id="cashCycleDays" type="number" min="1" value="32"></label>
+      <label>Detention reserve / hour<input id="detentionHourly" type="number" min="0" value="85"></label>
+    </section>
+
+    <section class="workspace">
+      <section class="panel lane-panel">
+        <div class="panel-head"><h2>Lane scenarios</h2><span id="laneCount">0 lanes</span></div>
+        <div id="laneRows" class="lane-list"></div>
+      </section>
+      <section class="panel matrix-panel">
+        <div class="panel-head"><h2>Quote matrix</h2><span id="matrixLabel">0 quotes</span></div>
+        <div id="quoteMatrix" class="quote-grid"></div>
+      </section>
+      <aside class="panel brief-panel">
+        <h2>Broker pricing brief</h2>
+        <textarea id="brief" readonly></textarea>
+        <p class="boundary"><b>Draft-only boundary:</b> this simulator does not scrape live loadboards, call external APIs, quote customers, post loads, contact carriers, write TMS/CRM, execute EDI, or spend money. Human broker approval is required.</p>
+      </aside>
+    </section>
+
+    <section class="panel qa-panel" aria-label="Margin quality checks">
+      <div class="panel-head"><h2>Margin quality checks</h2><span id="qaSummary">0 checks</span></div>
+      <div id="qaRows" class="qa-grid"></div>
+    </section>
+
+    <section class="panel qa-panel" aria-label="Carrier approval reserve audit">
+      <div class="panel-head"><h2>Carrier approval reserve audit</h2><span id="carrierReserveSummary">0 lanes checked</span></div>
+      <div id="carrierReserveRows" class="qa-grid"></div>
+    </section>
+
+
+    <section class="panel qa-panel" aria-label="Quote approval band audit">
+      <div class="panel-head"><h2>Quote approval band audit</h2><span id="approvalBandSummary">0 lanes checked</span></div>
+      <div id="approvalBandRows" class="qa-grid"></div>
+    </section>
+
+
+    <section class="panel qa-panel" aria-label="Cash-to-paid lifecycle forecast">
+      <div class="panel-head"><h2>Cash-to-paid lifecycle forecast</h2><span id="cashLifecycleSummary">0 lanes checked</span></div>
+      <div id="cashLifecycleRows" class="qa-grid"></div>
+    </section>
+
+
+    <section class="panel qa-panel" aria-label="Lane detention reserve model">
+      <div class="panel-head"><h2>Lane detention reserve model</h2><span id="laneDetentionSummary">0 lanes checked</span></div>
+      <div id="laneDetentionRows" class="qa-grid"></div>
+    </section>
+
+
+    <section class="panel qa-panel" aria-label="Appointment premium model">
+      <div class="panel-head"><h2>Appointment premium model</h2><span id="appointmentPremiumSummary">0 lanes checked</span></div>
+      <div id="appointmentPremiumRows" class="qa-grid"></div>
+    </section>
+
+
+    <section class="panel qa-panel" aria-label="Document leakage reserve model">
+      <div class="panel-head"><h2>Document leakage reserve model</h2><span id="docReserveSummary">0 lanes checked</span></div>
+      <div id="docReserveRows" class="qa-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

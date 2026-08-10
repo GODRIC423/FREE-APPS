@@ -53,6 +53,18 @@ Then browse to `http://localhost:8000/`.
 | 19 | [Home Service Route Planner](apps/day-19-home-service-route-planner/) | [Guide](apps/day-19-home-service-route-planner/GUIDE.md) |
 | 20 | [Intake Form Builder](apps/day-20-intake-form-builder/) | [Guide](apps/day-20-intake-form-builder/GUIDE.md) |
 
+## Backhaul 30 Hour Build Stack exports
+
+- [Hour 01 — Loadboard Signal Console](apps/hour-01-loadboard-signal-console/)
+- [Hour 02 — Backhaul Pairing Optimizer](apps/hour-02-backhaul-pairing-optimizer/)
+- [Hour 03 — Lane Margin Simulator](apps/hour-03-lane-margin-simulator/)
+- [Hour 04 — Carrier Vetting Radar](apps/hour-04-carrier-vetting-radar/)
+- [Hour 05 — Tender Packet Builder](apps/hour-05-tender-packet-builder/)
+- [Hour 06 — Load Lifecycle Command Board](apps/hour-06-load-lifecycle-command-board/)
+- [Hour 07 — Detention Risk Calculator](apps/hour-07-detention-risk-calculator/)
+- [Hour 08 — Appointment Window Optimizer](apps/hour-08-appointment-window-optimizer/)
+- [Hour 09 — Document Compliance Vault](apps/hour-09-document-compliance-vault/)
+
 ## Audit
 
 See [`SECURITY_AUDIT.md`](SECURITY_AUDIT.md) for the original collection's audit. The remake preserves the same boundary: no secrets, no network calls, no backend.

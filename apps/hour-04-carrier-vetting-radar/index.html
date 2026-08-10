@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Carrier Vetting Radar</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="radar-shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 04 · Carrier approval radar</p>
+        <h1>Carrier Vetting Radar</h1>
+        <p class="lede">Rank mock carriers by lane fit, safety, insurance, tracking reliability, fraud flags, and approval status before a broker burns time on risky coverage. Local demo data only — no carrier contact, load posting, credential use, TMS/CRM writes, external APIs, or spend.</p>
+        <div class="actions" aria-label="Primary actions">
+          <button id="loadDemo">Load demo carriers</button>
+          <button id="addCarrier">Add carrier</button>
+          <button id="copyBrief">Copy vetting brief</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card">
+        <span>Approved capacity</span>
+        <strong id="readyCount">0</strong>
+        <small id="readyLabel">Waiting for carriers</small>
+      </aside>
+    </header>
+
+    <section class="control-strip" aria-label="Vetting controls">
+      <label>Origin state<input id="originState" maxlength="2" value="IL"></label>
+      <label>Destination state<input id="destinationState" maxlength="2" value="GA"></label>
+      <label>Equipment<select id="equipment"><option>Dry Van</option><option>Reefer</option><option>Flatbed</option><option>Power Only</option></select></label>
+      <label>Minimum score<input id="minScore" type="number" min="0" max="100" value="72"></label>
+      <label>Minimum insurance $M<input id="minInsurance" type="number" min="0" step="0.1" value="1.0"></label>
+      <label>Fraud stance<select id="fraudStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="opportunistic">opportunistic</option></select></label>
+      <label>Min document completeness %<input id="minDocCompleteness" type="number" min="0" max="100" value="80"></label>
+      <label>Min lifecycle SLA score<input id="minLifecycleSla" type="number" min="0" max="100" value="76"></label>
+      <label>Min detention discipline<input id="minDetentionDiscipline" type="number" min="0" max="100" value="72"></label>
+    </section>
+
+    <section class="workspace">
+      <section class="panel carrier-panel">
+        <div class="panel-head"><h2>Carrier bench</h2><span id="carrierCount">0 carriers</span></div>
+        <div id="carrierRows" class="carrier-list"></div>
+      </section>
+      <section class="panel ranking-panel">
+        <div class="panel-head"><h2>Ranked vetting radar</h2><span id="rankSummary">0 ranked</span></div>
+        <div id="rankRows" class="rank-grid"></div>
+      </section>
+      <aside class="panel brief-panel">
+        <h2>Broker vetting brief</h2>
+        <textarea id="brief" readonly></textarea>
+        <p class="boundary"><b>Draft-only boundary:</b> this radar uses local mock data. It does not contact carriers, scrape loadboards, post freight, tender loads, write TMS/CRM, call EDI/API endpoints, use credentials, spend money, or approve real carriers. Human broker approval is required.</p>
+      </aside>
+    </section>
+
+    <section class="panel audit-panel" aria-label="Approval blocker audit">
+      <div class="panel-head"><h2>Approval blocker audit</h2><span id="auditSummary">0 blockers</span></div>
+      <div id="auditRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Carrier document packet audit">
+      <div class="panel-head"><h2>Carrier document packet audit</h2><span id="docSummary">0 carriers checked</span></div>
+      <div id="docRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Carrier lifecycle SLA readiness">
+      <div class="panel-head"><h2>Carrier lifecycle SLA readiness</h2><span id="slaSummary">0 carriers checked</span></div>
+      <div id="slaRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Carrier detention discipline">
+      <div class="panel-head"><h2>Carrier detention discipline</h2><span id="detentionCarrierSummary">0 carriers checked</span></div>
+      <div id="detentionCarrierRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Carrier appointment reliability">
+      <div class="panel-head"><h2>Carrier appointment reliability</h2><span id="appointmentCarrierSummary">0 carriers checked</span></div>
+      <div id="appointmentCarrierRows" class="audit-grid"></div>
+    </section>
+
+
+    <section class="panel audit-panel" aria-label="Carrier compliance expiry audit">
+      <div class="panel-head"><h2>Carrier compliance expiry audit</h2><span id="carrierComplianceSummary">0 carriers checked</span></div>
+      <div id="carrierComplianceRows" class="audit-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -104,7 +104,7 @@ footer {
     <div class="mark" aria-hidden="true">FA</div>
     <div>
       <h1>FREE APPS</h1>
-      <p>Claude Fable 5 Remake — 20 local-first business tools</p>
+      <p>Claude Fable 5 Remake — 29 local-first business tools</p>
     </div>
     <div class="top-actions">
       <button class="btn" id="themeToggle" type="button" aria-pressed="false">Light mode</button>
@@ -113,7 +113,7 @@ footer {
 
   <section class="hero">
     <p class="eyebrow">Local-first · No accounts · No tracking</p>
-    <h2>Twenty small, sharp tools for running a local service business.</h2>
+    <h2>Twenty-nine small, sharp tools for running local service and freight operations.</h2>
     <p>Every app runs entirely in your browser — no backend, no API keys, no external requests. Your data lives in this browser's storage and can be exported as JSON at any time. Each app ships with a built-in "How to use" walkthrough and a step-by-step written guide.</p>
     <div class="badges">
       <span class="badge">Zero dependencies</span>
@@ -121,12 +121,13 @@ footer {
       <span class="badge">Dark & light themes</span>
       <span class="badge">JSON import / export</span>
       <span class="badge">Step-by-step guides</span>
+      <span class="badge">Backhaul freight stack</span>
     </div>
   </section>
 
   <div class="toolbar">
     <input class="search" id="search" type="search" placeholder="Filter apps… (e.g. quote, report, route)" aria-label="Filter apps" />
-    <span class="count" id="count" aria-live="polite">20 apps</span>
+    <span class="count" id="count" aria-live="polite">29 apps</span>
     <a class="btn" href="bizdev-30/index.html" style="text-decoration:none">BizDev 30 collection →</a>
   </div>
 
@@ -160,7 +161,16 @@ const APPS = [
   { d: 17, slug: "day-17-credential-handoff-checklist", h: 350, mark: "CH", name: "Credential Handoff Checklist", desc: "Access-custody tracker that stores no secrets: owners, MFA, rotation, and revocation runbooks." },
   { d: 18, slug: "day-18-content-repurposer",           h: 30,  mark: "CR", name: "Content Repurposer",           desc: "Turn one piece of long-form content into a full publishing packet with per-platform drafts." },
   { d: 19, slug: "day-19-home-service-route-planner",   h: 200, mark: "RP", name: "Home Service Route Planner",   desc: "Plan a service day offline: stops, priorities, time windows, buffers, printable dispatch sheet." },
-  { d: 20, slug: "day-20-intake-form-builder",          h: 150, mark: "IF", name: "Intake Form Builder",          desc: "Design service intake forms with live preview, privacy audit, and exportable specs." }
+  { d: 20, slug: "day-20-intake-form-builder",          h: 150, mark: "IF", name: "Intake Form Builder",          desc: "Design service intake forms with live preview, privacy audit, and exportable specs." },
+  { label: "Hour 01", slug: "hour-01-loadboard-signal-console",       h: 24,  mark: "L1", name: "Loadboard Signal Console",       desc: "Static freight signal console for reviewing loadboard-style opportunities without scraping, posting, or contacting carriers.", guide: "README.md" },
+  { label: "Hour 02", slug: "hour-02-backhaul-pairing-optimizer",    h: 38,  mark: "B2", name: "Backhaul Pairing Optimizer",    desc: "Pair outbound and return-lane opportunities into practical backhaul options for human review.", guide: "README.md" },
+  { label: "Hour 03", slug: "hour-03-lane-margin-simulator",        h: 52,  mark: "M3", name: "Lane Margin Simulator",        desc: "Estimate lane-level freight margin scenarios with local-only inputs and exportable notes.", guide: "README.md" },
+  { label: "Hour 04", slug: "hour-04-carrier-vetting-radar",        h: 66,  mark: "V4", name: "Carrier Vetting Radar",        desc: "Organize carrier-vetting signals into a review radar without querying private systems.", guide: "README.md" },
+  { label: "Hour 05", slug: "hour-05-tender-packet-builder",        h: 80,  mark: "T5", name: "Tender Packet Builder",        desc: "Assemble tender packet drafts and checklist items for operator approval.", guide: "README.md" },
+  { label: "Hour 06", slug: "hour-06-load-lifecycle-command-board", h: 94,  mark: "C6", name: "Load Lifecycle Command Board", desc: "Track load lifecycle stages, risks, and handoffs in a local browser board.", guide: "README.md" },
+  { label: "Hour 07", slug: "hour-07-detention-risk-calculator",    h: 108, mark: "D7", name: "Detention Risk Calculator",    desc: "Score detention risk from appointment, facility, and wait-time assumptions.", guide: "README.md" },
+  { label: "Hour 08", slug: "hour-08-appointment-window-optimizer", h: 122, mark: "A8", name: "Appointment Window Optimizer", desc: "Compare appointment windows and buffer choices for smoother freight scheduling.", guide: "README.md" },
+  { label: "Hour 09", slug: "hour-09-document-compliance-vault",    h: 136, mark: "D9", name: "Document Compliance Vault",    desc: "Local-only checklist vault for document readiness, exceptions, and review notes.", guide: "README.md" }
 ];
 const grid = document.getElementById("grid");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -172,14 +182,14 @@ function render(filter) {
       <div class="card-head">
         <div class="chip" aria-hidden="true">${esc(a.mark)}</div>
         <div>
-          <div class="day">Day ${String(a.d).padStart(2, "0")}</div>
+          <div class="day">${esc(a.label || `Day ${String(a.d).padStart(2, "0")}`)}</div>
           <h3>${esc(a.name)}</h3>
         </div>
       </div>
       <p>${esc(a.desc)}</p>
       <div class="card-actions">
         <a class="open" href="apps/${a.slug}/index.html">Open app</a>
-        <a class="guide" href="apps/${a.slug}/GUIDE.md">Guide</a>
+        <a class="guide" href="apps/${a.slug}/${a.guide || "GUIDE.md"}">Guide</a>
       </div>
     </article>`).join("");
   document.getElementById("count").textContent = `${shown.length} app${shown.length === 1 ? "" : "s"}`;

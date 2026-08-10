@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backhaul Pairing Optimizer</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="hero">
+      <section>
+        <p class="kicker">Hour 02 · Loop pairing lab</p>
+        <h1>Backhaul Pairing Optimizer</h1>
+        <p class="lede">Pair outbound and return loads into profitable freight loops using dwell, empty miles, appointment windows, RPM, and margin constraints. Mock/local data only — no live loadboard access, carrier contact, posting, TMS writes, or spend.</p>
+        <div class="actions" aria-label="Primary controls">
+          <button id="loadDemo">Load demo loops</button>
+          <button id="addOutbound">Add outbound</button>
+          <button id="addReturn">Add return</button>
+          <button id="copyPlan">Copy loop plan</button>
+          <button id="downloadJson" class="secondary">Export JSON</button>
+          <button id="downloadCsv" class="secondary">Export CSV</button>
+          <button id="themeToggle" class="secondary">Light</button>
+        </div>
+      </section>
+      <aside class="hero-card">
+        <span>Best loop value</span>
+        <strong id="bestValue">$0</strong>
+        <small id="bestLabel">Waiting for pairings</small>
+      </aside>
+    </header>
+
+    <section class="control-strip" aria-label="Pairing constraints">
+      <label>Max empty miles<input id="maxEmpty" type="number" min="0" value="165"></label>
+      <label>Max dwell hours<input id="maxDwell" type="number" min="0" value="28"></label>
+      <label>Minimum loop margin %<input id="minMargin" type="number" min="0" value="15"></label>
+      <label>Minimum loop RPM<input id="minRpm" type="number" min="0" step="0.05" value="2.12"></label>
+      <label>Risk stance<select id="riskStance"><option value="balanced">balanced</option><option value="strict">strict</option><option value="opportunistic">opportunistic</option></select></label>
+      <label>Backup loops needed<input id="backupTarget" type="number" min="0" value="2"></label>
+      <label>Max vetting friction<input id="maxVettingFriction" type="number" min="0" value="35"></label>
+      <label>Max drive hours/day<input id="maxDriveHours" type="number" min="1" value="10"></label>
+      <label>HOS buffer hours<input id="hosBuffer" type="number" min="0" step="0.5" value="1.5"></label>
+      <label>Lifecycle handoff buffer hours<input id="lifecycleHandoffBuffer" type="number" min="0" step="0.5" value="2"></label>
+      <label>Detention buffer hours<input id="detentionBufferHours" type="number" min="0" step="0.5" value="1"></label>
+    </section>
+
+    <section class="board-grid">
+      <section class="panel editor-panel">
+        <div class="panel-head"><h2>Outbound loads</h2><span id="outboundCount">0</span></div>
+        <div id="outboundRows" class="load-list"></div>
+      </section>
+      <section class="panel editor-panel">
+        <div class="panel-head"><h2>Return loads</h2><span id="returnCount">0</span></div>
+        <div id="returnRows" class="load-list"></div>
+      </section>
+      <section class="panel pairing-panel">
+        <div class="panel-head"><h2>Ranked loop candidates</h2><span id="pairCount">0 pairs</span></div>
+        <div id="pairRows" class="pair-list"></div>
+      </section>
+      <aside class="panel plan-panel">
+        <h2>Broker loop plan</h2>
+        <textarea id="plan" readonly></textarea>
+        <p class="boundary"><b>Draft-only boundary:</b> this optimizer never books freight, contacts carriers, posts loads, writes a TMS/CRM, uses credentials, or calls external APIs. Human broker review is required.</p>
+      </aside>
+    </section>
+
+    <section class="panel coverage-panel" aria-label="Coverage confidence audit">
+      <div class="panel-head"><h2>Coverage confidence audit</h2><span id="coverageSummary">0 equipment pools</span></div>
+      <div id="coverageRows" class="coverage-grid"></div>
+    </section>
+
+    <section class="panel coverage-panel" aria-label="Vetting friction audit">
+      <div class="panel-head"><h2>Vetting friction audit</h2><span id="vettingSummary">0 loops checked</span></div>
+      <div id="vettingRows" class="coverage-grid"></div>
+    </section>
+
+
+    <section class="panel coverage-panel" aria-label="Driver hours feasibility audit">
+      <div class="panel-head"><h2>Driver hours feasibility audit</h2><span id="hosSummary">0 loops checked</span></div>
+      <div id="hosRows" class="coverage-grid"></div>
+    </section>
+
+
+    <section class="panel coverage-panel" aria-label="Loop lifecycle handoff timeline">
+      <div class="panel-head"><h2>Loop lifecycle handoff timeline</h2><span id="timelineSummary">0 loops checked</span></div>
+      <div id="timelineRows" class="coverage-grid"></div>
+    </section>
+
+
+    <section class="panel coverage-panel" aria-label="Loop detention buffer audit">
+      <div class="panel-head"><h2>Loop detention buffer audit</h2><span id="detentionLoopSummary">0 loops checked</span></div>
+      <div id="detentionLoopRows" class="coverage-grid"></div>
+    </section>
+
+
+    <section class="panel coverage-panel" aria-label="Loop appointment sync audit">
+      <div class="panel-head"><h2>Loop appointment sync audit</h2><span id="appointmentSyncSummary">0 loops checked</span></div>
+      <div id="appointmentSyncRows" class="coverage-grid"></div>
+    </section>
+
+
+    <section class="panel coverage-panel" aria-label="Loop document readiness audit">
+      <div class="panel-head"><h2>Loop document readiness audit</h2><span id="loopDocumentSummary">0 loops checked</span></div>
+      <div id="loopDocumentRows" class="coverage-grid"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="./app.js"></script>
+</body>
+</html>
