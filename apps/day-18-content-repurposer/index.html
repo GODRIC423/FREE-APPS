@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,126 +7,280 @@
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="remix-studio">
-    <header class="studio-hero" aria-label="Content Repurposer header">
-      <section class="hero-copy">
-        <p class="kicker">Day 18 · Content Repurposer</p>
-        <h1>Turn one build log into a whole publishing packet.</h1>
-        <p class="lede">A local-first remix studio for YouTube titles, descriptions, chapters, short posts, newsletter blurbs, proof notes, and approval-safe content exports.</p>
-        <div class="hero-actions">
-          <button id="loadDemo" type="button">Load demo log</button>
-          <button id="generatePacket" type="button">Generate packet</button>
-          <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-        </div>
-      </section>
-      <aside class="remix-deck" aria-hidden="true">
-        <div class="platter"><span></span></div>
-        <div class="meters"><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="faders"><b></b><b></b><b></b></div>
-      </aside>
-    </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-    <section class="safety-strip" aria-label="Safety boundary">
-      <strong>Draft-only:</strong> this static app creates local content drafts. It does not post, upload, call APIs, scrape accounts, or publish. Human review stays required before public use.
-    </section>
-
-    <section class="scoreboard" aria-label="Content metrics">
-      <article><span>Source words</span><strong id="metricWords">0</strong></article>
-      <article><span>Chapters</span><strong id="metricChapters">0</strong></article>
-      <article><span>Short posts</span><strong id="metricPosts">0</strong></article>
-      <article><span>Review flags</span><strong id="metricFlags">0</strong></article>
-    </section>
-
-    <section class="studio-grid">
-      <section class="panel source-panel" aria-label="Source build log intake">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Source tape</p><h2>Paste the build log or rough notes.</h2></div></div>
-        <label>Project / app name<input id="projectName" maxlength="100" placeholder="Content Repurposer" /></label>
-        <label>Audience<select id="audience"><option>Owner/operator</option><option>Local service business</option><option>Builder audience</option><option>Client proof review</option><option>Internal team</option></select></label>
-        <label>Tone<select id="tone"><option>Plain-spoken</option><option>Founder build log</option><option>Proof-first</option><option>Teaching</option><option>Short and direct</option></select></label>
-        <label>Source notes<textarea id="sourceNotes" placeholder="Paste build log, feature notes, verification notes, screenshots summary, or rough transcript."></textarea></label>
-      </section>
-
-      <section class="panel mixer-panel" aria-label="Content settings mixer">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Channel mixer</p><h2>Choose outputs and boundaries.</h2></div></div>
-        <div class="toggle-grid">
-          <label><input id="includeYoutube" type="checkbox" checked /> YouTube title + description</label>
-          <label><input id="includeChapters" type="checkbox" checked /> Chapters</label>
-          <label><input id="includeShorts" type="checkbox" checked /> Short posts</label>
-          <label><input id="includeNewsletter" type="checkbox" checked /> Newsletter blurb</label>
-          <label><input id="includeProof" type="checkbox" checked /> Proof/caveat checklist</label>
-          <label><input id="approvalRequired" type="checkbox" checked /> Human approval required</label>
-        </div>
-        <label>Primary outcome<input id="outcome" maxlength="140" placeholder="Show a real local-first app built and verified today" /></label>
-        <label>Proof notes<textarea id="proofNotes" placeholder="Smoke test passed, browser console clean, phone URL verified, recording rendered."></textarea></label>
-        <label>Caveats / boundaries<textarea id="caveats" placeholder="Draft-only, local browser storage, no external posting or cloud calls."></textarea></label>
-      </section>
-    </section>
-
-    <section class="panel timeline-panel" aria-label="Chapter cutter">
-      <div class="panel-title"><span>03</span><div><p class="kicker">Chapter cutter</p><h2>Auto-cut a replay timeline from the source.</h2></div></div>
-      <div id="chapterRail" class="chapter-rail" aria-live="polite"></div>
-    </section>
-
-    <section class="output-grid">
-      <section class="panel output-panel" aria-label="Generated content packet">
-        <div class="panel-title"><span>04</span><div><p class="kicker">Publishing packet</p><h2>Copy or export the full draft.</h2></div></div>
-        <textarea id="markdownOutput" readonly aria-label="Generated content packet"></textarea>
-      </section>
-      <aside class="panel post-panel" aria-label="Short post mixer">
-        <div class="panel-title"><span>05</span><div><p class="kicker">Short post mixer</p><h2>Ready-to-review snippets.</h2></div></div>
-        <div id="postCards" class="post-cards" aria-live="polite"></div>
-        <div class="export-actions">
-          <button id="copyMarkdown" type="button">Copy markdown</button>
-          <button id="downloadMarkdown" type="button">Download markdown</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-        </div>
-      </aside>
-    </section>
-
-    <section class="review-console" aria-label="Review console">
-      <div>
-        <p class="kicker">Approval gate</p>
-        <h2>Before public posting</h2>
-      </div>
-      <ul id="reviewChecklist"></ul>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
+  <header class="app-header">
+    <div class="shell header-row">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">CR</span>
+        <div class="brand-text">
+          <strong>Content Repurposer</strong>
+          <span class="tagline">One source, a whole publishing packet — drafts only</span>
         </div>
       </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
+      <nav class="header-nav" aria-label="App actions">
+        <a class="btn-ghost btn" href="../../index.html">&larr; All apps</a>
+        <button id="btnDemo" class="btn" type="button">Load demo</button>
+        <button id="btnGuide" class="btn" type="button">How to use</button>
+        <button id="btnTheme" class="btn" type="button" aria-pressed="false" aria-label="Toggle color theme">&#9681; Theme</button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="stat-strip" aria-label="Live metrics" aria-live="polite">
+      <article class="stat"><strong id="statWords">0</strong><span>Source words</span></article>
+      <article class="stat" id="statReadyWrap"><strong id="statReady">0/8</strong><span>Drafts within limits</span></article>
+      <article class="stat" id="statChaptersWrap"><strong id="statChapters">0</strong><span>Chapters</span></article>
+      <article class="stat" id="statFlagsWrap"><strong id="statFlags">0</strong><span>Lint flags</span></article>
+    </section>
+
+    <div class="grid-2">
+      <section class="panel" aria-labelledby="hSource">
+        <h2 id="hSource"><span class="step-no">1</span>Source content</h2>
+        <p class="panel-sub">Paste the long-form piece — a transcript, build log, article draft, or detailed notes. Everything downstream is derived from this.</p>
+        <div class="field-row">
+          <label class="field"><span>Working title</span>
+            <input type="text" id="srcTitle" maxlength="120" placeholder="e.g. Fixing my cafe's no-show problem" />
+          </label>
+          <label class="field"><span>Source type</span>
+            <select id="srcType">
+              <option>Video</option>
+              <option>Podcast episode</option>
+              <option>Article / blog post</option>
+              <option>Build log</option>
+              <option>Talk / webinar</option>
+            </select>
+          </label>
+        </div>
+        <div class="field-row-3">
+          <label class="field"><span>Audience</span>
+            <select id="srcAudience">
+              <option>Owner-operators</option>
+              <option>Builder audience</option>
+              <option>Industry peers</option>
+              <option>Customers / clients</option>
+              <option>Internal team</option>
+            </select>
+          </label>
+          <label class="field"><span>Tone</span>
+            <select id="srcTone">
+              <option>Plain-spoken</option>
+              <option>Proof-first</option>
+              <option>Teaching</option>
+              <option>Founder build log</option>
+              <option>Short and direct</option>
+            </select>
+          </label>
+          <label class="field"><span>Runtime (minutes)</span>
+            <input type="number" id="srcDuration" min="1" max="600" step="1" value="10" />
+          </label>
+        </div>
+        <label class="field"><span>Source content</span>
+          <textarea id="srcContent" rows="9" placeholder="Paste the transcript, build log, or article. Blank lines between sections help the chapter builder."></textarea>
+          <p class="field-hint" id="srcContentHint">0 words · 0 characters</p>
+          <p class="field-error" id="srcError" hidden>Add source content first — drafts and chapters are generated from it.</p>
+        </label>
+        <label class="field"><span>Key takeaway (one line)</span>
+          <input type="text" id="srcTakeaway" maxlength="160" placeholder="The one thing a reader should walk away with" />
+        </label>
+        <label class="field"><span>Proof notes — numbers, receipts, evidence you can back up</span>
+          <textarea id="srcProof" rows="3" placeholder="e.g. No-shows went from 31 to 12 per week over 6 weeks; screenshots of the booking log."></textarea>
+        </label>
+        <label class="field"><span>Caveats &amp; boundaries</span>
+          <textarea id="srcCaveats" rows="2" placeholder="e.g. Single location, 8-week sample, results not typical."></textarea>
+        </label>
+        <div class="panel-actions">
+          <button id="btnGenerate" class="btn-primary" type="button">Generate all drafts</button>
+          <button id="btnSuggestChapters2" class="btn" type="button">Suggest chapters</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="hLint">
+        <h2 id="hLint"><span class="step-no">2</span>Claim-check lint</h2>
+        <p class="panel-sub">Live scan of every draft for superlatives, absolutes, bait wording, and stats that have no matching proof note. Fix blockers before anything ships.</p>
+        <div class="lint-summary" id="lintSummary"></div>
+        <div id="lintBody" aria-live="polite">
+          <div class="empty-state">Nothing to lint yet.<br />Paste source content and generate drafts to run the claim check.</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="hDrafts">
+      <h2 id="hDrafts"><span class="step-no">3</span>Platform drafts</h2>
+      <p class="panel-sub">Every card is editable — the generator gives you a starting point, you make it true and yours. Counters show hard platform limits.</p>
+      <div class="draft-grid">
+        <article class="draft-card" id="card-ytTitle">
+          <header class="card-head">
+            <h3>YouTube title options</h3>
+            <span class="counter" id="c-ytTitleMeta">limit 100</span>
+          </header>
+          <p class="card-meta">Hard limit 100 characters; about 70 or fewer avoids truncation in feeds. Pick the option that goes in the packet.</p>
+          <div class="title-row">
+            <input type="radio" name="ytPrimary" value="0" id="r-yt0" checked aria-label="Use title option 1 in the packet" />
+            <input type="text" id="d-ytTitle0" maxlength="200" aria-label="YouTube title option 1" placeholder="Title option 1" />
+            <span class="counter" id="c-ytTitle0">0/100</span>
+          </div>
+          <div class="title-row">
+            <input type="radio" name="ytPrimary" value="1" id="r-yt1" aria-label="Use title option 2 in the packet" />
+            <input type="text" id="d-ytTitle1" maxlength="200" aria-label="YouTube title option 2" placeholder="Title option 2" />
+            <span class="counter" id="c-ytTitle1">0/100</span>
+          </div>
+          <div class="title-row">
+            <input type="radio" name="ytPrimary" value="2" id="r-yt2" aria-label="Use title option 3 in the packet" />
+            <input type="text" id="d-ytTitle2" maxlength="200" aria-label="YouTube title option 3" placeholder="Title option 3" />
+            <span class="counter" id="c-ytTitle2">0/100</span>
+          </div>
+          <div class="card-foot">
+            <div class="chips" id="chips-ytTitle"></div>
+            <button class="btn-ghost btn" type="button" data-copy="ytPrimary">Copy pick</button>
+          </div>
+        </article>
+
+        <article class="draft-card" id="card-ytDesc">
+          <header class="card-head">
+            <h3>YouTube description</h3>
+            <span class="counter" id="c-ytDesc">0/5000</span>
+          </header>
+          <p class="card-meta">Limit 5,000. The first ~157 characters show above the fold — front-load the hook.</p>
+          <textarea id="d-ytDesc" rows="7" aria-label="YouTube description draft" placeholder="Hook line, what the piece covers, receipts, caveats."></textarea>
+          <div class="card-foot">
+            <div class="chips" id="chips-ytDesc"></div>
+            <button class="btn-ghost btn" type="button" data-copy="ytDesc">Copy</button>
+          </div>
+        </article>
+
+        <article class="draft-card" id="card-xPost">
+          <header class="card-head">
+            <h3>Short post (X / Mastodon)</h3>
+            <span class="counter" id="c-xPost">0/280</span>
+          </header>
+          <p class="card-meta">280-character hard limit. One idea, one receipt, no hashtag soup.</p>
+          <textarea id="d-xPost" rows="4" aria-label="Short post draft" placeholder="The takeaway plus one concrete number or detail."></textarea>
+          <div class="card-foot">
+            <div class="chips" id="chips-xPost"></div>
+            <button class="btn-ghost btn" type="button" data-copy="xPost">Copy</button>
+          </div>
+        </article>
+
+        <article class="draft-card" id="card-liPost">
+          <header class="card-head">
+            <h3>LinkedIn post</h3>
+            <span class="counter" id="c-liPost">0/3000</span>
+          </header>
+          <p class="card-meta">Limit 3,000. Only the first ~210 characters show before &ldquo;see more&rdquo; — earn the click honestly.</p>
+          <textarea id="d-liPost" rows="7" aria-label="LinkedIn post draft" placeholder="Hook, three concrete points, honest caveat."></textarea>
+          <div class="card-foot">
+            <div class="chips" id="chips-liPost"></div>
+            <button class="btn-ghost btn" type="button" data-copy="liPost">Copy</button>
+          </div>
+        </article>
+
+        <article class="draft-card" id="card-nlSubject">
+          <header class="card-head">
+            <h3>Newsletter subject</h3>
+            <span class="counter" id="c-nlSubject">0/150</span>
+          </header>
+          <p class="card-meta">Aim for 65 characters or fewer — most inboxes truncate beyond that.</p>
+          <input type="text" id="d-nlSubject" maxlength="200" aria-label="Newsletter subject draft" placeholder="Subject line" />
+          <div class="card-foot">
+            <div class="chips" id="chips-nlSubject"></div>
+            <button class="btn-ghost btn" type="button" data-copy="nlSubject">Copy</button>
+          </div>
+        </article>
+
+        <article class="draft-card" id="card-nlBody">
+          <header class="card-head">
+            <h3>Newsletter blurb</h3>
+            <span class="counter" id="c-nlBody">0/2000</span>
+          </header>
+          <p class="card-meta">Soft limit 2,000 characters — a teaser that links to the full piece, not a rewrite of it.</p>
+          <textarea id="d-nlBody" rows="7" aria-label="Newsletter blurb draft" placeholder="What happened, the receipt, what's next."></textarea>
+          <div class="card-foot">
+            <div class="chips" id="chips-nlBody"></div>
+            <button class="btn-ghost btn" type="button" data-copy="nlBody">Copy</button>
+          </div>
+        </article>
       </div>
     </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
+
+    <section class="panel" aria-labelledby="hChapters">
+      <h2 id="hChapters"><span class="step-no">4</span>Chapter &amp; timestamp builder</h2>
+      <p class="panel-sub">YouTube needs the first chapter at 00:00, ascending timestamps, and at least three chapters for markers to appear. Auto-suggest spreads chapters across your runtime by section length.</p>
+      <div id="chapterList" class="chapter-list"></div>
+      <div class="panel-actions">
+        <button id="btnAddChapter" class="btn" type="button">+ Add chapter</button>
+        <button id="btnSuggestChapters" class="btn" type="button">Auto-suggest from source</button>
       </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
+      <ul class="chapter-issues" id="chapterIssues"></ul>
+      <h3 class="panel-sub" style="margin-top:14px">Paste-ready chapter block</h3>
+      <pre class="chapter-preview" id="chapterPreview"></pre>
+    </section>
+
+    <section class="panel" aria-labelledby="hExport">
+      <h2 id="hExport"><span class="step-no">5</span>Export &amp; handoff</h2>
+      <p class="panel-sub">The packet bundles titles, description, chapters, posts, newsletter, proof, caveats, and the lint report into one reviewable document.</p>
+      <div class="boundary-note">
+        <span aria-hidden="true">&#9888;</span>
+        <span><strong>Drafts only.</strong> Nothing here posts, uploads, or sends. A human reviews and approves every piece before it goes public.</span>
+      </div>
+      <label class="check-row">
+        <input type="checkbox" id="apGate" checked />
+        Human approval required before publishing (stamped into every export)
+      </label>
+      <pre class="packet-preview" id="packetPreview" aria-label="Packet markdown preview"></pre>
+      <div class="panel-actions">
+        <button id="btnCopyMd" class="btn-primary" type="button">Copy Markdown packet</button>
+        <button id="btnDlMd" class="btn" type="button">Download .md</button>
+        <button id="btnDlJson" class="btn" type="button">Download JSON</button>
+        <button id="btnImport" class="btn" type="button">Import JSON</button>
+        <button id="btnPrint" class="btn" type="button">Print packet</button>
+        <button id="btnReset" class="btn-danger" type="button">Reset</button>
       </div>
     </section>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <div class="shell">
+      <span>Local-first &middot; No accounts &middot; No tracking — data stays in this browser</span>
+      <a href="../../index.html">&larr; All apps</a>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden>
+    <span id="toastMsg"></span>
+    <button id="toastUndo" class="btn-ghost btn" type="button" hidden>Undo</button>
+  </div>
+
+  <dialog id="guide" class="guide" aria-labelledby="guideTitle">
+    <h2 id="guideTitle">How to use Content Repurposer</h2>
+    <p class="panel-sub">Turn one long-form piece into a full publishing packet — every output stays a draft until a human approves it.</p>
+    <ol>
+      <li><strong>Paste your source.</strong> Drop a transcript, build log, or article into <em>Source content</em>, set the type, audience, tone, and runtime. Blank lines between sections help the chapter builder.</li>
+      <li><strong>Add takeaway, proof, and caveats.</strong> The takeaway seeds titles and hooks; proof notes are what the claim-check lint verifies stats against; caveats keep drafts honest.</li>
+      <li><strong>Generate all drafts.</strong> One click fills every platform card: three YouTube title options, description, short post, LinkedIn post, and newsletter subject + blurb.</li>
+      <li><strong>Edit inside the limits.</strong> Every card has a live character counter against the real platform limit — amber near the limit, red over it. Pick your primary YouTube title with the radio buttons.</li>
+      <li><strong>Build chapters.</strong> Use <em>Auto-suggest from source</em>, then adjust timestamps (mm:ss) and labels. The builder validates the 00:00 start, ascending order, and the three-chapter minimum.</li>
+      <li><strong>Clear the lint.</strong> The claim-check panel flags superlatives, absolutes, bait wording, and any stat that has no matching proof note. Resolve blockers, reconsider warnings.</li>
+      <li><strong>Export the packet.</strong> Copy the Markdown, download .md or JSON, or print. The approval boundary is stamped into every export.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table>
+      <thead><tr><th>Key</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the Markdown packet</td></tr>
+      </tbody>
+    </table>
+    <div class="dialog-foot">
+      <button id="btnCloseGuide" class="btn-primary" type="button">Got it</button>
+    </div>
+  </dialog>
+
+  <div id="printDoc" class="print-doc" aria-hidden="true"></div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden />
+
   <script src="./app.js"></script>
 </body>
 </html>

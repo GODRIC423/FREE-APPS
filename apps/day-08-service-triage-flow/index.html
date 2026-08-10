@@ -1,333 +1,142 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
   <title>Service Triage Flow</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-  <main class="triage-shell">
-    <header class="flow-header" aria-label="Service Triage Flow header">
-      <div class="signal-tower" aria-hidden="true"><span></span><span></span><span></span></div>
-      <div class="header-copy">
-        <p class="kicker">Day 08 · Service Triage Flow</p>
-        <h1>Route a messy service call without guessing.</h1>
-        <p class="lede">A local-first call/admin decision flow that turns caller notes into urgency, category, route, questions, and a draft-only handoff packet. It never sends messages, changes schedules, or touches customer systems.</p>
-      </div>
-      <div class="header-actions">
-        <button id="demoBtn" type="button">Load demo</button>
-        <button id="resetBtn" type="button">Blank call</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </div>
-    </header>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-    <section class="switchboard" aria-label="Triage switchboard metrics">
-      <article><span>Urgency</span><strong id="metricUrgency">-</strong></article>
-      <article><span>Route</span><strong id="metricRoute">-</strong></article>
-      <article><span>Missing answers</span><strong id="metricMissing">0</strong></article>
-      <article><span>Safety mode</span><strong>Draft only</strong></article>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">ST</span>
+      <div class="brand-text">
+        <p class="brand-name">Service Triage Flow</p>
+        <p class="brand-tag">Urgency, routing, next questions — never promises.</p>
+      </div>
+      <a class="back-link" href="../../index.html">← All apps</a>
+    </div>
+    <nav class="header-nav" aria-label="App controls">
+      <button id="demoBtn" type="button" class="btn">Load demo</button>
+      <button id="resetBtn" type="button" class="btn">Reset</button>
+      <button id="helpBtn" type="button" class="btn">How to use</button>
+      <button id="themeBtn" type="button" class="btn" aria-pressed="false">☀ Light</button>
+    </nav>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="stat-strip" aria-label="Live triage metrics" aria-live="polite">
+      <article class="stat"><strong id="statUrgency">Low</strong><span>Draft urgency</span></article>
+      <article class="stat"><strong id="statScore">0</strong><span>Urgency score / 100</span></article>
+      <article class="stat"><strong id="statLogged">0</strong><span>Calls logged</span></article>
+      <article class="stat"><strong id="statCritical">0</strong><span>Critical today</span></article>
     </section>
 
-    <section class="operator-grid">
-      <section class="panel caller-card" aria-label="Caller intake">
+    <div class="layout-grid">
+      <section class="panel wizard-panel" aria-labelledby="wizardTitle">
         <div class="panel-head">
-          <span>01</span>
-          <div>
-            <p class="kicker">Caller card</p>
-            <h2>What did they say?</h2>
-          </div>
+          <h1 id="wizardTitle">Triage wizard</h1>
+          <p class="panel-sub">Step through the call. The path branches on the urgency cues you capture.</p>
         </div>
-        <div class="form-grid">
-          <label>Caller / business
-            <input id="caller" maxlength="90" />
-          </label>
-          <label>Location / site
-            <input id="site" maxlength="90" />
-          </label>
-          <label>Service type
-            <select id="serviceType">
-              <option>HVAC</option>
-              <option>Plumbing</option>
-              <option>Electrical</option>
-              <option>Appliance</option>
-              <option>General service</option>
-            </select>
-          </label>
-          <label>Caller says
-            <textarea id="callerSays" maxlength="520"></textarea>
-          </label>
-          <label>Constraints / timing
-            <textarea id="constraints" maxlength="360"></textarea>
-          </label>
+        <ol id="stepTabs" class="step-tabs" aria-label="Wizard steps"></ol>
+        <div id="stepBody" class="step-body"></div>
+        <div class="wizard-nav">
+          <button id="backBtn" type="button" class="btn">← Back</button>
+          <p id="stepHint" class="step-hint" aria-live="polite"></p>
+          <button id="nextBtn" type="button" class="btn btn-primary">Next step →</button>
         </div>
       </section>
 
-      <aside class="panel route-rail" aria-label="Routing rail">
-        <div class="panel-head compact">
-          <span>02</span>
-          <div>
-            <p class="kicker">Route rail</p>
-            <h2>Decision path</h2>
+      <aside class="panel summary-panel" aria-label="Routing recommendation">
+        <div class="panel-head">
+          <h2>Routing recommendation</h2>
+          <p class="panel-sub">Recomputed live from cues and answers.</p>
+        </div>
+        <div aria-live="polite">
+          <div class="summary-band">
+            <span id="sumBand" class="badge band-low">Low</span>
+            <span id="sumScore" class="sum-score">0/100</span>
           </div>
+          <div class="meter" aria-hidden="true"><span id="sumBar" class="meter-fill"></span></div>
+          <dl class="route-facts">
+            <div><dt>Category</dt><dd id="sumCategory">Scheduled</dd></div>
+            <div><dt>Route to</dt><dd id="sumRoute">Standard booking queue</dd></div>
+            <div><dt>Queue note</dt><dd id="sumQueue">—</dd></div>
+          </dl>
+          <h3 class="sum-heading">Why this routing</h3>
+          <ul id="reasonList" class="reason-list"></ul>
+          <h3 class="sum-heading">Next questions to ask</h3>
+          <ol id="questionList" class="question-list"></ol>
         </div>
-        <div id="routeTrack" class="route-track" aria-live="polite"></div>
+        <p class="boundary-note">This app drafts a handoff for a human dispatcher. It never contacts customers, books jobs, or promises price, ETA, or outcome.</p>
       </aside>
+    </div>
+
+    <section class="panel log-panel" aria-labelledby="logTitle">
+      <div class="panel-head">
+        <h2 id="logTitle">Call log <span id="logCount" class="log-count"></span></h2>
+        <p class="panel-sub">Every logged call keeps its routing snapshot — print it, copy it, or delete it (with undo).</p>
+      </div>
+      <div id="logList" class="log-list"></div>
     </section>
 
-    <section class="flow-board panel" aria-label="Triage questions">
-      <div class="panel-head wide">
-        <span>03</span>
-        <div>
-          <p class="kicker">Question flow</p>
-          <h2>Ask enough to route, not enough to diagnose</h2>
-        </div>
+    <section class="panel export-panel" aria-labelledby="exportTitle">
+      <div class="panel-head">
+        <h2 id="exportTitle">Export &amp; handoff</h2>
+        <p class="panel-sub">Everything exported here is a draft for human review — nothing is sent anywhere.</p>
       </div>
-      <div class="question-ladder">
-        <label><input id="hazard" type="checkbox" /> Active hazard: leak, smoke, burning smell, no heat/cooling for vulnerable person, electrical risk</label>
-        <label><input id="access" type="checkbox" /> Access details captured: gate, roof, attic, keys, pets, parking, contact on site</label>
-        <label><input id="photos" type="checkbox" /> Photo/model/serial request noted for manual follow-up</label>
-        <label><input id="approvedBoundary" type="checkbox" /> Caller was not promised price, ETA, availability, or outcome</label>
+      <div class="export-actions">
+        <button id="copyMdBtn" type="button" class="btn btn-primary">Copy triage card (Markdown)</button>
+        <button id="printBtn" type="button" class="btn">Print triage card</button>
+        <button id="downloadJsonBtn" type="button" class="btn">Download JSON backup</button>
+        <button id="importBtn" type="button" class="btn">Import JSON</button>
+        <input id="importFile" type="file" accept="application/json,.json" hidden>
+        <button id="downloadCsvBtn" type="button" class="btn">Download call log CSV</button>
       </div>
-      <div class="category-picker" aria-label="Category picker">
-        <button class="category" data-category="Emergency" type="button">Emergency</button>
-        <button class="category" data-category="Same-day" type="button">Same-day</button>
-        <button class="category" data-category="Scheduled" type="button">Scheduled</button>
-        <button class="category" data-category="Estimate" type="button">Estimate</button>
-        <button class="category" data-category="Callback" type="button">Callback</button>
-      </div>
-    </section>
-
-    <section class="panel output-panel" aria-label="Generated triage packet">
-      <div class="panel-head wide">
-        <span>04</span>
-        <div>
-          <p class="kicker">Operator packet</p>
-          <h2>Copyable draft-only handoff</h2>
-        </div>
-        <div class="header-actions">
-          <button id="copyMarkdown" type="button">Copy markdown</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-        </div>
-      </div>
-      <div id="packetCards" class="packet-cards" aria-live="polite"></div>
-      <textarea id="exportText" readonly aria-label="Generated service triage packet"></textarea>
-    </section>
-    <!-- DAY09_WARM_OUTREACH_BRIDGE_START -->
-    <section id="warm-outreach-bridge" class="warm-outreach-bridge panel" aria-label="Warm Outreach Lab bridge">
-      <div class="warm-outreach-head">
-        <span>WO</span>
-        <div>
-          <p class="kicker">Day 9 enhancement</p>
-          <h2>Warm Outreach Lab bridge</h2>
-        </div>
-        <div class="warm-outreach-actions">
-          <button id="copyWarmOutreachBridge" type="button">Copy outreach starter</button>
-          <button id="downloadWarmOutreachBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="warm-outreach-intro">Turn this app's current output into a human-reviewed warm outreach starter: prospect context, noticed issue, proof cue, constraint, and draft-only ask.</p>
-      <div id="warmOutreachCards" class="warm-outreach-cards" aria-live="polite"></div>
-      <textarea id="warmOutreachText" readonly aria-label="Generated Warm Outreach Lab bridge"></textarea>
-    </section>
-    <!-- DAY09_WARM_OUTREACH_BRIDGE_END -->
-
-    <!-- DAY10_PILOT_PRICING_BRIDGE_START -->
-    <section id="pilot-pricing-bridge" class="pilot-pricing-bridge panel" aria-label="Pilot Pricing Calculator bridge">
-      <div class="pilot-pricing-head">
-        <span>$$</span>
-        <div>
-          <p class="kicker">Day 10 enhancement</p>
-          <h2>Pilot Pricing Calculator bridge</h2>
-        </div>
-        <div class="pilot-pricing-actions">
-          <button id="copyPilotPricingBridge" type="button">Copy pricing memo</button>
-          <button id="downloadPilotPricingBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="pilot-pricing-intro">Convert this app's current output into a draft pilot-pricing note: recovered value cue, effort/risk proxy, proof-window boundary, and a review-ready range.</p>
-      <div id="pilotPricingCards" class="pilot-pricing-cards" aria-live="polite"></div>
-      <textarea id="pilotPricingText" readonly aria-label="Generated Pilot Pricing Calculator bridge"></textarea>
-    </section>
-    <!-- DAY10_PILOT_PRICING_BRIDGE_END -->
-
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START -->
-    <section id="local-biz-snapshot-bridge" class="local-biz-snapshot-bridge panel" aria-label="Local Biz Snapshot bridge">
-      <div class="local-biz-snapshot-head">
-        <span>LB</span>
-        <div>
-          <p class="kicker">Day 11 enhancement</p>
-          <h2>Local Biz Snapshot bridge</h2>
-        </div>
-        <div class="local-biz-snapshot-actions">
-          <button id="copyLocalBizSnapshotBridge" type="button">Copy snapshot</button>
-          <button id="downloadLocalBizSnapshotBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="local-biz-snapshot-intro">Turn this app's current output into a prospect dossier: business profile cue, likely lead leaks, first wedge, and human-reviewed next step.</p>
-      <div id="localBizSnapshotCards" class="local-biz-snapshot-cards" aria-live="polite"></div>
-      <textarea id="localBizSnapshotText" readonly aria-label="Generated Local Biz Snapshot bridge"></textarea>
-    </section>
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END -->
-
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START -->
-    <section id="script-rehearsal-room-bridge" class="script-rehearsal-room-bridge panel" aria-label="Script Rehearsal Room bridge">
-      <div class="script-rehearsal-head">
-        <span>SR</span>
-        <div>
-          <p class="kicker">Day 12 enhancement</p>
-          <h2>Script Rehearsal Room bridge</h2>
-        </div>
-        <div class="script-rehearsal-actions">
-          <button id="copyScriptRehearsalBridge" type="button">Copy run sheet</button>
-          <button id="downloadScriptRehearsalBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="script-rehearsal-intro">Turn this app's current output into a call-practice run sheet: objective, opening line, discovery prompts, objection card, and human-review boundary.</p>
-      <div id="scriptRehearsalCards" class="script-rehearsal-cards" aria-live="polite"></div>
-      <textarea id="scriptRehearsalText" readonly aria-label="Generated Script Rehearsal Room bridge"></textarea>
-    </section>
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END -->
-
-  
-    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
-      <div class="panel-title">
-        <span>PV</span>
-        <div>
-          <p class="kicker">Day 13 enhancement</p>
-          <h2>Proof Vault bridge</h2>
-        </div>
-      </div>
-      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
-      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
-      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
-      <div class="proof-vault-actions">
-        <button id="copyProofVault" type="button">Copy proof card</button>
-        <button id="downloadProofVault" type="button">Download proof JSON</button>
-      </div>
-    </section>
-  
-    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
-      <div class="panel-title">
-        <span>SOP</span>
-        <div>
-          <p class="kicker">Day 14 enhancement</p>
-          <h2>SOP Builder bridge</h2>
-        </div>
-      </div>
-      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
-      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
-      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
-      <div class="sop-builder-actions">
-        <button id="copySopBuilder" type="button">Copy SOP draft</button>
-        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
-      </div>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
+      <label class="field preview-field">Markdown preview (current call)
+        <textarea id="exportPreview" class="preview" rows="10" readonly></textarea>
+      </label>
     </section>
   </main>
+
+  <footer class="app-footer">
+    <p>Local-first · No accounts · No tracking — data stays in this browser.</p>
+    <a href="../../index.html">← All apps</a>
+  </footer>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="helpModal" class="help-modal" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">How to use Service Triage Flow</h2>
+      <button id="helpCloseBtn" type="button" class="btn btn-ghost" aria-label="Close guide">✕</button>
+    </div>
+    <p class="help-lede">Guide a call-taker through triaging an inbound service request: capture the call, spot urgency cues, walk the safety checklist, and hand off a routing recommendation — without promising anything.</p>
+    <ol class="help-steps">
+      <li><strong>Load the demo.</strong> A realistic restaurant AC call lands on the review step so you can see urgency, category, route, and reasons immediately.</li>
+      <li><strong>Step 1 · Caller.</strong> Capture who is calling, a callback number, the site, and the service type. Caller and site are required.</li>
+      <li><strong>Step 2 · Issue.</strong> Type what the caller says in their own words. Urgency cue chips light up as you type — negated phrases like “no smoke” are ignored. Flag vulnerable occupants and business impact.</li>
+      <li><strong>Step 3 · Safety.</strong> Walk the hazard checklist out loud. A severe hazard (gas, smoke, CO, live wiring) shows a caller-safety script and offers a fast-track straight to review.</li>
+      <li><strong>Step 4 · Logistics.</strong> Access notes, on-site window, constraints, repeat/warranty context, and whether the caller wants an estimate.</li>
+      <li><strong>Step 5 · Review &amp; route.</strong> Check the urgency score, category, route, and the reasons behind them. Override the category if your judgment differs — the auto suggestion stays on record. Confirm the no-promises boundary, then <em>Log this call</em>.</li>
+      <li><strong>Call log.</strong> Each logged call keeps its snapshot. Print a triage card, copy its Markdown, or delete it — Undo is available for 7 seconds.</li>
+      <li><strong>Export &amp; handoff.</strong> Copy Markdown, print the card, download or import a JSON backup, or export the log as CSV. Every output is a draft for human review.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="help-keys">
+      <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+      <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+      <tr><td><kbd>Ctrl/Cmd</kbd> + <kbd>S</kbd></td><td>Copy the triage card as Markdown</td></tr>
+      <tr><td><kbd>Alt</kbd> + <kbd>→</kbd> / <kbd>←</kbd></td><td>Next / previous wizard step</td></tr>
+    </table>
+    <p class="help-note">Boundary: this tool never sends messages, books jobs, or updates customer systems. A human dispatcher confirms price, ETA, and availability.</p>
+  </dialog>
+
+  <div id="printCard" class="print-card" aria-hidden="true"></div>
+
   <script src="./app.js"></script>
 </body>
 </html>

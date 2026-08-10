@@ -1,0 +1,153 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+@theme {
+  --font-display: "Archivo Narrow", system-ui, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* cockpit / night-sky chrome */
+  --color-sky-950: #060f1b;
+  --color-sky-900: #0a1a2c;
+  --color-sky-850: #0e2136;
+  --color-sky-800: #132a42;
+  --color-sky-700: #1b3a56;
+  --color-sky-600: #234d70;
+  --color-sky-500: #2f668e;
+  --color-sky-400: #4a86ac;
+  --color-sky-300: #79aed0;
+  --color-sky-200: #aed3ea;
+  --color-sky-100: #dcf0fb;
+
+  /* sectional-chart paper (data surfaces) */
+  --color-chart-paper: #f6efdb;
+  --color-chart-paper-dim: #ece1bf;
+  --color-chart-ink: #1c2b3c;
+  --color-chart-ink-dim: #4c5c6d;
+  --color-chart-line: #9c8a5b;
+  --color-chart-blue: #2a5c86;
+
+  /* signal colors */
+  --color-go: #2b9d6c;
+  --color-go-deep: #175c3d;
+  --color-nogo: #d8453a;
+  --color-nogo-deep: #8f2a22;
+  --color-hold: #dc9a26;
+  --color-hold-deep: #8f611a;
+  --color-runway: #ffce3d;
+  --color-magenta: #b5468f;
+}
+
+/* ---------- ambient ground: dusk sky, altitude bands, faint waypoint grid ---------- */
+body {
+  background-color: var(--color-sky-950);
+  background-image:
+    radial-gradient(1100px 560px at 18% -8%, rgb(74 134 172 / 0.16), transparent 60%),
+    radial-gradient(900px 500px at 92% 108%, rgb(181 70 143 / 0.08), transparent 65%),
+    repeating-linear-gradient(0deg, transparent 0 63px, rgb(174 211 234 / 0.035) 63px 64px),
+    repeating-linear-gradient(90deg, transparent 0 63px, rgb(174 211 234 / 0.035) 63px 64px),
+    linear-gradient(180deg, #060f1b 0%, #0a1a2c 55%, #0c2033 100%);
+  color: var(--color-sky-100);
+  font-family: var(--font-body);
+}
+
+::selection { background: var(--color-runway); color: var(--color-sky-950); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-sky-600) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--color-sky-600); border: 3px solid var(--color-sky-950); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible { outline: 2px solid var(--color-runway); outline-offset: 2px; border-radius: 2px; }
+
+.font-display { font-family: var(--font-display); }
+.font-mono-tab { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ---------- flight-deck components ---------- */
+@layer components {
+  .panel {
+    background: linear-gradient(180deg, var(--color-sky-850), var(--color-sky-900));
+    border: 1px solid var(--color-sky-700);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.05) inset,
+      0 14px 32px -18px rgb(0 0 0 / 0.85);
+  }
+  .panel-sunk {
+    background: linear-gradient(180deg, var(--color-sky-950), var(--color-sky-900));
+    border: 1px solid var(--color-sky-700);
+    box-shadow: 0 2px 10px rgb(0 0 0 / 0.55) inset;
+  }
+  .chart {
+    background:
+      repeating-linear-gradient(0deg, transparent 0 23px, rgb(42 92 134 / 0.14) 23px 24px),
+      repeating-linear-gradient(90deg, transparent 0 23px, rgb(42 92 134 / 0.14) 23px 24px),
+      radial-gradient(500px 200px at 80% -10%, rgb(255 255 255 / 0.55), transparent 60%),
+      var(--color-chart-paper);
+    color: var(--color-chart-ink);
+    box-shadow: 0 10px 26px -14px rgb(0 0 0 / 0.85), 0 0 0 1px rgb(0 0 0 / 0.3);
+  }
+  .label-tape {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .placard {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border: 2px solid currentColor;
+    border-radius: 4px;
+    padding: 0.18em 0.6em;
+  }
+  .hazard-strip {
+    background-image: repeating-linear-gradient(-45deg, var(--color-runway) 0 12px, #14202e 12px 24px);
+  }
+  .dashed-route {
+    background-image: repeating-linear-gradient(90deg, var(--color-sky-300) 0 8px, transparent 8px 16px);
+  }
+}
+
+/* ---------- motion ---------- */
+@keyframes toast-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes beacon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes sweep {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -64; }
+}
+@keyframes stamp-in {
+  0% { transform: rotate(-4deg) scale(1.8); opacity: 0; }
+  60% { transform: rotate(-4deg) scale(0.95); opacity: 1; }
+  100% { transform: rotate(-4deg) scale(1); opacity: 1; }
+}
+.anim-toast { animation: toast-up 0.25s ease-out both; }
+.anim-beacon { animation: beacon-pulse 2.2s ease-in-out infinite; }
+.anim-sweep { animation: sweep 1.4s linear infinite; }
+.anim-stamp { animation: stamp-in 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
+
+/* ---------- print: the flight log only ---------- */
+.print-only { display: none; }
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-only h1, .print-only h2, .print-only h3 { color: #111; }
+  .print-only table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .print-only th, .print-only td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+  .print-only .pb { page-break-inside: avoid; }
+}

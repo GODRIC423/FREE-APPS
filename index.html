@@ -1,38 +1,217 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FREE APPS</title>
-<style>body{font-family:system-ui;margin:2rem;line-height:1.5;max-width:1060px} a{color:#0b63ce}.note{padding:1rem;background:#f5f7fb;border:1px solid #d9e1f2;border-radius:12px}section{margin-top:2rem}li{margin:.35rem 0}</style>
-</head><body><h1>FREE APPS</h1>
-<p class="note">Static local-first browser apps. No backend, no API keys, no private-repo access, no account-writing integrations, no live loadboard scraping, no load posting, and no carrier contact.</p>
-<section><h2>Original 30 App Daily Ritual exports</h2><ol>
-<li><a href="apps/day-01-pilot-forge/index.html">Day 01 — Pilot Forge</a></li>
-<li><a href="apps/day-02-lead-leak-radar/index.html">Day 02 — Lead Leak Radar</a></li>
-<li><a href="apps/day-03-owner-report-studio/index.html">Day 03 — Owner Report Studio</a></li>
-<li><a href="apps/day-04-approval-gate-desk/index.html">Day 04 — Approval Gate Desk</a></li>
-<li><a href="apps/day-05-quote-chase-board/index.html">Day 05 — Quote Chase Board</a></li>
-<li><a href="apps/day-06-review-request-composer/index.html">Day 06 — Review Request Composer</a></li>
-<li><a href="apps/day-07-technician-brief-builder/index.html">Day 07 — Technician Brief Builder</a></li>
-<li><a href="apps/day-08-service-triage-flow/index.html">Day 08 — Service Triage Flow</a></li>
-<li><a href="apps/day-09-warm-outreach-lab/index.html">Day 09 — Warm Outreach Lab</a></li>
-<li><a href="apps/day-10-pilot-pricing-calculator/index.html">Day 10 — Pilot Pricing Calculator</a></li>
-<li><a href="apps/day-11-local-biz-snapshot/index.html">Day 11 — Local Biz Snapshot</a></li>
-<li><a href="apps/day-12-script-rehearsal-room/index.html">Day 12 — Script Rehearsal Room</a></li>
-<li><a href="apps/day-13-proof-vault/index.html">Day 13 — Proof Vault</a></li>
-<li><a href="apps/day-14-sop-builder/index.html">Day 14 — SOP Builder</a></li>
-<li><a href="apps/day-15-daily-cash-board/index.html">Day 15 — Daily Cash Board</a></li>
-<li><a href="apps/day-16-meeting-follow-up-kit/index.html">Day 16 — Meeting Follow Up Kit</a></li>
-<li><a href="apps/day-17-credential-handoff-checklist/index.html">Day 17 — Credential Handoff Checklist</a></li>
-<li><a href="apps/day-18-content-repurposer/index.html">Day 18 — Content Repurposer</a></li>
-<li><a href="apps/day-19-home-service-route-planner/index.html">Day 19 — Home Service Route Planner</a></li>
-<li><a href="apps/day-20-intake-form-builder/index.html">Day 20 — Intake Form Builder</a></li>
-</ol></section><section><h2>Backhaul 30 Hour Build Stack exports</h2><ol>
-<li><a href="apps/hour-01-loadboard-signal-console/index.html">Hour 01 — Loadboard Signal Console</a></li>
-<li><a href="apps/hour-02-backhaul-pairing-optimizer/index.html">Hour 02 — Backhaul Pairing Optimizer</a></li>
-<li><a href="apps/hour-03-lane-margin-simulator/index.html">Hour 03 — Lane Margin Simulator</a></li>
-<li><a href="apps/hour-04-carrier-vetting-radar/index.html">Hour 04 — Carrier Vetting Radar</a></li>
-<li><a href="apps/hour-05-tender-packet-builder/index.html">Hour 05 — Tender Packet Builder</a></li>
-<li><a href="apps/hour-06-load-lifecycle-command-board/index.html">Hour 06 — Load Lifecycle Command Board</a></li>
-<li><a href="apps/hour-07-detention-risk-calculator/index.html">Hour 07 — Detention Risk Calculator</a></li>
-<li><a href="apps/hour-08-appointment-window-optimizer/index.html">Hour 08 — Appointment Window Optimizer</a></li>
-<li><a href="apps/hour-09-document-compliance-vault/index.html">Hour 09 — Document Compliance Vault</a></li>
-</ol></section></body></html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FREE APPS — Claude Fable 5 Remake</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%235b6cff'/%3E%3Ctext x='50' y='68' font-size='52' font-family='sans-serif' font-weight='800' fill='white' text-anchor='middle'%3EFA%3C/text%3E%3C/svg%3E" />
+<style>
+:root {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --radius: 14px; --radius-sm: 9px;
+  --shadow: 0 8px 28px rgb(0 0 0 / .18);
+}
+[data-theme="dark"] {
+  --bg: #0b0e14; --bg-panel: #121826; --bg-inset: #0e1420;
+  --text: #e8ecf4; --text-dim: #9aa5b8; --line: #232c3f;
+}
+[data-theme="light"] {
+  --bg: #f4f6fa; --bg-panel: #ffffff; --bg-inset: #eef1f7;
+  --text: #131a26; --text-dim: #5a6578; --line: #dde3ee;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; font-family: var(--font); background: var(--bg); color: var(--text);
+  line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.shell { max-width: 1200px; margin: 0 auto; padding: 0 20px 64px; }
+header.top {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 14px;
+  padding: 14px 20px; margin: 0 -20px 28px; background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+}
+.mark {
+  width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center;
+  font-weight: 800; font-size: 15px; color: #fff; flex: none;
+  background: linear-gradient(135deg, oklch(62% .19 260), oklch(66% .17 320));
+}
+header.top h1 { font-size: 17px; margin: 0; line-height: 1.2; }
+header.top p { margin: 0; font-size: 12.5px; color: var(--text-dim); }
+.top-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.btn {
+  font: inherit; font-size: 13.5px; padding: 8px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line); background: var(--bg-panel); color: var(--text); cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.btn:hover { transform: translateY(-1px); border-color: var(--text-dim); }
+.hero { padding: 26px 0 8px; max-width: 780px; }
+.eyebrow {
+  font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700;
+  color: oklch(70% .15 260); margin: 0 0 10px;
+}
+.hero h2 { font-size: clamp(26px, 4.2vw, 40px); line-height: 1.12; margin: 0 0 12px; letter-spacing: -.02em; }
+.hero > p { color: var(--text-dim); font-size: 16px; margin: 0 0 18px; }
+.badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 30px; }
+.badge {
+  font-size: 12.5px; padding: 5px 11px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--bg-panel); color: var(--text-dim);
+}
+.toolbar { display: flex; gap: 12px; align-items: center; margin: 6px 0 20px; flex-wrap: wrap; }
+.search {
+  flex: 1 1 260px; max-width: 420px; font: inherit; font-size: 14px; padding: 10px 14px;
+  border-radius: var(--radius-sm); border: 1px solid var(--line);
+  background: var(--bg-panel); color: var(--text);
+}
+.search:focus { outline: 2px solid oklch(70% .15 260 / .6); outline-offset: 1px; }
+.count { font-size: 13px; color: var(--text-dim); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.card {
+  display: flex; flex-direction: column; gap: 10px; padding: 18px;
+  background: var(--bg-panel); border: 1px solid var(--line); border-radius: var(--radius);
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--line) 40%, oklch(70% .15 var(--h))); }
+.card-head { display: flex; align-items: center; gap: 12px; }
+.chip {
+  width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  font-weight: 800; font-size: 13px; color: #fff;
+  background: linear-gradient(135deg, oklch(60% .19 var(--h)), oklch(70% .15 calc(var(--h) + 30)));
+}
+.card h3 { margin: 0; font-size: 15.5px; line-height: 1.25; }
+.day { font-size: 11.5px; color: var(--text-dim); letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+.card p { margin: 0; font-size: 13.5px; color: var(--text-dim); flex: 1; }
+.card-actions { display: flex; gap: 8px; margin-top: 4px; }
+.card-actions a {
+  font-size: 13px; font-weight: 600; text-decoration: none; padding: 7px 12px;
+  border-radius: var(--radius-sm); transition: transform .15s ease;
+}
+.card-actions a:hover { transform: translateY(-1px); }
+.open { background: oklch(60% .19 var(--h)); color: #fff; }
+.guide { border: 1px solid var(--line); color: var(--text); }
+.hidden { display: none; }
+.empty { color: var(--text-dim); padding: 40px 0; text-align: center; }
+footer {
+  margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line);
+  font-size: 13px; color: var(--text-dim); display: flex; gap: 12px; flex-wrap: wrap; justify-content: space-between;
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="mark" aria-hidden="true">FA</div>
+    <div>
+      <h1>FREE APPS</h1>
+      <p>Claude Fable 5 Remake — 29 local-first business tools</p>
+    </div>
+    <div class="top-actions">
+      <button class="btn" id="themeToggle" type="button" aria-pressed="false">Light mode</button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <p class="eyebrow">Local-first · No accounts · No tracking</p>
+    <h2>Twenty-nine small, sharp tools for running local service and freight operations.</h2>
+    <p>Every app runs entirely in your browser — no backend, no API keys, no external requests. Your data lives in this browser's storage and can be exported as JSON at any time. Each app ships with a built-in "How to use" walkthrough and a step-by-step written guide.</p>
+    <div class="badges">
+      <span class="badge">Zero dependencies</span>
+      <span class="badge">Works offline</span>
+      <span class="badge">Dark & light themes</span>
+      <span class="badge">JSON import / export</span>
+      <span class="badge">Step-by-step guides</span>
+      <span class="badge">Backhaul freight stack</span>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <input class="search" id="search" type="search" placeholder="Filter apps… (e.g. quote, report, route)" aria-label="Filter apps" />
+    <span class="count" id="count" aria-live="polite">29 apps</span>
+    <a class="btn" href="bizdev-30/index.html" style="text-decoration:none">BizDev 30 collection →</a>
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <p class="empty hidden" id="empty">No apps match that filter.</p>
+
+  <footer>
+    <span>Static local-first apps · data never leaves your browser</span>
+    <span>Remade by Claude · guides in each app folder</span>
+  </footer>
+</div>
+
+<script>
+const APPS = [
+  { d: 1,  slug: "day-01-pilot-forge",                  h: 260, mark: "PF", name: "Pilot Forge",                  desc: "Turn a rough service-business idea into a scoped AI pilot: fit score, ROI case, proof plan, and action board." },
+  { d: 2,  slug: "day-02-lead-leak-radar",              h: 20,  mark: "LL", name: "Lead Leak Radar",              desc: "Audit every lead channel, quantify the monthly revenue leak, and get a prioritized fix plan." },
+  { d: 3,  slug: "day-03-owner-report-studio",          h: 210, mark: "OR", name: "Owner Report Studio",          desc: "Compose clean daily or weekly owner reports: metrics with deltas, wins, risks, and decisions needed." },
+  { d: 4,  slug: "day-04-approval-gate-desk",           h: 140, mark: "AG", name: "Approval Gate Desk",           desc: "Human review queue for AI-drafted messages: approve, edit, or reject with a full audit trail." },
+  { d: 5,  slug: "day-05-quote-chase-board",            h: 300, mark: "QC", name: "Quote Chase Board",            desc: "Track outstanding quotes by stage and age, spot stale money, and draft follow-up notes." },
+  { d: 6,  slug: "day-06-review-request-composer",      h: 40,  mark: "RR", name: "Review Request Composer",      desc: "Craft low-pressure review requests tied to real completed jobs, with timing and channel guidance." },
+  { d: 7,  slug: "day-07-technician-brief-builder",     h: 190, mark: "TB", name: "Technician Brief Builder",     desc: "Build dispatch-ready job briefs: customer context, issue, parts and checks, risk notes." },
+  { d: 8,  slug: "day-08-service-triage-flow",          h: 0,   mark: "ST", name: "Service Triage Flow",          desc: "Step-through triage for inbound service requests: urgency, routing, and the next questions to ask." },
+  { d: 9,  slug: "day-09-warm-outreach-lab",            h: 330, mark: "WO", name: "Warm Outreach Lab",            desc: "Draft personalized, human-reviewed outreach to local businesses with a follow-up cadence planner." },
+  { d: 10, slug: "day-10-pilot-pricing-calculator",     h: 120, mark: "PP", name: "Pilot Pricing Calculator",     desc: "Price an AI pilot from recovered value, effort, and risk — with a defensible range and pricing memo." },
+  { d: 11, slug: "day-11-local-biz-snapshot",           h: 230, mark: "LB", name: "Local Biz Snapshot",           desc: "Build prospect dossiers: business profile, likely lead leaks, first wedge, and next step." },
+  { d: 12, slug: "day-12-script-rehearsal-room",        h: 280, mark: "SR", name: "Script Rehearsal Room",        desc: "Practice sales calls: script builder, objection flashcards, rehearsal timer, session scores." },
+  { d: 13, slug: "day-13-proof-vault",                  h: 60,  mark: "PV", name: "Proof Vault",                  desc: "Catalog wins as reusable proof cards with redaction checklists and approval states." },
+  { d: 14, slug: "day-14-sop-builder",                  h: 170, mark: "SB", name: "SOP Builder",                  desc: "Write repeatable operating procedures: triggers, steps, quality checks, and exception paths." },
+  { d: 15, slug: "day-15-daily-cash-board",             h: 100, mark: "CB", name: "Daily Cash Board",             desc: "A cash-first daily control room: offers, follow-ups, invoices, collection risks, top actions." },
+  { d: 16, slug: "day-16-meeting-follow-up-kit",        h: 250, mark: "MF", name: "Meeting Follow-up Kit",        desc: "Turn meeting notes into decisions, owned action items, risks, and a draft follow-up email." },
+  { d: 17, slug: "day-17-credential-handoff-checklist", h: 350, mark: "CH", name: "Credential Handoff Checklist", desc: "Access-custody tracker that stores no secrets: owners, MFA, rotation, and revocation runbooks." },
+  { d: 18, slug: "day-18-content-repurposer",           h: 30,  mark: "CR", name: "Content Repurposer",           desc: "Turn one piece of long-form content into a full publishing packet with per-platform drafts." },
+  { d: 19, slug: "day-19-home-service-route-planner",   h: 200, mark: "RP", name: "Home Service Route Planner",   desc: "Plan a service day offline: stops, priorities, time windows, buffers, printable dispatch sheet." },
+  { d: 20, slug: "day-20-intake-form-builder",          h: 150, mark: "IF", name: "Intake Form Builder",          desc: "Design service intake forms with live preview, privacy audit, and exportable specs." },
+  { label: "Hour 01", slug: "hour-01-loadboard-signal-console",       h: 24,  mark: "L1", name: "Loadboard Signal Console",       desc: "Static freight signal console for reviewing loadboard-style opportunities without scraping, posting, or contacting carriers.", guide: "README.md" },
+  { label: "Hour 02", slug: "hour-02-backhaul-pairing-optimizer",    h: 38,  mark: "B2", name: "Backhaul Pairing Optimizer",    desc: "Pair outbound and return-lane opportunities into practical backhaul options for human review.", guide: "README.md" },
+  { label: "Hour 03", slug: "hour-03-lane-margin-simulator",        h: 52,  mark: "M3", name: "Lane Margin Simulator",        desc: "Estimate lane-level freight margin scenarios with local-only inputs and exportable notes.", guide: "README.md" },
+  { label: "Hour 04", slug: "hour-04-carrier-vetting-radar",        h: 66,  mark: "V4", name: "Carrier Vetting Radar",        desc: "Organize carrier-vetting signals into a review radar without querying private systems.", guide: "README.md" },
+  { label: "Hour 05", slug: "hour-05-tender-packet-builder",        h: 80,  mark: "T5", name: "Tender Packet Builder",        desc: "Assemble tender packet drafts and checklist items for operator approval.", guide: "README.md" },
+  { label: "Hour 06", slug: "hour-06-load-lifecycle-command-board", h: 94,  mark: "C6", name: "Load Lifecycle Command Board", desc: "Track load lifecycle stages, risks, and handoffs in a local browser board.", guide: "README.md" },
+  { label: "Hour 07", slug: "hour-07-detention-risk-calculator",    h: 108, mark: "D7", name: "Detention Risk Calculator",    desc: "Score detention risk from appointment, facility, and wait-time assumptions.", guide: "README.md" },
+  { label: "Hour 08", slug: "hour-08-appointment-window-optimizer", h: 122, mark: "A8", name: "Appointment Window Optimizer", desc: "Compare appointment windows and buffer choices for smoother freight scheduling.", guide: "README.md" },
+  { label: "Hour 09", slug: "hour-09-document-compliance-vault",    h: 136, mark: "D9", name: "Document Compliance Vault",    desc: "Local-only checklist vault for document readiness, exceptions, and review notes.", guide: "README.md" }
+];
+const grid = document.getElementById("grid");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function render(filter) {
+  const q = (filter || "").trim().toLowerCase();
+  const shown = APPS.filter(a => !q || (a.name + " " + a.desc).toLowerCase().includes(q));
+  grid.innerHTML = shown.map(a => `
+    <article class="card" style="--h:${a.h}">
+      <div class="card-head">
+        <div class="chip" aria-hidden="true">${esc(a.mark)}</div>
+        <div>
+          <div class="day">${esc(a.label || `Day ${String(a.d).padStart(2, "0")}`)}</div>
+          <h3>${esc(a.name)}</h3>
+        </div>
+      </div>
+      <p>${esc(a.desc)}</p>
+      <div class="card-actions">
+        <a class="open" href="apps/${a.slug}/index.html">Open app</a>
+        <a class="guide" href="apps/${a.slug}/${a.guide || "GUIDE.md"}">Guide</a>
+      </div>
+    </article>`).join("");
+  document.getElementById("count").textContent = `${shown.length} app${shown.length === 1 ? "" : "s"}`;
+  document.getElementById("empty").classList.toggle("hidden", shown.length > 0);
+}
+const THEME_KEY = "fable-remake:gallery:theme";
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  const btn = document.getElementById("themeToggle");
+  btn.textContent = t === "dark" ? "Light mode" : "Dark mode";
+  btn.setAttribute("aria-pressed", String(t === "light"));
+}
+let theme = localStorage.getItem(THEME_KEY) ||
+  (window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+applyTheme(theme);
+document.getElementById("themeToggle").addEventListener("click", () => {
+  theme = theme === "dark" ? "light" : "dark";
+  localStorage.setItem(THEME_KEY, theme);
+  applyTheme(theme);
+});
+document.getElementById("search").addEventListener("input", e => render(e.target.value));
+render("");
+</script>
+</body>
+</html>

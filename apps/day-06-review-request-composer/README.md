@@ -1,12 +1,14 @@
 # Review Request Composer
 
-Day 06 of the 30 App Daily Ritual.
+Craft low-pressure review requests tied to a real completed job — with timing guidance, tone presets, and a pressure lint — then send them yourself. Nothing is ever sent from this app.
 
-This public copy is a **static, local-first browser app**. It contains only:
+## Highlights
 
-- `index.html`
-- `styles.css`
-- `app.js`
+- **Length-aware message variants:** SMS drafts with live character/segment counts, and email drafts with subject lines — five tone presets from "Warm & short" to "Professional (B2B)".
+- **Timing advisor:** cooling-off day, 1–7 day prime window, staleness cliff, satisfaction gating, per-channel best send times, and one-follow-up-max guidance.
+- **Do-not-pressure lint:** blocks incentives and star-begging (platform-policy violations), warns on gating, urgency, guilt framing, shouting, and over-asking — re-checked on every keystroke.
+- **Per-customer ask queue:** ready / not-yet / hold verdicts, asked and reviewed tracking, undo-able deletes.
+- **Export & handoff:** Markdown packet, JSON backup with import, CSV of the queue, and a clean print view.
 
 ## Run
 
@@ -18,8 +20,10 @@ python3 -m http.server 8000
 
 Then open the matching `/apps/day-06-review-request-composer/` path in your browser.
 
+See [GUIDE.md](./GUIDE.md) for a full step-by-step walkthrough.
+
 ## Security boundary
 
-- No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- Static, local-first browser app: only `index.html`, `styles.css`, `app.js`. No build step, no external resources, no network requests.
+- No API keys, tokens, `.env` files, databases, backends, accounts, or tracking. All data stays in this browser's localStorage.
+- Outputs are drafts/local artifacts only — a human reviews and manually sends every message before any customer or public use.

@@ -1,413 +1,179 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Lead Leak Radar — find where a local business is losing leads, quantify the monthly $ leak, and get a prioritized fix plan. Local-first, no tracking." />
   <title>Lead Leak Radar</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="radar-workbench">
-    <section class="command-strip" aria-label="Lead Leak Radar controls">
-      <div class="identity">
-        <span class="pulse-dot" aria-hidden="true"></span>
-        <div>
-          <p class="kicker">Lead Leak Radar</p>
-          <h1>Leak map, not another pilot card.</h1>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="app-header">
+    <div class="shell header-inner">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">LR</span>
+        <div class="brand-text">
+          <p class="app-name">Lead Leak Radar</p>
+          <p class="tagline">Find where leads leak out — and what it costs every month</p>
         </div>
       </div>
-      <div class="strip-actions">
-        <button id="demoBtn" type="button">Reload demo</button>
-        <button id="blankBtn" type="button">Blank scan</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </div>
+      <nav class="header-nav" aria-label="App actions">
+        <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
+        <button id="demoBtn" class="btn" type="button">Load demo</button>
+        <button id="resetBtn" class="btn btn-ghost" type="button">Reset</button>
+        <button id="helpBtn" class="btn" type="button">How to use <kbd>?</kbd></button>
+        <button id="themeToggle" class="btn btn-icon" type="button" aria-pressed="false" aria-label="Toggle color theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="stat-strip" aria-label="Live leak metrics" aria-live="polite">
+      <article class="stat"><strong id="statLost">0</strong><span>lost leads / month</span></article>
+      <article class="stat"><strong id="statLeak">$0</strong><span>monthly $ leak</span></article>
+      <article class="stat"><strong id="statRecoverable">$0</strong><span>recoverable / month</span></article>
+      <article class="stat"><strong id="statScore">0</strong><span id="statScoreBand">radar severity</span></article>
     </section>
 
-    <section class="radar-layout">
-      <aside class="source-dock panel" aria-label="Lead sources">
-        <div class="panel-head">
-          <span>01</span>
-          <div>
-            <p class="kicker">Audit channels</p>
-            <h2>Sources</h2>
+    <div class="layout">
+      <div class="col">
+        <section class="panel" aria-labelledby="profileHeading">
+          <div class="panel-head">
+            <div>
+              <h2 id="profileHeading">Business profile</h2>
+              <p class="panel-sub">Global assumptions behind every dollar figure</p>
+            </div>
           </div>
-          <button id="addSource" class="icon-btn" type="button">+</button>
-        </div>
-        <div id="sourceList" class="source-list"></div>
-      </aside>
+          <div class="field-grid">
+            <label>Business name
+              <input id="bizName" type="text" maxlength="80" autocomplete="off" placeholder="Summit Heating &amp; Air" />
+            </label>
+            <label>Business type
+              <input id="bizType" type="text" maxlength="60" autocomplete="off" placeholder="HVAC, dental, plumbing&hellip;" />
+            </label>
+            <label>Close rate %
+              <input id="closeRate" type="number" min="0" max="100" step="1" inputmode="numeric" />
+              <small>share of answered leads that become paying jobs</small>
+            </label>
+            <label>Recovery rate %
+              <input id="recoveryRate" type="number" min="0" max="100" step="1" inputmode="numeric" />
+              <small>share of leaked value a realistic fix wins back</small>
+            </label>
+          </div>
+          <label class="stack">Owner proof requirement
+            <textarea id="proofNote" rows="3" maxlength="300" placeholder="What proof does the owner need before believing a fix worked? e.g. a daily missed-lead list with recovered bookings."></textarea>
+          </label>
+        </section>
 
-      <section class="radar-stage panel" aria-label="Radar visualization">
-        <div class="stage-top">
+        <section class="panel" aria-labelledby="channelsHeading">
+          <div class="panel-head">
+            <div>
+              <h2 id="channelsHeading">Lead channels</h2>
+              <p class="panel-sub">Audit every place a lead can arrive — and quietly die</p>
+            </div>
+            <div class="add-row">
+              <label class="visually-hidden" for="addChannelType">Channel type to add</label>
+              <select id="addChannelType"></select>
+              <button id="addChannelBtn" class="btn btn-primary" type="button">+ Add</button>
+            </div>
+          </div>
+          <div id="channelList" class="channel-list"></div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="panel" aria-labelledby="radarHeading">
+          <div class="panel-head">
+            <div>
+              <h2 id="radarHeading">Leak radar</h2>
+              <p class="panel-sub" id="radarSummary" aria-live="polite">No channels scanned yet</p>
+            </div>
+          </div>
+          <svg id="radarSvg" viewBox="0 0 460 460" role="img" aria-label="Radar plot of lead channels by leak severity. Blips closer to the center are more severe."></svg>
+          <div class="radar-legend">
+            <ul>
+              <li><i class="dot sev-critical" aria-hidden="true"></i>Critical 65+</li>
+              <li><i class="dot sev-high" aria-hidden="true"></i>High 45&ndash;64</li>
+              <li><i class="dot sev-moderate" aria-hidden="true"></i>Moderate 25&ndash;44</li>
+              <li><i class="dot sev-low" aria-hidden="true"></i>Low &lt;25</li>
+            </ul>
+            <p class="legend-note">Closer to center = hotter leak &middot; blip size = monthly $ leak</p>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="planHeading">
+          <div class="panel-head">
+            <div>
+              <h2 id="planHeading">Prioritized fix plan</h2>
+              <p class="panel-sub">Ranked by confidence-weighted recoverable $ per unit of effort</p>
+            </div>
+          </div>
+          <ol id="planList" class="plan-list"></ol>
+        </section>
+      </div>
+
+      <section class="panel export-panel" aria-labelledby="exportHeading">
+        <div class="panel-head">
           <div>
-            <p class="kicker">Live estimate</p>
-            <h2 id="riskTitle">Scanning leaks</h2>
+            <h2 id="exportHeading">Export &amp; handoff</h2>
+            <p class="panel-sub">Drafts for human review — nothing is sent anywhere</p>
           </div>
-          <strong id="totalRecoverable" class="money-chip">$0/mo</strong>
-        </div>
-        <div class="radar-grid">
-          <svg id="radarSvg" viewBox="0 0 420 420" role="img" aria-label="Lead leak radar plot"></svg>
-          <div class="radar-readout">
-            <span id="riskScore">0</span>
-            <small>risk / 100</small>
+          <div class="export-actions">
+            <button id="copyMdBtn" class="btn btn-primary" type="button">Copy Markdown <kbd>Ctrl+S</kbd></button>
+            <button id="downloadJsonBtn" class="btn" type="button">Download JSON</button>
+            <button id="importBtn" class="btn" type="button">Import JSON</button>
+            <button id="downloadCsvBtn" class="btn" type="button">Download CSV</button>
+            <button id="printBtn" class="btn" type="button">Print report</button>
           </div>
         </div>
-        <div class="metrics-rail">
-          <article><span>Weekly lost</span><strong id="weeklyLost">0</strong></article>
-          <article><span>Monthly leak</span><strong id="monthlyLeak">$0</strong></article>
-          <article><span>Channels</span><strong id="channelCount">0</strong></article>
-        </div>
+        <textarea id="exportPreview" readonly rows="16" spellcheck="false" aria-label="Radar report preview in Markdown"></textarea>
       </section>
-
-      <aside class="plan-dock panel" aria-label="Recovery plan">
-        <div class="panel-head">
-          <span>02</span>
-          <div>
-            <p class="kicker">Recovery queue</p>
-            <h2>First fixes</h2>
-          </div>
-        </div>
-        <label>Business type<input id="businessType" maxlength="60" /></label>
-        <div class="split-inputs">
-          <label>Close %<input id="closeRate" type="number" min="0" max="100" /></label>
-          <label>Recovery %<input id="recoveryRate" type="number" min="0" max="100" /></label>
-        </div>
-        <label>Owner proof requirement<textarea id="proofRequirement" maxlength="260"></textarea></label>
-        <div id="planList" class="plan-list"></div>
-      </aside>
-    </section>
-
-    <section class="owner-digest-panel panel" aria-label="Owner report digest">
-      <div class="panel-head wide">
-        <span>OR</span>
-        <div>
-          <p class="kicker">Day 3 enhancement</p>
-          <h2>Owner report digest</h2>
-        </div>
-        <button id="copyDigest" type="button">Copy digest</button>
-      </div>
-      <div id="digestCards" class="digest-cards" aria-live="polite"></div>
-      <textarea id="digestText" readonly aria-label="Generated Owner Report Studio digest"></textarea>
-    </section>
-
-    <section class="approval-desk-panel panel" aria-label="Approval Gate Desk handoff">
-      <div class="panel-head wide">
-        <span>AG</span>
-        <div>
-          <p class="kicker">Day 4 enhancement</p>
-          <h2>Approval desk handoff</h2>
-        </div>
-        <button id="copyApprovalDesk" type="button">Copy approval handoff</button>
-      </div>
-      <div id="approvalDeskCards" class="digest-cards" aria-live="polite"></div>
-      <textarea id="approvalDeskText" readonly aria-label="Generated Approval Gate Desk handoff"></textarea>
-    </section>
-
-
-    <section class="quote-leak-panel panel" aria-label="Quote Chase Board leak lens">
-      <div class="panel-head wide">
-        <span>QB</span>
-        <div>
-          <p class="kicker">Day 5 enhancement</p>
-          <h2>Quote chase leak lens</h2>
-        </div>
-        <button id="copyQuoteLeak" type="button">Copy quote chase handoff</button>
-      </div>
-      <div id="quoteLeakCards" class="digest-cards" aria-live="polite"></div>
-      <textarea id="quoteLeakText" readonly aria-label="Generated Quote Chase Board leak handoff"></textarea>
-    </section>
-
-
-    <!-- DAY06_REVIEW_REQUEST_BRIDGE_START -->
-    <section id="review-request-bridge" class="panel review-request-bridge" aria-label="Review Request Composer bridge">
-      <div class="review-request-head">
-        <span>RR</span>
-        <div>
-          <p class="kicker">Day 6 enhancement</p>
-          <h2>Review Request Composer bridge</h2>
-        </div>
-        <div class="review-request-actions">
-          <button id="copyReviewRequestBridge" type="button">Copy review ask</button>
-          <button id="downloadReviewRequestBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="review-request-intro">Turn this app's current work into a safe review-request candidate: proof detail, right timing, low-pressure ask, and manual-send boundary.</p>
-      <div id="reviewRequestCards" class="review-request-cards" aria-live="polite"></div>
-      <textarea id="reviewRequestText" readonly aria-label="Generated Review Request Composer bridge"></textarea>
-    </section>
-    <!-- DAY06_REVIEW_REQUEST_BRIDGE_END -->
-
-    <section class="evidence-panel panel">
-      <div class="panel-head wide">
-        <span>03</span>
-        <div>
-          <p class="kicker">Evidence and export</p>
-          <h2>What to check before touching customers</h2>
-        </div>
-        <div class="strip-actions">
-          <button id="copyMarkdown" type="button">Copy markdown</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-        </div>
-      </div>
-      <div class="evidence-grid">
-        <table>
-          <thead><tr><th>Rank</th><th>Channel</th><th>Check</th><th>Proof</th><th>Safety gate</th></tr></thead>
-          <tbody id="evidenceRows"></tbody>
-        </table>
-        <textarea id="exportText" readonly aria-label="Generated recovery plan"></textarea>
-      </div>
-    </section>
-    <!-- DAY07_TECH_BRIEF_BRIDGE_START -->
-    <section id="tech-brief-bridge" class="panel tech-brief-bridge" aria-label="Technician Brief Builder bridge">
-      <div class="tech-brief-head">
-        <span>TB</span>
-        <div>
-          <p class="kicker">Day 7 enhancement</p>
-          <h2>Technician Brief Builder bridge</h2>
-        </div>
-        <div class="tech-brief-actions">
-          <button id="copyTechBriefBridge" type="button">Copy tech brief</button>
-          <button id="downloadTechBriefBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="tech-brief-intro">Convert this app's current plan into a dispatch-ready technician handoff: customer context, job issue, parts/checks, risk notes, and no-promise boundary.</p>
-      <div id="techBriefCards" class="tech-brief-cards" aria-live="polite"></div>
-      <textarea id="techBriefText" readonly aria-label="Generated Technician Brief Builder bridge"></textarea>
-    </section>
-    <!-- DAY07_TECH_BRIEF_BRIDGE_END -->
-
-    <!-- DAY08_SERVICE_TRIAGE_BRIDGE_START -->
-    <section id="service-triage-bridge" class="panel service-triage-bridge" aria-label="Service Triage Flow bridge">
-      <div class="service-triage-head">
-        <span>ST</span>
-        <div>
-          <p class="kicker">Day 8 enhancement</p>
-          <h2>Service Triage Flow bridge</h2>
-        </div>
-        <div class="service-triage-actions">
-          <button id="copyServiceTriageBridge" type="button">Copy triage packet</button>
-          <button id="downloadServiceTriageBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="service-triage-intro">Convert this app's current work into a safe caller/admin triage starter: caller context, urgency cue, route, next questions, and no-promise boundary.</p>
-      <div id="serviceTriageCards" class="service-triage-cards" aria-live="polite"></div>
-      <textarea id="serviceTriageText" readonly aria-label="Generated Service Triage Flow bridge"></textarea>
-    </section>
-    <!-- DAY08_SERVICE_TRIAGE_BRIDGE_END -->
-
-    <!-- DAY09_WARM_OUTREACH_BRIDGE_START -->
-    <section id="warm-outreach-bridge" class="warm-outreach-bridge panel" aria-label="Warm Outreach Lab bridge">
-      <div class="warm-outreach-head">
-        <span>WO</span>
-        <div>
-          <p class="kicker">Day 9 enhancement</p>
-          <h2>Warm Outreach Lab bridge</h2>
-        </div>
-        <div class="warm-outreach-actions">
-          <button id="copyWarmOutreachBridge" type="button">Copy outreach starter</button>
-          <button id="downloadWarmOutreachBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="warm-outreach-intro">Turn this app's current output into a human-reviewed warm outreach starter: prospect context, noticed issue, proof cue, constraint, and draft-only ask.</p>
-      <div id="warmOutreachCards" class="warm-outreach-cards" aria-live="polite"></div>
-      <textarea id="warmOutreachText" readonly aria-label="Generated Warm Outreach Lab bridge"></textarea>
-    </section>
-    <!-- DAY09_WARM_OUTREACH_BRIDGE_END -->
-
-    <!-- DAY10_PILOT_PRICING_BRIDGE_START -->
-    <section id="pilot-pricing-bridge" class="pilot-pricing-bridge panel" aria-label="Pilot Pricing Calculator bridge">
-      <div class="pilot-pricing-head">
-        <span>$$</span>
-        <div>
-          <p class="kicker">Day 10 enhancement</p>
-          <h2>Pilot Pricing Calculator bridge</h2>
-        </div>
-        <div class="pilot-pricing-actions">
-          <button id="copyPilotPricingBridge" type="button">Copy pricing memo</button>
-          <button id="downloadPilotPricingBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="pilot-pricing-intro">Convert this app's current output into a draft pilot-pricing note: recovered value cue, effort/risk proxy, proof-window boundary, and a review-ready range.</p>
-      <div id="pilotPricingCards" class="pilot-pricing-cards" aria-live="polite"></div>
-      <textarea id="pilotPricingText" readonly aria-label="Generated Pilot Pricing Calculator bridge"></textarea>
-    </section>
-    <!-- DAY10_PILOT_PRICING_BRIDGE_END -->
-
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START -->
-    <section id="local-biz-snapshot-bridge" class="local-biz-snapshot-bridge panel" aria-label="Local Biz Snapshot bridge">
-      <div class="local-biz-snapshot-head">
-        <span>LB</span>
-        <div>
-          <p class="kicker">Day 11 enhancement</p>
-          <h2>Local Biz Snapshot bridge</h2>
-        </div>
-        <div class="local-biz-snapshot-actions">
-          <button id="copyLocalBizSnapshotBridge" type="button">Copy snapshot</button>
-          <button id="downloadLocalBizSnapshotBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="local-biz-snapshot-intro">Turn this app's current output into a prospect dossier: business profile cue, likely lead leaks, first wedge, and human-reviewed next step.</p>
-      <div id="localBizSnapshotCards" class="local-biz-snapshot-cards" aria-live="polite"></div>
-      <textarea id="localBizSnapshotText" readonly aria-label="Generated Local Biz Snapshot bridge"></textarea>
-    </section>
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END -->
-
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START -->
-    <section id="script-rehearsal-room-bridge" class="script-rehearsal-room-bridge panel" aria-label="Script Rehearsal Room bridge">
-      <div class="script-rehearsal-head">
-        <span>SR</span>
-        <div>
-          <p class="kicker">Day 12 enhancement</p>
-          <h2>Script Rehearsal Room bridge</h2>
-        </div>
-        <div class="script-rehearsal-actions">
-          <button id="copyScriptRehearsalBridge" type="button">Copy run sheet</button>
-          <button id="downloadScriptRehearsalBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="script-rehearsal-intro">Turn this app's current output into a call-practice run sheet: objective, opening line, discovery prompts, objection card, and human-review boundary.</p>
-      <div id="scriptRehearsalCards" class="script-rehearsal-cards" aria-live="polite"></div>
-      <textarea id="scriptRehearsalText" readonly aria-label="Generated Script Rehearsal Room bridge"></textarea>
-    </section>
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END -->
-
-  
-    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
-      <div class="panel-title">
-        <span>PV</span>
-        <div>
-          <p class="kicker">Day 13 enhancement</p>
-          <h2>Proof Vault bridge</h2>
-        </div>
-      </div>
-      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
-      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
-      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
-      <div class="proof-vault-actions">
-        <button id="copyProofVault" type="button">Copy proof card</button>
-        <button id="downloadProofVault" type="button">Download proof JSON</button>
-      </div>
-    </section>
-  
-    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
-      <div class="panel-title">
-        <span>SOP</span>
-        <div>
-          <p class="kicker">Day 14 enhancement</p>
-          <h2>SOP Builder bridge</h2>
-        </div>
-      </div>
-      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
-      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
-      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
-      <div class="sop-builder-actions">
-        <button id="copySopBuilder" type="button">Copy SOP draft</button>
-        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
-      </div>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    </div>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <div class="shell footer-inner">
+      <p>Local-first &middot; No accounts &middot; No tracking &mdash; data stays in this browser</p>
+      <a href="../../index.html">&larr; All apps</a>
+    </div>
+  </footer>
+
+  <div id="toastRegion" class="toast-region" role="status" aria-live="polite"></div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden />
+
+  <dialog id="helpDialog" aria-labelledby="helpTitle">
+    <div class="help-head">
+      <h2 id="helpTitle">How to use Lead Leak Radar</h2>
+      <button id="helpClose" class="btn btn-ghost" type="button" aria-label="Close guide">&#10005;</button>
+    </div>
+    <ol class="help-steps">
+      <li><strong>Set the business profile.</strong> Name, type, close rate (% of answered leads you win) and recovery rate (% of leaked value a fix can realistically win back). Every dollar figure derives from these.</li>
+      <li><strong>Add a channel for every place leads arrive:</strong> missed calls, website forms, shared inbox, booking flow, sent quotes, social DMs. Or press <em>Load demo</em> for a worked HVAC example.</li>
+      <li><strong>Estimate each channel:</strong> weekly inquiries, leak % (share that never gets a real response), average response delay in hours, average job value, and your confidence in those numbers.</li>
+      <li><strong>Read the radar.</strong> Blips closer to the center are hotter leaks; blip size shows the monthly $ leak. The stat strip totals lost leads, monthly $ leak and recoverable value live.</li>
+      <li><strong>Work the prioritized fix plan.</strong> It ranks channels by confidence-weighted recoverable dollars per unit of effort and flags quick wins — start at rank 1.</li>
+      <li><strong>Write the owner proof requirement</strong> so every fix ships with a success metric the owner will actually accept.</li>
+      <li><strong>Export the radar report:</strong> copy Markdown, download JSON (re-importable) or CSV, or print a clean report for the owner meeting.</li>
+      <li><strong>Safety nets:</strong> deleting a channel shows a 7-second Undo toast; Reset asks first; everything autosaves to this browser only.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="help-shortcuts">
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the Markdown radar report</td></tr>
+      </tbody>
+    </table>
+    <p class="help-boundary">All outputs are drafts for human review. This app makes no calls, sends no messages, and writes to no CRM.</p>
+  </dialog>
+
+  <div id="printReport" class="print-report" aria-hidden="true"></div>
+
   <script src="./app.js"></script>
 </body>
 </html>

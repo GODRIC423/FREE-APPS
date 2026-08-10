@@ -1,12 +1,12 @@
 # Script Rehearsal Room
 
-Day 12 of the 30 App Daily Ritual.
+Practice the sales or discovery call before it counts: build a talk track, drill objections, rehearse against the clock, and score yourself — all in your browser.
 
-This public copy is a **static, local-first browser app**. It contains only:
-
-- `index.html`
-- `styles.css`
-- `app.js`
+- **Script builder** — sections of short talk-track cards with live word counts and speaking-time estimates (140 wpm).
+- **Objection flashcards** — flip-to-reveal drill mode with shuffle, honest self-grading, and a mastery percentage.
+- **Paced rehearsal timer** — set a target length and get section-by-section pace hints while you speak out loud.
+- **Session history** — log 1–5 self-scores per run (Opening / Discovery / Objections / Close) and watch the trend.
+- **Export & handoff** — Markdown run sheet, printable version, JSON backup/import, and sessions CSV.
 
 ## Run
 
@@ -16,10 +16,12 @@ Open `index.html` directly, or serve the folder locally:
 python3 -m http.server 8000
 ```
 
-Then open the matching `/apps/day-12-script-rehearsal-room/` path in your browser.
+Then open `/apps/day-12-script-rehearsal-room/` in your browser.
+
+Full walkthrough: see [GUIDE.md](./GUIDE.md).
 
 ## Security boundary
 
-- No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- Static, local-first app: only `index.html`, `styles.css`, and `app.js`. No build step, no external resources.
+- No API keys, tokens, `.env` files, databases, backends, accounts, or network calls; data persists in `localStorage` only.
+- Outputs are draft/local artifacts — human review and explicit approval are required before any customer-facing use.

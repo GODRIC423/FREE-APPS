@@ -22,3 +22,6 @@ data/
 *.log
 .DS_Store
 Thumbs.db
+
+# bizdev-30 toolchain
+bizdev-30/node_modules/

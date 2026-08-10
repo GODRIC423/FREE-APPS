@@ -1,12 +1,14 @@
 # Meeting Follow-up Kit
 
-Day 16 of the 30 App Daily Ritual.
+Turn messy meeting notes into a structured recap — decisions, action items with owners and due dates, risks, open questions — plus a tone-adjustable follow-up email draft. Everything stays in your browser.
 
-This public copy is a **static, local-first browser app**. It contains only:
+## Highlights
 
-- `index.html`
-- `styles.css`
-- `app.js`
+- **Meeting history** — keep multiple meetings, switch between them, delete with undo.
+- **Structured capture** — quick-add decisions, risks & blockers, and open questions; scan raw notes and the kit suggests items to add with one click.
+- **Action tracking** — owner, due date, and status (open / in progress / done) with automatic overdue flagging.
+- **Follow-up email with tones** — Friendly, Professional, or Direct; the draft rewrites instantly.
+- **Export & handoff** — copy a Markdown recap, download re-importable JSON or an actions CSV, print a clean recap page.
 
 ## Run
 
@@ -16,10 +18,12 @@ Open `index.html` directly, or serve the folder locally:
 python3 -m http.server 8000
 ```
 
-Then open the matching `/apps/day-16-meeting-follow-up-kit/` path in your browser.
+Then open `/apps/day-16-meeting-follow-up-kit/` in your browser.
+
+See [GUIDE.md](./GUIDE.md) for a full step-by-step walkthrough.
 
 ## Security boundary
 
-- No API keys, tokens, `.env` files, databases, or private local state are included.
-- No backend, shell, GitHub, private-repo, CRM, webhook, payment, or account-writing access is included.
-- Outputs are draft/local artifacts and should be human-reviewed before customer/public use.
+- Static, local-first: only `index.html`, `styles.css`, `app.js`. No build step, no CDNs, no fonts, no network calls of any kind.
+- No API keys, tokens, accounts, cookies, or backend. Data persists in `localStorage` only.
+- Outputs are **drafts for human review**. The kit never sends email, writes calendars or CRMs, or contacts customers.

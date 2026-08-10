@@ -1,0 +1,159 @@
+@import "tailwindcss";
+@import "./fonts.css";
+
+@theme {
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-bridge-950: #06090e;
+  --color-bridge-900: #0a0f17;
+  --color-bridge-850: #0e1521;
+  --color-bridge-800: #131c2b;
+  --color-bridge-700: #1c283b;
+  --color-bridge-600: #2a3a54;
+  --color-bridge-500: #435a7c;
+  --color-bridge-400: #6c88ac;
+  --color-bridge-300: #96aecb;
+  --color-bridge-200: #bed0e6;
+  --color-bridge-100: #e6edf6;
+
+  --color-brass: #c9a24c;
+  --color-brass-bright: #edcd7f;
+  --color-brass-deep: #7c5e26;
+
+  --color-glass: #49d3ce;
+  --color-glass-deep: #1f7b78;
+
+  --color-clear: #3ecf8e;
+  --color-caution: #f0b13d;
+  --color-deny: #ef5b52;
+}
+
+/* ---------- ambient ground: the bridge at night ---------- */
+body {
+  background-color: var(--color-bridge-950);
+  background-image:
+    radial-gradient(900px 480px at 18% -8%, rgb(73 211 206 / 0.07), transparent 60%),
+    radial-gradient(700px 420px at 88% 6%, rgb(201 162 76 / 0.08), transparent 62%),
+    radial-gradient(1100px 620px at 50% 115%, rgb(42 58 84 / 0.35), transparent 65%),
+    repeating-linear-gradient(0deg, transparent 0 63px, rgb(255 255 255 / 0.014) 63px 64px),
+    repeating-linear-gradient(90deg, transparent 0 63px, rgb(255 255 255 / 0.014) 63px 64px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+  color: var(--color-bridge-100);
+  font-family: var(--font-display);
+}
+
+::selection { background: var(--color-brass); color: var(--color-bridge-950); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--color-bridge-600) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--color-bridge-600); border: 3px solid var(--color-bridge-950); border-radius: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+:focus-visible { outline: 2px solid var(--color-glass); outline-offset: 2px; border-radius: 2px; }
+
+/* ---------- bridge components ---------- */
+@layer components {
+  .signal-bar {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--color-brass) 0 12px,
+      #0c1119 12px 24px
+    );
+  }
+  .signal-bar-thin {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgb(201 162 76 / 0.85) 0 7px,
+      #0c1119 7px 14px
+    );
+  }
+  .panel {
+    background: linear-gradient(180deg, var(--color-bridge-850), var(--color-bridge-900));
+    border: 1px solid var(--color-bridge-700);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.04) inset,
+      0 12px 30px -18px rgb(0 0 0 / 0.9);
+  }
+  .panel-sunk {
+    background: linear-gradient(180deg, var(--color-bridge-950), var(--color-bridge-900));
+    border: 1px solid var(--color-bridge-700);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.55) inset;
+  }
+  .brass-rim {
+    border: 1px solid var(--color-brass-deep);
+    box-shadow: 0 0 0 1px rgb(201 162 76 / 0.18), 0 8px 20px -12px rgb(0 0 0 / 0.85);
+  }
+  .glass-panel {
+    background: radial-gradient(120% 140% at 30% -10%, rgb(73 211 206 / 0.10), transparent 60%), var(--color-bridge-900);
+  }
+  .label-cap {
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .readout {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-glass);
+    text-shadow: 0 0 10px rgb(73 211 206 / 0.35);
+  }
+  .rivet {
+    position: absolute;
+    width: 6px; height: 6px;
+    border-radius: 9999px;
+    background: radial-gradient(circle at 35% 30%, var(--color-brass-bright), var(--color-brass-deep) 70%);
+    box-shadow: 0 1px 1px rgb(0 0 0 / 0.6);
+  }
+  .pennant {
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+  }
+  .btn-brass {
+    background: linear-gradient(180deg, var(--color-brass-bright), var(--color-brass));
+    color: #241c08;
+    font-weight: 700;
+  }
+  .btn-brass:hover { filter: brightness(1.08); }
+}
+
+/* ---------- motion ---------- */
+@keyframes toast-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes lamp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+@keyframes flag-hoist {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes needle-in {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+.anim-toast { animation: toast-up 0.25s ease-out both; }
+.anim-lamp { animation: lamp-pulse 2.6s ease-in-out infinite; }
+.anim-flag { animation: flag-hoist 0.35s ease-out both; }
+.anim-needle { animation: needle-in 0.5s cubic-bezier(0.2, 1, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+  }
+}
+
+/* ---------- print: the ship's log only ---------- */
+.print-only { display: none; }
+@media print {
+  body { background: #fff !important; color: #111 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  .print-only h1, .print-only h2, .print-only h3 { color: #111; }
+  .print-only table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .print-only th, .print-only td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+  .print-only .pb { page-break-inside: avoid; }
+}

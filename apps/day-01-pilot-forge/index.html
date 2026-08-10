@@ -3,510 +3,384 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pilot Forge</title>
+  <title>Pilot Forge — The Drafting Room</title>
+  <meta name="description" content="An industrial drafting table where a service-business AI pilot gets engineered: live blueprint schematic, engraved fit gauge, loss calculation, proof schedule, work orders, and an issued brief." />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="#hero" aria-label="Pilot Forge home">
-        <span class="brand-mark" aria-hidden="true">PF</span>
-        <span>
-          <strong>Pilot Forge</strong>
-          <small>Build a cash-first AI pilot in one sitting</small>
-        </span>
-      </a>
-      <nav class="nav" aria-label="Primary">
-        <a href="#builder">Builder</a>
-        <a href="#roi">ROI</a>
-        <a href="#board">Board</a>
-        <a href="#handoff">Handoff</a>
-        <a href="#owner-report">Owner report</a>
-        <a href="#approval-gate">Approval gate</a>
-        <a href="#quote-chase">Quote chase</a>
-        <a href="#review-request-bridge">Review ask</a>
-        <a href="#export">Export</a>
-      </nav>
-      <button id="themeToggle" class="ghost-btn" type="button" aria-pressed="false">Dark</button>
-    </header>
+  <a class="skip-link" href="#main">Skip to the drawing</a>
 
-    <main>
-      <section id="hero" class="hero panel">
-        <div class="hero-copy">
-          <div class="eyebrow">Local-first. No accounts. No cloud.</div>
-          <h1>Turn a rough service-business idea into a scoped pilot, ROI case, and action board.</h1>
-          <p>Pick the business, enter the leak, tune the numbers, and ship a clean pilot brief. Everything saves in this browser.</p>
-          <div class="hero-actions">
-            <a class="primary-btn" href="#builder">Start building</a>
-            <button id="loadDemo" class="secondary-btn" type="button">Load demo</button>
+  <!-- Ambient: faint flame-over-anvil contour in the corner of the room -->
+  <svg class="corner-contour" viewBox="0 0 320 320" aria-hidden="true" focusable="false">
+    <g fill="none" stroke="currentColor" stroke-width="1">
+      <path d="M160 268 Q96 268 84 236 Q76 214 96 202 Q80 184 96 164 Q108 148 132 152 Q128 120 152 96 Q168 80 164 56 Q192 76 196 108 Q220 104 228 132 Q236 156 220 172 Q244 184 236 212 Q228 244 184 260 Q172 264 160 268 Z"/>
+      <path d="M160 244 Q116 240 110 216 Q106 198 124 192 Q112 176 126 160 Q138 148 156 154 Q152 128 170 112 Q178 132 192 140 Q208 148 206 168 Q222 182 212 202 Q202 228 160 244 Z"/>
+      <path d="M162 218 Q138 212 136 196 Q135 184 148 180 Q142 166 156 158 Q162 174 176 180 Q190 186 186 200 Q182 214 162 218 Z"/>
+      <path d="M40 292 H280 M56 302 H264" stroke-dasharray="3 5"/>
+    </g>
+  </svg>
+
+  <header class="register">
+    <div class="register-brand">
+      <svg class="register-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <rect x="3" y="3" width="34" height="34"/>
+          <path d="M20 8 L20 14 M20 8 L11 30 M20 8 L29 30"/>
+          <path d="M14.6 22 A9 9 0 0 0 25.4 22"/>
+          <circle cx="20" cy="8" r="1.6" fill="currentColor"/>
+        </g>
+      </svg>
+      <div class="register-text">
+        <strong>Pilot Forge</strong>
+        <small>The Drafting Room — where a service-business pilot gets engineered</small>
+      </div>
+    </div>
+    <nav class="register-nav" aria-label="Sheet zones">
+      <a href="#spec"><span aria-hidden="true">A·</span>Spec</a>
+      <a href="#calc"><span aria-hidden="true">B·</span>Calc</a>
+      <a href="#schedule"><span aria-hidden="true">C·</span>Schedule</a>
+      <a href="#orders"><span aria-hidden="true">D·</span>Orders</a>
+      <a href="#issue"><span aria-hidden="true">E·</span>Issue</a>
+      <a class="all-apps" href="../../index.html">&larr; All apps</a>
+    </nav>
+    <div class="register-actions">
+      <button id="loadDemoBtn" class="btn" type="button">Pin up a sample job</button>
+      <button id="resetBtn" class="btn btn-clear" type="button">Clear the sheet</button>
+      <button id="helpBtn" class="btn btn-ember" type="button">Operator&rsquo;s card</button>
+    </div>
+  </header>
+
+  <main id="main" class="table">
+    <div class="sheet">
+
+      <!-- ZONE 0 · GENERAL ARRANGEMENT — the live blueprint -->
+      <section class="hero" aria-label="General arrangement drawing of the pilot">
+        <header class="hero-head">
+          <p class="drawing-no">DWG&nbsp;PF-001&nbsp;&middot;&nbsp;GENERAL ARRANGEMENT</p>
+          <h1>One leak. One gate. One proof.</h1>
+          <p class="hero-sub">This drawing redraws itself from your specification below.</p>
+        </header>
+
+        <div class="hero-plate">
+          <svg id="heroSchematic" class="schematic" viewBox="0 0 920 280" role="img"
+               aria-label="Schematic of the pilot: intake flows into the pilot wedge, through a human approval gate, into the proof artifact the owner reads">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 Z" fill="currentColor"/>
+              </marker>
+            </defs>
+
+            <!-- double frame + border ticks -->
+            <g class="sch-frame">
+              <rect x="4" y="4" width="912" height="272" fill="none"/>
+              <rect x="16" y="16" width="888" height="248" fill="none"/>
+              <line class="sch-ticks" x1="16" y1="10" x2="904" y2="10" stroke-dasharray="1 39"/>
+              <line class="sch-ticks" x1="16" y1="270" x2="904" y2="270" stroke-dasharray="1 39"/>
+              <line class="sch-ticks" x1="10" y1="16" x2="10" y2="264" stroke-dasharray="1 39"/>
+              <line class="sch-ticks" x1="910" y1="16" x2="910" y2="264" stroke-dasharray="1 39"/>
+            </g>
+            <g class="sch-coords" aria-hidden="true">
+              <text x="130" y="12.5">1</text><text x="360" y="12.5">2</text><text x="590" y="12.5">3</text><text x="820" y="12.5">4</text>
+              <text x="11" y="80">A</text><text x="11" y="160">B</text><text x="11" y="240">C</text>
+            </g>
+
+            <!-- registration crosses -->
+            <g class="sch-reg" aria-hidden="true">
+              <path d="M36 30 v12 M30 36 h12"/>
+              <path d="M884 30 v12 M878 36 h12"/>
+            </g>
+
+            <!-- schematic flow -->
+            <g class="sch-line">
+              <rect x="40" y="92" width="142" height="72"/>
+              <text class="sch-cap" x="111" y="112">INTAKE</text>
+              <text class="sch-val" id="heroSource" x="111" y="138">PHONE LINES</text>
+              <text class="sch-dim" x="111" y="155">RAW &middot; UNCOUNTED</text>
+
+              <line class="sch-flow" x1="182" y1="128" x2="224" y2="128" marker-end="url(#arr)"/>
+
+              <rect class="sch-hot" x="228" y="84" width="192" height="88"/>
+              <text class="sch-cap" x="324" y="104">PILOT WEDGE</text>
+              <text class="sch-val sch-strong" id="heroWedge" x="324" y="132">MISSED-CALL RESCUE</text>
+              <text class="sch-dim" x="324" y="155">FIXES EXACTLY ONE LEAK</text>
+
+              <line class="sch-flow" x1="420" y1="128" x2="462" y2="128" marker-end="url(#arr)"/>
+
+              <path class="sch-gate" d="M521 84 L577 128 L521 172 L465 128 Z"/>
+              <text class="sch-cap" x="521" y="122">HUMAN</text>
+              <text class="sch-cap" x="521" y="138">GATE</text>
+              <text class="sch-val" id="heroGate" x="521" y="196">DRAFT-ONLY</text>
+
+              <line class="sch-flow" x1="577" y1="128" x2="616" y2="128" marker-end="url(#arr)"/>
+
+              <rect x="620" y="92" width="164" height="72"/>
+              <text class="sch-cap" x="702" y="112">PROOF ARTIFACT</text>
+              <text class="sch-val" id="heroArtifact" x="702" y="138">RECOVERY LOG</text>
+              <text class="sch-dim" x="702" y="155">COUNTED DAILY</text>
+
+              <line class="sch-flow" x1="784" y1="128" x2="812" y2="128" marker-end="url(#arr)"/>
+
+              <circle cx="848" cy="128" r="33"/>
+              <text class="sch-cap" x="848" y="132">OWNER</text>
+
+              <!-- revise loop from the gate back to the wedge -->
+              <path class="sch-revise" d="M521 172 V212 H324 V177" fill="none" marker-end="url(#arr)"/>
+              <text class="sch-dim" x="430" y="207">REVISE &amp; REDRAFT</text>
+            </g>
+
+            <!-- proof-window dimension line -->
+            <g class="sch-dimline">
+              <line x1="228" y1="228" x2="228" y2="248"/>
+              <line x1="784" y1="228" x2="784" y2="248"/>
+              <line x1="228" y1="238" x2="392" y2="238" marker-start="url(#arr)"/>
+              <line x1="620" y1="238" x2="784" y2="238" marker-end="url(#arr)"/>
+              <text class="sch-val" id="heroWindowDim" x="506" y="242">PROOF WINDOW &middot; 14 DAYS</text>
+            </g>
+          </svg>
+
+          <div class="title-block" role="group" aria-label="Drawing title block">
+            <div class="tb-cell tb-wide">
+              <span>Project</span><strong id="tbProject">&mdash;</strong>
+            </div>
+            <div class="tb-cell"><span>Client</span><strong id="tbClient">&mdash;</strong></div>
+            <div class="tb-cell"><span>Drawn</span><strong id="tbDate">&mdash;</strong></div>
+            <div class="tb-cell"><span>Sheet</span><strong>01 of 01 &middot; REV A</strong></div>
+            <div class="tb-live" aria-live="polite">
+              <div class="tb-cell tb-num"><span>Fit score</span><strong id="statScore">0/100</strong></div>
+              <div class="tb-cell tb-num"><span>Monthly leak</span><strong id="statLeak">$0</strong></div>
+              <div class="tb-cell tb-num tb-ember"><span>Recoverable / mo</span><strong id="statRecover">$0</strong></div>
+              <div class="tb-cell tb-num"><span>Pilot fee / mo</span><strong id="statFee">&mdash;</strong></div>
+            </div>
           </div>
         </div>
-        <aside class="score-card" aria-label="Pilot score summary">
-          <div class="score-ring" id="scoreRing" style="--score: 72"><span id="scoreValue">72</span></div>
-          <h2 id="scoreTitle">Good pilot fit</h2>
-          <p id="scoreText">Clear revenue leak, fast proof window, low operational risk.</p>
-          <div class="metric-row">
-            <span>Proof window</span><strong id="proofWindow">14 days</strong>
-          </div>
-          <div class="metric-row">
-            <span>Risk level</span><strong id="riskLevel">Medium</strong>
-          </div>
-        </aside>
+        <p class="margin-note note-hero">the drawing is the pitch — walk in with this, not with promises</p>
       </section>
 
-      <section id="builder" class="grid two-col">
-        <form class="panel builder" id="pilotForm">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Step 1</p>
-              <h2>Shape the pilot</h2>
+      <!-- ZONE A · SPECIFICATION -->
+      <section id="spec" class="zone" data-zone="A" aria-label="Zone A — specification">
+        <header class="zone-head">
+          <span class="zone-code">Zone A &middot; Specification</span>
+          <h2>Spec the leak before you spec the machine</h2>
+          <p class="zone-sub">Name the business, the one leak this pilot fixes, and the proof the owner will hold. The gauge reads the drawing as you work.</p>
+        </header>
+
+        <div class="spec-grid">
+          <form id="shapeForm" class="spec-form" novalidate>
+            <div class="field-row">
+              <label class="field">
+                <span class="field-label"><span class="fcode">F-01</span> Business type</span>
+                <select id="businessType"></select>
+              </label>
+              <label class="field">
+                <span class="field-label"><span class="fcode">F-02</span> Business name <em>(optional)</em></span>
+                <input id="businessName" type="text" maxlength="60" placeholder="Rivera Heating &amp; Air" autocomplete="off" />
+              </label>
             </div>
-            <button id="resetApp" class="ghost-btn danger" type="button">Reset</button>
+
+            <label class="field">
+              <span class="field-label"><span class="fcode">F-03</span> Pilot wedge — the one leak on this drawing</span>
+              <select id="wedge"></select>
+            </label>
+
+            <label class="field" id="painField">
+              <span class="field-label"><span class="fcode">F-04</span> Owner&rsquo;s pain, one concrete sentence</span>
+              <textarea id="pain" rows="2" maxlength="200" placeholder="After-hours calls go to voicemail and 10-14 a week never get a callback."></textarea>
+              <span class="field-hint" id="painHint"></span>
+            </label>
+
+            <label class="field" id="proofField">
+              <span class="field-label"><span class="fcode">F-05</span> Proof the owner will hold</span>
+              <textarea id="proof" rows="2" maxlength="260" placeholder="A daily one-page report: calls captured, callbacks drafted, response time, jobs booked."></textarea>
+              <span class="field-hint" id="proofHint"></span>
+            </label>
+
+            <div class="field slider-field">
+              <label class="field-label" for="automationLevel"><span class="fcode">F-06</span> Gate setting — <strong id="automationName">Draft-only</strong> <span class="chip" id="automationRisk">Low risk</span></label>
+              <input id="automationLevel" type="range" min="0" max="3" step="1" value="1" />
+              <div class="slider-hints" aria-hidden="true"><span>Manual</span><span>Draft-only</span><span>Reviewed</span><span>Full auto</span></div>
+              <p class="field-hint" id="automationDesc"></p>
+            </div>
+            <p class="margin-note note-spec">no pain, no pilot — put a number in the owner&rsquo;s sentence</p>
+          </form>
+
+          <div class="gauge-wrap" aria-label="Pilot fit gauge">
+            <p class="gauge-plate">FIT GAUGE &middot; PF-G1 &middot; 0&ndash;100</p>
+            <svg id="scoreGauge" class="gauge" viewBox="0 0 220 140" role="img" aria-label="Pilot fit score 0 out of 100">
+              <g class="gauge-engrave">
+                <path d="M18 118 A 92 92 0 0 1 202 118" fill="none"/>
+                <path d="M32 118 A 78 78 0 0 1 188 118" fill="none"/>
+              </g>
+              <g class="gauge-zones">
+                <path class="gz gz-cold" d="M25 118 A 85 85 0 0 1 195 118" pathLength="100" stroke-dasharray="40 60" fill="none"/>
+                <path class="gz gz-warm" d="M25 118 A 85 85 0 0 1 195 118" pathLength="100" stroke-dasharray="30 70" stroke-dashoffset="-40" fill="none"/>
+                <path class="gz gz-hot"  d="M25 118 A 85 85 0 0 1 195 118" pathLength="100" stroke-dasharray="30 30" stroke-dashoffset="-70" fill="none"/>
+              </g>
+              <path class="gauge-ticks" d="M38 118 A 72 72 0 0 1 182 118" pathLength="100" stroke-dasharray="0.6 4.4" fill="none"/>
+              <g class="gauge-labels" aria-hidden="true">
+                <text x="24" y="134">0</text>
+                <text x="110" y="24">50</text>
+                <text x="196" y="134">100</text>
+              </g>
+              <g id="gaugeNeedle" class="gauge-needle">
+                <path d="M110 118 L106 108 L110 44 L114 108 Z"/>
+                <line x1="110" y1="118" x2="110" y2="130"/>
+              </g>
+              <circle class="gauge-pivot" cx="110" cy="118" r="7"/>
+              <circle class="gauge-pivot-dot" cx="110" cy="118" r="2.5"/>
+            </svg>
+            <p class="gauge-reading" aria-hidden="true"><span id="scoreValue">0</span><span class="gauge-of">/100 &middot; PILOT FIT</span></p>
+            <div class="gauge-copy" aria-live="polite">
+              <h3 id="scoreVerdict">&mdash;</h3>
+              <p id="scoreSummary" class="dim">&mdash;</p>
+              <dl class="gauge-meta">
+                <div><dt>Proof window</dt><dd id="proofWindowText">14 days</dd></div>
+                <div><dt>Risk level</dt><dd id="riskText">Low</dd></div>
+                <div><dt>First artifact</dt><dd id="artifactText">&mdash;</dd></div>
+              </dl>
+            </div>
+            <h3 class="inspection-head">Inspection record — why the needle sits there</h3>
+            <ul id="factorList" class="factor-list"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZONE B · LOSS CALCULATION -->
+      <section id="calc" class="zone" data-zone="B" aria-label="Zone B — loss calculation">
+        <header class="zone-head">
+          <span class="zone-code">Zone B &middot; Loss calculation</span>
+          <h2>Put a dollar figure on the leak</h2>
+          <p class="zone-sub">Four measurements, taken from the owner&rsquo;s own logs. The calculation block rules itself out below.</p>
+        </header>
+
+        <div class="calc-grid">
+          <div class="calc-inputs">
+            <label class="field"><span class="field-label"><span class="fcode">D-01</span> Missed leads / week</span><input id="missedLeads" type="number" min="0" max="999" step="1" inputmode="numeric" /></label>
+            <label class="field"><span class="field-label"><span class="fcode">D-02</span> Close rate %</span><input id="closeRate" type="number" min="0" max="100" step="1" inputmode="numeric" /></label>
+            <label class="field"><span class="field-label"><span class="fcode">D-03</span> Average job $</span><input id="jobValue" type="number" min="0" max="1000000" step="10" inputmode="numeric" /></label>
+            <label class="field"><span class="field-label"><span class="fcode">D-04</span> Recovery rate %</span><input id="recoveryRate" type="number" min="0" max="100" step="1" inputmode="numeric" /></label>
+            <p class="margin-note note-calc">pull these from the phone log, not from hope</p>
           </div>
 
-          <label>
-            Business type
-            <select id="businessType" name="businessType">
-              <option>HVAC</option>
-              <option>Plumbing</option>
-              <option>Electrical</option>
-              <option>Roofing</option>
-              <option>Landscaping</option>
-              <option>Dental</option>
-              <option>Med spa</option>
-              <option>Local law firm</option>
-              <option>Custom local service</option>
-            </select>
-          </label>
-
-          <label>
-            Pilot wedge
-            <select id="wedge" name="wedge">
-              <option value="missed-call">Missed-call rescue</option>
-              <option value="web-lead">Web-lead follow-up</option>
-              <option value="review-recovery">Review request lane</option>
-              <option value="quote-chase">Quote follow-up</option>
-              <option value="owner-report">Daily owner report</option>
-            </select>
-          </label>
-
-          <label>
-            Owner pain in one sentence
-            <input id="pain" name="pain" maxlength="120" placeholder="Example: Missed calls disappear before the owner sees them." />
-          </label>
-
-          <label>
-            What proof should the owner see?
-            <textarea id="proof" name="proof" maxlength="220" placeholder="Example: Daily report with captured leads, response time, booked calls, and approval log."></textarea>
-          </label>
-
-          <div class="slider-stack">
-            <label for="automationLevel">Automation level <strong id="automationLabel">Draft-only</strong></label>
-            <input id="automationLevel" type="range" min="0" max="3" value="1" />
-            <div class="slider-hints"><span>Manual</span><span>Reviewed</span><span>Auto</span></div>
+          <div class="calc-block">
+            <p class="calc-head">CALCULATION BLOCK &middot; LC-01</p>
+            <p class="formula">LEAK = MISSED &times; CLOSE% &times; JOB$ &times; 4.33 WK/MO &nbsp;&middot;&nbsp; RECOVERABLE = LEAK &times; RECOVERY%</p>
+            <dl class="calc-lines" aria-live="polite">
+              <div class="calc-line"><dt>Monthly leak</dt><dd id="monthlyLeak">$0</dd></div>
+              <div class="calc-line"><dt>Yearly leak</dt><dd id="annualLeak">$0</dd></div>
+              <div class="calc-line is-ember"><dt>Recoverable / mo</dt><dd id="recoverableOut">$0</dd></div>
+              <div class="calc-line"><dt>Suggested fee / mo</dt><dd id="pilotFeeOut">&mdash;</dd></div>
+              <div class="calc-line"><dt>Owner payback</dt><dd id="paybackOut">&mdash;</dd></div>
+            </dl>
+            <p id="roiPill" class="calc-stamp">$0/MO RECOVERABLE</p>
           </div>
+        </div>
+      </section>
+
+      <!-- ZONE C · SCHEDULE OF PROOF -->
+      <section id="schedule" class="zone" data-zone="C" aria-label="Zone C — schedule of proof">
+        <header class="zone-head">
+          <span class="zone-code">Zone C &middot; Schedule of proof</span>
+          <h2>The day-by-day proof schedule</h2>
+          <p class="zone-sub">Drafted from your wedge and proof window. Tick milestones as inspected, redraw days and wording inline, or redraft the whole schedule.</p>
+          <div class="zone-tools">
+            <button id="addMilestoneBtn" class="btn" type="button">+ Add a milestone</button>
+            <button id="regenPlanBtn" class="btn btn-clear" type="button" title="Redraft the schedule from the current wedge and proof window">Redraft schedule</button>
+          </div>
+        </header>
+        <p class="plan-meta dim" id="planMeta" aria-live="polite"></p>
+        <ol id="planList" class="plan-list"></ol>
+        <p class="margin-note note-plan">day one is a map, not a build</p>
+      </section>
+
+      <!-- ZONE D · WORK ORDERS -->
+      <section id="orders" class="zone" data-zone="D" aria-label="Zone D — work orders">
+        <header class="zone-head">
+          <span class="zone-code">Zone D &middot; Work orders</span>
+          <h2>Cut the work into cards</h2>
+          <p class="zone-sub">Three clipboards: queued, on the bench, signed off. Drag cards between boards or walk them with the arrows.</p>
+          <span class="board-count" id="boardCount" aria-live="polite">0 cards</span>
+        </header>
+        <form class="task-add-row" id="taskAddForm">
+          <label class="visually-hidden" for="taskInput">New work order</label>
+          <input id="taskInput" type="text" maxlength="120" placeholder="Cut the next card, e.g. &quot;Write the pilot offer with price and window&quot;" autocomplete="off" />
+          <button id="addTaskBtn" class="btn btn-ember" type="submit">Cut card</button>
         </form>
-
-        <section class="panel live-brief" aria-live="polite">
-          <p class="eyebrow">Live brief</p>
-          <h2 id="briefTitle">Missed-call rescue for HVAC</h2>
-          <p id="briefBody">Catch missed calls, qualify the request, and send the owner a daily lead report before anything customer-facing runs without approval.</p>
-          <div class="brief-list">
-            <div><span>First artifact</span><strong id="artifactText">Daily lead report</strong></div>
-            <div><span>Approval gate</span><strong id="gateText">Owner approves messages</strong></div>
-            <div><span>Test path</span><strong id="testText">Fake lead data first</strong></div>
-          </div>
-          <div class="review check-box">
-            <strong>Security review check</strong>
-            <p id="checkText">Draft-only for customer messages until Brian says yes. Keep secrets and customer data off public surfaces.</p>
-          </div>
-        </section>
+        <div class="kanban" id="kanban"></div>
+        <p class="margin-note note-board">one card = one action someone can finish today</p>
       </section>
 
-      <section id="roi" class="grid two-col">
-        <section class="panel calculator">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Step 2</p>
-              <h2>Run the numbers</h2>
+      <!-- ZONE E · ISSUE -->
+      <section id="issue" class="zone" data-zone="E" aria-label="Zone E — issue the drawing">
+        <header class="zone-head">
+          <span class="zone-code">Zone E &middot; Issue</span>
+          <h2>Issue the drawing</h2>
+          <p class="zone-sub">The finished brief, ready to leave the drafting room — copy it, file it, reload it, or print the issued sheet.</p>
+          <div class="zone-tools">
+            <button id="copyMdBtn" class="btn btn-ember" type="button">Copy Markdown brief</button>
+            <button id="downloadJsonBtn" class="btn" type="button">File JSON copy</button>
+            <button id="importBtn" class="btn" type="button">Load JSON copy</button>
+            <button id="printBtn" class="btn btn-clear" type="button">Print issued sheet</button>
+          </div>
+        </header>
+
+        <div class="issue-grid">
+          <div class="issue-paper">
+            <label class="visually-hidden" for="briefPreview">Pilot brief preview</label>
+            <textarea id="briefPreview" readonly spellcheck="false"></textarea>
+          </div>
+          <div class="issue-side">
+            <div id="issueStamp" class="issue-stamp" role="status">
+              <strong>HOLD</strong>
+              <span>TIGHTEN THE SPEC</span>
+              <small>HUMAN GATE ON EVERY SEND</small>
             </div>
-            <span class="pill" id="roiPill">$3,600/mo leak</span>
+            <p class="boundary-note">Everything issued here is a <strong>draft for human review</strong>. Pilot Forge never contacts customers, sends messages, or touches live systems — a person signs off on every step.</p>
+            <p class="margin-note note-issue">nothing ships without a human signature</p>
           </div>
-          <div class="number-grid">
-            <label>Missed leads / week<input id="missedLeads" type="number" min="0" value="12" /></label>
-            <label>Close rate %<input id="closeRate" type="number" min="0" max="100" value="30" /></label>
-            <label>Average job $<input id="jobValue" type="number" min="0" value="750" /></label>
-            <label>Recovery rate %<input id="recoveryRate" type="number" min="0" max="100" value="40" /></label>
-          </div>
-          <div class="result-grid">
-            <div><span>Monthly leak</span><strong id="monthlyLeak">$10,800</strong></div>
-            <div><span>Recoverable</span><strong id="recoverableRevenue">$4,320</strong></div>
-            <div><span>Suggested pilot fee</span><strong id="pilotFee">$600</strong></div>
-          </div>
-        </section>
-
-        <section class="panel timeline">
-          <p class="eyebrow">Step 3</p>
-          <h2>Proof plan</h2>
-          <ol id="timelineList"></ol>
-        </section>
+        </div>
+        <input id="importFile" type="file" accept="application/json,.json" class="visually-hidden" aria-hidden="true" tabindex="-1" />
       </section>
 
-      <section id="board" class="panel board-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Step 4</p>
-            <h2>Action board</h2>
-          </div>
-          <button id="addTask" class="secondary-btn" type="button">Add task</button>
-        </div>
-        <div class="task-input-row" id="taskInputRow" hidden>
-          <input id="newTaskInput" placeholder="Write the next action" maxlength="100" />
-          <button id="saveTask" class="primary-btn" type="button">Save</button>
-        </div>
-        <div class="kanban" id="kanban" aria-label="Action board"></div>
-      </section>
-
-      <section id="handoff" class="panel handoff-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Enhancement</p>
-            <h2>Lead-leak handoff pack</h2>
-          </div>
-          <button id="copyHandoff" class="secondary-btn" type="button">Copy handoff</button>
-        </div>
-        <p class="handoff-intro">A compact checklist for moving this pilot idea into Lead Leak Radar without exposing secrets or contacting customers.</p>
-        <div class="handoff-grid" id="handoffGrid" aria-live="polite"></div>
-        <textarea id="handoffText" readonly aria-label="Generated Lead Leak Radar handoff"></textarea>
-      </section>
-
-      <section id="owner-report" class="panel owner-report-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Day 3 enhancement</p>
-            <h2>Owner report snapshot</h2>
-          </div>
-          <button id="copyOwnerReport" class="secondary-btn" type="button">Copy snapshot</button>
-        </div>
-        <p class="handoff-intro">A ready-to-drop brief for Owner Report Studio: headline, revenue case, proof window, risk, and the next decision.</p>
-        <div class="owner-report-grid" id="ownerReportGrid" aria-live="polite"></div>
-        <textarea id="ownerReportText" readonly aria-label="Generated Owner Report Studio snapshot"></textarea>
-      </section>
-
-      <section id="approval-gate" class="panel approval-gate-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Day 4 enhancement</p>
-            <h2>Approval Gate Desk packet</h2>
-          </div>
-          <button id="copyApprovalGate" class="secondary-btn" type="button">Copy approval packet</button>
-        </div>
-        <p class="handoff-intro">A human-review checklist for the exact draft messages this pilot may generate before anything customer-facing leaves the building.</p>
-        <div class="approval-gate-grid" id="approvalGateGrid" aria-live="polite"></div>
-        <textarea id="approvalGateText" readonly aria-label="Generated Approval Gate Desk packet"></textarea>
-      </section>
-
-
-      <section id="quote-chase" class="panel quote-chase-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Day 5 enhancement</p>
-            <h2>Quote Chase Board starter</h2>
-          </div>
-          <button id="copyQuoteChase" class="secondary-btn" type="button">Copy quote board starter</button>
-        </div>
-        <p class="handoff-intro">Convert this pilot into a quote follow-up operating board: quote value, stale timing, owner, draft-only follow-up note, and approval boundary.</p>
-        <div class="quote-chase-grid" id="quoteChaseGrid" aria-live="polite"></div>
-        <textarea id="quoteChaseText" readonly aria-label="Generated Quote Chase Board starter"></textarea>
-      </section>
-
-
-    <!-- DAY06_REVIEW_REQUEST_BRIDGE_START -->
-    <section id="review-request-bridge" class="panel review-request-bridge" aria-label="Review Request Composer bridge">
-      <div class="review-request-head">
-        <span>RR</span>
-        <div>
-          <p class="kicker">Day 6 enhancement</p>
-          <h2>Review Request Composer bridge</h2>
-        </div>
-        <div class="review-request-actions">
-          <button id="copyReviewRequestBridge" type="button">Copy review ask</button>
-          <button id="downloadReviewRequestBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="review-request-intro">Turn this app's current work into a safe review-request candidate: proof detail, right timing, low-pressure ask, and manual-send boundary.</p>
-      <div id="reviewRequestCards" class="review-request-cards" aria-live="polite"></div>
-      <textarea id="reviewRequestText" readonly aria-label="Generated Review Request Composer bridge"></textarea>
-    </section>
-    <!-- DAY06_REVIEW_REQUEST_BRIDGE_END -->
-
-      <section id="export" class="panel export-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Step 5</p>
-            <h2>Export the brief</h2>
-          </div>
-          <div class="button-row">
-            <button id="copyMarkdown" class="secondary-btn" type="button">Copy markdown</button>
-            <button id="downloadJson" class="secondary-btn" type="button">Download JSON</button>
-          </div>
-        </div>
-        <textarea id="exportText" readonly aria-label="Generated pilot brief"></textarea>
-      </section>
-
-    <!-- DAY07_TECH_BRIEF_BRIDGE_START -->
-    <section id="tech-brief-bridge" class="panel tech-brief-bridge" aria-label="Technician Brief Builder bridge">
-      <div class="tech-brief-head">
-        <span>TB</span>
-        <div>
-          <p class="kicker">Day 7 enhancement</p>
-          <h2>Technician Brief Builder bridge</h2>
-        </div>
-        <div class="tech-brief-actions">
-          <button id="copyTechBriefBridge" type="button">Copy tech brief</button>
-          <button id="downloadTechBriefBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="tech-brief-intro">Convert this app's current plan into a dispatch-ready technician handoff: customer context, job issue, parts/checks, risk notes, and no-promise boundary.</p>
-      <div id="techBriefCards" class="tech-brief-cards" aria-live="polite"></div>
-      <textarea id="techBriefText" readonly aria-label="Generated Technician Brief Builder bridge"></textarea>
-    </section>
-    <!-- DAY07_TECH_BRIEF_BRIDGE_END -->
-    <!-- DAY08_SERVICE_TRIAGE_BRIDGE_START -->
-    <section id="service-triage-bridge" class="panel service-triage-bridge" aria-label="Service Triage Flow bridge">
-      <div class="service-triage-head">
-        <span>ST</span>
-        <div>
-          <p class="kicker">Day 8 enhancement</p>
-          <h2>Service Triage Flow bridge</h2>
-        </div>
-        <div class="service-triage-actions">
-          <button id="copyServiceTriageBridge" type="button">Copy triage packet</button>
-          <button id="downloadServiceTriageBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="service-triage-intro">Convert this app's current work into a safe caller/admin triage starter: caller context, urgency cue, route, next questions, and no-promise boundary.</p>
-      <div id="serviceTriageCards" class="service-triage-cards" aria-live="polite"></div>
-      <textarea id="serviceTriageText" readonly aria-label="Generated Service Triage Flow bridge"></textarea>
-    </section>
-    <!-- DAY08_SERVICE_TRIAGE_BRIDGE_END -->
-
-    <!-- DAY09_WARM_OUTREACH_BRIDGE_START -->
-    <section id="warm-outreach-bridge" class="warm-outreach-bridge panel" aria-label="Warm Outreach Lab bridge">
-      <div class="warm-outreach-head">
-        <span>WO</span>
-        <div>
-          <p class="kicker">Day 9 enhancement</p>
-          <h2>Warm Outreach Lab bridge</h2>
-        </div>
-        <div class="warm-outreach-actions">
-          <button id="copyWarmOutreachBridge" type="button">Copy outreach starter</button>
-          <button id="downloadWarmOutreachBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="warm-outreach-intro">Turn this app's current output into a human-reviewed warm outreach starter: prospect context, noticed issue, proof cue, constraint, and draft-only ask.</p>
-      <div id="warmOutreachCards" class="warm-outreach-cards" aria-live="polite"></div>
-      <textarea id="warmOutreachText" readonly aria-label="Generated Warm Outreach Lab bridge"></textarea>
-    </section>
-    <!-- DAY09_WARM_OUTREACH_BRIDGE_END -->
-
-    <!-- DAY10_PILOT_PRICING_BRIDGE_START -->
-    <section id="pilot-pricing-bridge" class="pilot-pricing-bridge panel" aria-label="Pilot Pricing Calculator bridge">
-      <div class="pilot-pricing-head">
-        <span>$$</span>
-        <div>
-          <p class="kicker">Day 10 enhancement</p>
-          <h2>Pilot Pricing Calculator bridge</h2>
-        </div>
-        <div class="pilot-pricing-actions">
-          <button id="copyPilotPricingBridge" type="button">Copy pricing memo</button>
-          <button id="downloadPilotPricingBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="pilot-pricing-intro">Convert this app's current output into a draft pilot-pricing note: recovered value cue, effort/risk proxy, proof-window boundary, and a review-ready range.</p>
-      <div id="pilotPricingCards" class="pilot-pricing-cards" aria-live="polite"></div>
-      <textarea id="pilotPricingText" readonly aria-label="Generated Pilot Pricing Calculator bridge"></textarea>
-    </section>
-    <!-- DAY10_PILOT_PRICING_BRIDGE_END -->
-
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_START -->
-    <section id="local-biz-snapshot-bridge" class="local-biz-snapshot-bridge panel" aria-label="Local Biz Snapshot bridge">
-      <div class="local-biz-snapshot-head">
-        <span>LB</span>
-        <div>
-          <p class="kicker">Day 11 enhancement</p>
-          <h2>Local Biz Snapshot bridge</h2>
-        </div>
-        <div class="local-biz-snapshot-actions">
-          <button id="copyLocalBizSnapshotBridge" type="button">Copy snapshot</button>
-          <button id="downloadLocalBizSnapshotBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="local-biz-snapshot-intro">Turn this app's current output into a prospect dossier: business profile cue, likely lead leaks, first wedge, and human-reviewed next step.</p>
-      <div id="localBizSnapshotCards" class="local-biz-snapshot-cards" aria-live="polite"></div>
-      <textarea id="localBizSnapshotText" readonly aria-label="Generated Local Biz Snapshot bridge"></textarea>
-    </section>
-    <!-- DAY11_LOCAL_BIZ_SNAPSHOT_BRIDGE_END -->
-
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START -->
-    <section id="script-rehearsal-room-bridge" class="script-rehearsal-room-bridge panel" aria-label="Script Rehearsal Room bridge">
-      <div class="script-rehearsal-head">
-        <span>SR</span>
-        <div>
-          <p class="kicker">Day 12 enhancement</p>
-          <h2>Script Rehearsal Room bridge</h2>
-        </div>
-        <div class="script-rehearsal-actions">
-          <button id="copyScriptRehearsalBridge" type="button">Copy run sheet</button>
-          <button id="downloadScriptRehearsalBridge" type="button">Download JSON</button>
-        </div>
-      </div>
-      <p class="script-rehearsal-intro">Turn this app's current output into a call-practice run sheet: objective, opening line, discovery prompts, objection card, and human-review boundary.</p>
-      <div id="scriptRehearsalCards" class="script-rehearsal-cards" aria-live="polite"></div>
-      <textarea id="scriptRehearsalText" readonly aria-label="Generated Script Rehearsal Room bridge"></textarea>
-    </section>
-    <!-- DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END -->
-
-    
-    <section id="proof-vault-bridge" class="proof-vault-bridge panel" aria-label="Proof Vault bridge">
-      <div class="panel-title">
-        <span>PV</span>
-        <div>
-          <p class="kicker">Day 13 enhancement</p>
-          <h2>Proof Vault bridge</h2>
-        </div>
-      </div>
-      <p class="proof-vault-intro">Capture this app's current output as a reusable evidence card: screenshot/snippet candidate, result signal, redaction checklist, case-study angle, and owner-approval guardrail.</p>
-      <div id="proofVaultCards" class="proof-vault-cards" aria-live="polite"></div>
-      <textarea id="proofVaultText" readonly aria-label="Generated Proof Vault bridge"></textarea>
-      <div class="proof-vault-actions">
-        <button id="copyProofVault" type="button">Copy proof card</button>
-        <button id="downloadProofVault" type="button">Download proof JSON</button>
-      </div>
-    </section>
-  
-    <section id="sop-builder-bridge" class="sop-builder-bridge panel" aria-label="SOP Builder bridge">
-      <div class="panel-title">
-        <span>SOP</span>
-        <div>
-          <p class="kicker">Day 14 enhancement</p>
-          <h2>SOP Builder bridge</h2>
-        </div>
-      </div>
-      <p class="sop-builder-intro">Convert this app's current output into a repeatable operating procedure: trigger, owner, inputs, step sequence, quality checks, exception path, and human-approval guardrail.</p>
-      <div id="sopBuilderCards" class="sop-builder-cards" aria-live="polite"></div>
-      <textarea id="sopBuilderText" readonly aria-label="Generated SOP Builder bridge"></textarea>
-      <div class="sop-builder-actions">
-        <button id="copySopBuilder" type="button">Copy SOP draft</button>
-        <button id="downloadSopBuilder" type="button">Download SOP JSON</button>
-      </div>
-    </section>
-  
-    <section id="daily-cash-board-bridge" class="daily-cash-board-bridge panel" aria-label="Daily Cash Board bridge">
-      <div class="panel-title">
-        <span>Cash</span>
-        <div>
-          <p class="kicker">Day 15 enhancement</p>
-          <h2>Daily Cash Board bridge</h2>
-        </div>
-      </div>
-      <p class="daily-cash-board-intro">Convert this app's current output into a cash-first control-room packet: offer, follow-up, booked call, invoice, collection risk, and next human-approved action.</p>
-      <div id="dailyCashBoardCards" class="daily-cash-board-cards" aria-live="polite"></div>
-      <textarea id="dailyCashBoardText" readonly aria-label="Generated Daily Cash Board bridge"></textarea>
-      <div class="daily-cash-board-actions">
-        <button id="copyDailyCashBoard" type="button">Copy cash brief</button>
-        <button id="downloadDailyCashBoard" type="button">Download cash JSON</button>
-      </div>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
-        </div>
-      </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    </div>
   </main>
-  </div>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <footer class="footer">
+    <p>Drafted locally &middot; no accounts &middot; no tracking — the whole drawing stays in this browser.</p>
+    <a href="../../index.html">&larr; All apps</a>
+  </footer>
+
+  <dialog id="helpDialog" aria-labelledby="helpTitle">
+    <div class="dialog-head">
+      <h2 id="helpTitle">Operator&rsquo;s card — how to work the table</h2>
+      <button id="helpCloseBtn" class="btn btn-clear icon-btn" type="button" aria-label="Close the operator's card">&#10005;</button>
+    </div>
+    <div class="dialog-body">
+      <p>Pilot Forge is a drafting table for AI pilots. A rough &ldquo;I could build something for that business&rdquo; goes on the sheet; a scoped, priced, provable pilot comes off it — schematic, fit gauge, loss calculation, proof schedule, work orders, and an issued brief.</p>
+      <ol class="help-steps">
+        <li><strong>Pin up the sample job</strong> (header button) to see a finished drawing — Rivera Heating &amp; Air, missed-call rescue — or start on a clean sheet.</li>
+        <li><strong>Zone A — Specification.</strong> Pick the business type, the wedge (the one leak this pilot fixes), and write the owner&rsquo;s pain in one concrete sentence with a number in it. The schematic at the top redraws as you type.</li>
+        <li><strong>Define the proof</strong> the owner will hold — a report, log, or tracker — and set the gate. Draft-only reads best on the gauge: it is the safest thing to sell first.</li>
+        <li><strong>Read the fit gauge.</strong> The needle sweeps 0&ndash;100; the inspection record shows every factor&rsquo;s points and a fix when it runs weak. Work the lowest line until the needle clears 60.</li>
+        <li><strong>Zone B — Loss calculation.</strong> Missed leads, close rate, job value, recovery rate. The leak, recoverable revenue, suggested fee, and payback rule themselves out live.</li>
+        <li><strong>Zone C — Schedule of proof.</strong> Milestones are drafted from your wedge and proof window. Tick them, redraw days and wording, add your own, or redraft the whole schedule.</li>
+        <li><strong>Zone D — Work orders.</strong> Cut cards, then drag them (or walk them with the arrows) across Queued / On the bench / Signed off. Striking a card offers Undo.</li>
+        <li><strong>Zone E — Issue.</strong> Copy the Markdown brief, file a JSON copy, reload it later, or print the issued sheet. The stamp reads APPROVED FOR PROOF once the gauge clears 60 — until then the drawing holds.</li>
+      </ol>
+      <h3>Keyboard shortcuts</h3>
+      <table class="shortcut-table">
+        <thead><tr><th scope="col">Key</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>?</kbd></td><td>Open this card</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Close dialogs</td></tr>
+          <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the Markdown brief</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </dialog>
+
+  <div id="toastRegion" class="toast-region" aria-live="polite"></div>
+  <div id="printSheet" class="print-sheet" aria-hidden="true"></div>
+
   <script src="./app.js"></script>
 </body>
 </html>

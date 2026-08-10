@@ -1,168 +1,238 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark light" />
   <title>Meeting Follow-up Kit</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="meeting-room">
-    <header class="room-header" aria-label="Meeting Follow-up Kit header">
-      <div class="table-orbit" aria-hidden="true"><span></span><i></i><b></b></div>
-      <section class="header-copy">
-        <p class="kicker">Day 16 · Meeting Follow-up Kit</p>
-        <h1>Leave every meeting with the email, tasks, risks, and decisions already sorted.</h1>
-        <p class="lede">A local-first conference-table studio for turning rough meeting notes into a draft follow-up packet. No sends, no calendar writes, no CRM writes, no cloud.</p>
-      </section>
-      <nav class="header-actions" aria-label="App controls">
-        <button id="loadDemo" type="button">Load demo</button>
-        <button id="addCommitment" type="button">Add action</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </nav>
-    </header>
+  <a class="skip-link" href="#main">Skip to main content</a>
 
-    <section class="brief-strip" aria-label="Meeting status strip">
-      <article><span>Tasks</span><strong id="metricTasks">0</strong></article>
-      <article><span>Decisions</span><strong id="metricDecisions">0</strong></article>
-      <article><span>Risks</span><strong id="metricRisks">0</strong></article>
-      <article><span>Next due</span><strong id="metricNext">None</strong></article>
+  <header class="app-header">
+    <div class="brand">
+      <a class="brand-mark" href="../../index.html" aria-label="Back to all apps">MF</a>
+      <div class="brand-text">
+        <h1 class="brand-name">Meeting Follow-up Kit</h1>
+        <p class="brand-tag">Messy notes in — recap, actions &amp; follow-up email out. Drafts only.</p>
+      </div>
+    </div>
+    <nav class="header-nav" aria-label="App controls">
+      <button id="demoBtn" type="button" class="btn btn-sm">Load demo</button>
+      <button id="resetBtn" type="button" class="btn-ghost btn-sm">Reset</button>
+      <button id="helpBtn" type="button" class="btn btn-sm" aria-haspopup="dialog">How to use</button>
+      <button id="themeBtn" type="button" class="btn btn-sm" aria-pressed="false">Theme</button>
+    </nav>
+  </header>
+
+  <main id="main" class="shell">
+    <section class="stat-strip" aria-label="Live meeting metrics">
+      <div class="stat"><strong id="statDecisions">0</strong><span>Decisions</span></div>
+      <div class="stat"><strong id="statActions">0</strong><span>Open actions</span></div>
+      <div class="stat stat-warn" id="statOverdueWrap" data-zero="true"><strong id="statOverdue">0</strong><span>Overdue</span></div>
+      <div class="stat"><strong id="statQuestions">0</strong><span>Open questions</span></div>
     </section>
 
-    <section class="conference-grid">
-      <section class="panel notes-panel" aria-label="Meeting notes intake">
-        <div class="panel-title"><span>01</span><div><p class="kicker">Raw notes</p><h2>Drop the messy meeting memory here.</h2></div></div>
-        <div class="form-grid">
-          <label>Meeting title<input id="meetingTitle" maxlength="120" /></label>
-          <label>Meeting date<input id="meetingDate" type="date" /></label>
-          <label>Attendees<input id="attendees" maxlength="220" /></label>
-          <label>Follow-up sender<input id="sender" maxlength="80" /></label>
-          <label class="wide">Meeting goal<textarea id="meetingGoal" maxlength="400"></textarea></label>
-          <label class="wide">Notes / transcript fragments<textarea id="meetingNotes" maxlength="2500"></textarea></label>
+    <div class="layout">
+      <aside class="panel history-panel" aria-labelledby="historyHeading">
+        <div class="panel-head">
+          <h2 id="historyHeading">Meetings</h2>
+          <button id="newMeetingBtn" type="button" class="btn-primary btn-sm">+ New</button>
         </div>
-      </section>
-
-      <aside class="panel sorter-panel" aria-label="Decision and risk sorter">
-        <div class="panel-title"><span>02</span><div><p class="kicker">Sorter</p><h2>Classify the follow-up payload.</h2></div></div>
-        <div class="pill-lab">
-          <label>Decision<input id="decisionInput" maxlength="180" placeholder="Approved 7-day proof window" /></label>
-          <button id="addDecision" type="button">Add decision</button>
-          <label>Risk / blocker<input id="riskInput" maxlength="180" placeholder="Need owner approval before sending" /></label>
-          <button id="addRisk" type="button" class="secondary">Add risk</button>
-          <label>Open question<input id="questionInput" maxlength="180" placeholder="Who owns the booking link?" /></label>
-          <button id="addQuestion" type="button" class="secondary">Add question</button>
-        </div>
-        <div class="chip-board">
-          <section><h3>Decisions</h3><div id="decisionChips"></div></section>
-          <section><h3>Risks</h3><div id="riskChips"></div></section>
-          <section><h3>Questions</h3><div id="questionChips"></div></section>
-        </div>
+        <ul id="meetingList" class="meeting-list"></ul>
       </aside>
-    </section>
 
-    <section class="panel action-panel" aria-label="Action owner board">
-      <div class="panel-title"><span>03</span><div><p class="kicker">Action board</p><h2>Owners, due dates, and draft-only next steps.</h2></div></div>
-      <div class="action-editor">
-        <label>Task<input id="taskTitle" maxlength="140" placeholder="Draft owner recap" /></label>
-        <label>Owner<input id="taskOwner" maxlength="80" /></label>
-        <label>Due<input id="taskDue" type="date" /></label>
-        <label>Type<select id="taskType"><option value="email">Email draft</option><option value="ops">Ops task</option><option value="risk">Risk check</option><option value="decision">Decision confirm</option></select></label>
-        <button id="saveTask" type="button">Save action</button>
-        <button id="clearTask" type="button" class="secondary">Clear</button>
-      </div>
-      <div id="taskBoard" class="task-board" aria-live="polite"></div>
-    </section>
-
-    <section class="output-grid">
-      <section class="panel email-panel" aria-label="Draft follow-up email">
-        <div class="panel-title"><span>04</span><div><p class="kicker">Draft email</p><h2>Human-reviewed follow-up note.</h2></div></div>
-        <textarea id="emailOutput" readonly aria-label="Generated draft follow-up email"></textarea>
-      </section>
-      <section class="panel packet-panel" aria-label="Export packet">
-        <div class="panel-title"><span>05</span><div><p class="kicker">Packet</p><h2>Share the recap or export structured data.</h2></div></div>
-        <textarea id="markdownOutput" readonly aria-label="Generated meeting follow-up packet"></textarea>
-        <div class="export-actions">
-          <button id="copyMarkdown" type="button">Copy recap</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-          <button id="downloadIcs" type="button">Download task reminders</button>
+      <section id="emptyState" class="panel empty-hero" hidden aria-label="Getting started">
+        <h2>No meeting selected</h2>
+        <p>Create your first meeting or load the demo to see how a full follow-up packet comes together.</p>
+        <div class="empty-actions">
+          <button id="emptyNewBtn" type="button" class="btn-primary">+ New meeting</button>
+          <button id="emptyDemoBtn" type="button" class="btn">Load demo</button>
         </div>
       </section>
-    </section>
 
-    <section class="guardrail" aria-label="Safety boundary">
-      <strong>Safety boundary:</strong> This is a static local planning app. It drafts follow-up text and files only; it does not send messages, invite calendars, write CRM records, call APIs, store secrets, or contact customers.
-    </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
+      <div id="workspace" class="workspace">
+        <section class="panel" aria-labelledby="detailsHeading">
+          <div class="panel-head"><h2 id="detailsHeading">Meeting details</h2></div>
+          <div class="form-grid">
+            <div class="field">
+              <label for="mTitle">Title <span class="req">recommended</span></label>
+              <input id="mTitle" maxlength="120" placeholder="Website relaunch — weekly sync" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="mDate">Date</label>
+              <input id="mDate" type="date" />
+            </div>
+            <div class="field">
+              <label for="mAttendees">Attendees (comma-separated)</label>
+              <input id="mAttendees" maxlength="240" placeholder="Priya Shah, Marcus Lee, Dana Ortiz" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="mSender">Your name (email sender)</label>
+              <input id="mSender" maxlength="80" placeholder="Priya Shah" autocomplete="off" />
+            </div>
+            <div class="field field-wide">
+              <label for="mGoal">Purpose / goal</label>
+              <input id="mGoal" maxlength="300" placeholder="Lock the launch date and confirm content owners" autocomplete="off" />
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="notesHeading">
+          <div class="panel-head">
+            <h2 id="notesHeading">Raw notes</h2>
+            <button id="scanBtn" type="button" class="btn btn-sm">Scan notes for items</button>
+          </div>
+          <label class="field-label" for="mNotes">Notes / transcript fragments — one thought per line works best</label>
+          <textarea id="mNotes" rows="7" placeholder="Agreed to lock the launch date to the 28th.&#10;Marcus will finish the pricing page copy by Friday.&#10;Risk: the photography vendor hasn't confirmed delivery.&#10;Who owns updating the help articles?"></textarea>
+          <div id="suggestWrap" hidden>
+            <h3 class="subhead">Suggested items <span id="suggestCount" class="count-pill">0</span></h3>
+            <ul id="suggestionList" class="suggestion-list"></ul>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="captureHeading">
+          <div class="panel-head"><h2 id="captureHeading">Structured capture</h2></div>
+          <div class="capture-grid">
+            <div class="capture-col">
+              <h3><span class="badge badge-decision">Decisions</span></h3>
+              <div class="quick-add">
+                <label class="sr-only" for="decisionInput">Add a decision</label>
+                <input id="decisionInput" maxlength="220" placeholder="We agreed to…" autocomplete="off" />
+                <button id="addDecisionBtn" type="button" class="btn btn-sm">Add</button>
+              </div>
+              <ul id="decisionList" class="item-list"></ul>
+            </div>
+            <div class="capture-col">
+              <h3><span class="badge badge-risk">Risks &amp; blockers</span></h3>
+              <div class="quick-add">
+                <label class="sr-only" for="riskInput">Add a risk or blocker</label>
+                <input id="riskInput" maxlength="220" placeholder="Blocked on legal review…" autocomplete="off" />
+                <button id="addRiskBtn" type="button" class="btn btn-sm">Add</button>
+              </div>
+              <ul id="riskList" class="item-list"></ul>
+            </div>
+            <div class="capture-col">
+              <h3><span class="badge badge-question">Open questions</span></h3>
+              <div class="quick-add">
+                <label class="sr-only" for="questionInput">Add an open question</label>
+                <input id="questionInput" maxlength="220" placeholder="Who owns the booking link?" autocomplete="off" />
+                <button id="addQuestionBtn" type="button" class="btn btn-sm">Add</button>
+              </div>
+              <ul id="questionList" class="item-list"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="actionsHeading">
+          <div class="panel-head"><h2 id="actionsHeading">Action items</h2></div>
+          <div class="action-editor">
+            <div class="field grow">
+              <label for="actTitle">What needs to happen <span class="req">required</span></label>
+              <input id="actTitle" maxlength="160" placeholder="Finish pricing page copy" autocomplete="off" />
+              <p id="actTitleErr" class="field-error" hidden>Give the action a short title first.</p>
+            </div>
+            <div class="field">
+              <label for="actOwner">Owner</label>
+              <input id="actOwner" maxlength="80" placeholder="Marcus Lee" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="actDue">Due</label>
+              <input id="actDue" type="date" />
+            </div>
+            <div class="field">
+              <label for="actStatus">Status</label>
+              <select id="actStatus">
+                <option value="open">Open</option>
+                <option value="doing">In progress</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+            <div class="editor-buttons">
+              <button id="actSaveBtn" type="button" class="btn-primary">Add action</button>
+              <button id="actCancelBtn" type="button" class="btn-ghost" hidden>Cancel</button>
+            </div>
+          </div>
+          <ul id="actionList" class="action-list"></ul>
+        </section>
+
+        <section class="panel" aria-labelledby="emailHeading">
+          <div class="panel-head">
+            <h2 id="emailHeading">Follow-up email draft</h2>
+            <div id="toneGroup" class="tone-group" role="radiogroup" aria-label="Email tone">
+              <button type="button" role="radio" data-tone="friendly" aria-checked="false">Friendly</button>
+              <button type="button" role="radio" data-tone="professional" aria-checked="true">Professional</button>
+              <button type="button" role="radio" data-tone="direct" aria-checked="false">Direct</button>
+            </div>
+          </div>
+          <textarea id="emailOut" rows="16" readonly spellcheck="false" aria-label="Generated follow-up email draft"></textarea>
+          <div class="panel-foot">
+            <button id="copyEmailBtn" type="button" class="btn-primary">Copy email draft</button>
+            <p class="boundary-note">Draft only — this kit never sends email, writes calendars, or touches a CRM.</p>
+          </div>
+        </section>
+
+        <section class="panel recap-panel" aria-labelledby="recapHeading">
+          <div class="panel-head no-print"><h2 id="recapHeading">Recap preview</h2></div>
+          <article id="recapDoc" class="recap-doc" aria-live="polite"></article>
+        </section>
+
+        <section class="panel no-print" aria-labelledby="exportHeading">
+          <div class="panel-head"><h2 id="exportHeading">Export &amp; handoff</h2></div>
+          <p class="hint">Everything exported is a draft for human review before it goes anywhere near an inbox, calendar, or CRM.</p>
+          <div class="export-row">
+            <button id="copyMdBtn" type="button" class="btn-primary">Copy Markdown recap</button>
+            <button id="downloadJsonBtn" type="button" class="btn">Download JSON</button>
+            <button id="importBtn" type="button" class="btn">Import JSON</button>
+            <button id="downloadCsvBtn" type="button" class="btn">Actions CSV</button>
+            <button id="printBtn" type="button" class="btn">Print recap</button>
+          </div>
+        </section>
       </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+    </div>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <footer class="app-footer">
+    <p>Local-first · No accounts · No tracking — data stays in this browser.</p>
+    <a href="../../index.html">← All apps</a>
+  </footer>
+
+  <dialog id="helpModal" aria-labelledby="helpTitle">
+    <div class="modal-head">
+      <h2 id="helpTitle">How to use the Meeting Follow-up Kit</h2>
+      <button id="helpCloseBtn" type="button" class="btn-ghost btn-sm" aria-label="Close guide">✕</button>
+    </div>
+    <ol class="guide-steps">
+      <li><strong>Create a meeting.</strong> Click <em>+ New</em> in the Meetings panel — or <em>Load demo</em> to explore with realistic data first.</li>
+      <li><strong>Fill in the details.</strong> Title, date, attendees, and your name feed the recap header and email signature.</li>
+      <li><strong>Paste raw notes.</strong> One thought per line works best. Click <em>Scan notes for items</em> and the kit suggests decisions, actions, risks, and questions you can add with one click.</li>
+      <li><strong>Capture structure directly.</strong> Use the quick-add boxes to log decisions, risks &amp; blockers, and open questions as they come up.</li>
+      <li><strong>Track actions.</strong> Add action items with an owner, due date, and status. Overdue items are flagged automatically; update status inline as work progresses.</li>
+      <li><strong>Pick an email tone.</strong> Friendly, Professional, or Direct — the follow-up draft rewrites instantly. Copy it into your mail client when you are happy with it.</li>
+      <li><strong>Export the packet.</strong> Copy the Markdown recap, download JSON (re-importable) or an actions CSV, or print the recap page.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="shortcut-table">
+      <tbody>
+        <tr><th scope="row">?</th><td>Open this guide</td></tr>
+        <tr><th scope="row">Esc</th><td>Close dialogs</td></tr>
+        <tr><th scope="row">Ctrl / Cmd + S</th><td>Copy the Markdown recap</td></tr>
+        <tr><th scope="row">Enter</th><td>Add item from a quick-add box</td></tr>
+      </tbody>
+    </table>
+    <p class="boundary-note">Boundary: this app drafts text locally in your browser. It never sends email, writes calendars or CRMs, or calls any network API.</p>
+    <div class="modal-foot">
+      <button id="helpOkBtn" type="button" class="btn-primary">Got it</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button id="toastUndo" type="button" class="btn btn-sm" hidden>Undo</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json,.json" hidden />
+
   <script src="./app.js"></script>
 </body>
 </html>

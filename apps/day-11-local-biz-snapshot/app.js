@@ -1,641 +1,961 @@
-const STORAGE_KEY = 'local-biz-snapshot-v1';
-const leakOptions = [
-  { id:'missedCalls', label:'Missed calls after hours', weight:24 },
-  { id:'slowForms', label:'Contact form has friction', weight:18 },
-  { id:'staleQuotes', label:'Quote follow-up looks slow', weight:21 },
-  { id:'weakProof', label:'Reviews/proof not surfaced clearly', weight:14 },
-  { id:'bookingGap', label:'Booking path feels unclear', weight:16 },
-  { id:'manualIntake', label:'Office intake depends on memory', weight:12 }
-];
-const demoState = { theme:'dark', businessName:'North Star Plumbing', businessType:'Residential plumbing service', market:'North Dallas suburbs', publicSignal:'Google profile active, website contact form visible, emergency calls promoted', trustSignals:'4.7-star reviews, licensed/insured copy, same-day service claims, before/after job photos.', frictionNotes:'Emergency number is strong, but form asks many fields. Quotes and reviews are not connected to follow-up. No obvious missed-call proof loop.', wedgeType:'Missed-call recovery check', wedgeReason:'The fastest wedge is proving how many urgent calls or form leads need a same-day recovery path before selling a larger automation build.', nextStep:'Manually review public intake paths, ask owner for one week of missed-call or form examples, then draft a tiny proof plan.', revenueFit:8, proofFit:7, accessFit:6, leaks:{ missedCalls:true, slowForms:true, staleQuotes:true, weakProof:false, bookingGap:true, manualIntake:false } };
-let state = loadState();
-const $ = id => document.getElementById(id);
-const textFields = ['businessName','businessType','market','publicSignal','trustSignals','frictionNotes','wedgeReason','nextStep'];
-const ranges = ['revenueFit','proofFit','accessFit'];
-function clone(v){ return typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v)); }
-function loadState(){ try { const raw = localStorage.getItem(STORAGE_KEY); return raw ? { ...clone(demoState), ...JSON.parse(raw), leaks:{...demoState.leaks, ...(JSON.parse(raw).leaks || {})} } : clone(demoState); } catch { return clone(demoState); } }
-function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function activeLeaks(){ return leakOptions.filter(item => state.leaks?.[item.id]); }
-function fitScore(){ const leakLoad = activeLeaks().reduce((sum,item)=>sum+item.weight,0); return Math.max(1, Math.min(100, Math.round((Number(state.revenueFit)*4.3) + (Number(state.proofFit)*3.1) + (Number(state.accessFit)*2.7) + leakLoad*.42))); }
-function fitBand(score=fitScore()){ return score >= 78 ? 'Hot wedge' : score >= 58 ? 'Worth a look' : 'Needs proof'; }
-function bindInputs(){ textFields.forEach(k => $(k).value = state[k] || ''); $('wedgeType').value = state.wedgeType || demoState.wedgeType; ranges.forEach(k => { $(k).value = state[k] ?? demoState[k]; $(`${k}Out`).textContent = $(k).value; }); }
-function renderLeakChecks(){ $('leakChecks').innerHTML = leakOptions.map(item => `<label class="check-row"><input type="checkbox" id="leak-${esc(item.id)}" ${state.leaks?.[item.id] ? 'checked' : ''}><span>${esc(item.label)}</span><b>+${item.weight}</b></label>`).join(''); leakOptions.forEach(item => $(`leak-${item.id}`).addEventListener('change', e => { state.leaks[item.id] = e.target.checked; renderAll(); })); }
-function applyTheme(){ document.documentElement.dataset.theme = state.theme === 'light' ? 'light' : 'dark'; $('themeToggle').textContent = state.theme === 'light' ? 'Dark' : 'Light'; $('themeToggle').setAttribute('aria-pressed', state.theme === 'light' ? 'true' : 'false'); }
-function snapshot(){ const leaks = activeLeaks(); const score = fitScore(); const topLeak = leaks[0]?.label || 'No clear leak selected yet'; return { score, band:fitBand(score), topLeak, leakCount:leaks.length, leaks:leaks.map(l=>l.label), wedge:state.wedgeType, business:state.businessName || 'Unnamed business', type:state.businessType || 'Unknown type', market:state.market || 'Unknown market', firstStep:state.nextStep || 'Pick one human-reviewed proof step before outreach.' }; }
-function markdown(){ const s=snapshot(); return ['# Local Biz Snapshot','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft/export only. This app does not scrape websites, send outreach, update a CRM, enrich contacts, or call external services.','','## Prospect',`- Business: ${s.business}`,`- Type: ${s.type}`,`- Market: ${s.market}`,`- Public note: ${state.publicSignal || 'Missing'}`,'','## Visible proof and friction',`- Trust signals: ${state.trustSignals || 'Missing'}`,`- Friction / risk: ${state.frictionNotes || 'Missing'}`,'','## Lead leak hypotheses',...(s.leaks.length ? s.leaks.map(l => `- ${l}`) : ['- None selected yet']),'',`## Fit score: ${s.score}/100 — ${s.band}`,`- Revenue fit: ${state.revenueFit}/10`,`- Proof visibility: ${state.proofFit}/10`,`- Access ease: ${state.accessFit}/10`,'','## First wedge',`- Wedge: ${s.wedge}`,`- Why: ${state.wedgeReason || 'Missing'}`,`- Human next step: ${s.firstStep}`,'','## Guardrail','Use this as an internal snapshot only. Verify facts manually and get human approval before contacting the business or making claims.'].join('\n'); }
-function csv(){ const s=snapshot(); const rows = [['field','value'],['business',s.business],['type',s.type],['market',s.market],['fit_score',s.score],['fit_band',s.band],['top_leak',s.topLeak],['leaks',s.leaks.join('; ')],['wedge',s.wedge],['next_step',s.firstStep],['safety','draft-only human review required']]; return rows.map(row => row.map(cell => `"${String(cell ?? '').replaceAll('"','""')}"`).join(',')).join('\n'); }
-function renderMetrics(){ const s=snapshot(); $('metricFit').textContent = `${s.score}/100`; $('metricLeaks').textContent = `${s.leakCount} selected`; $('metricWedge').textContent = s.wedge.replace(' recovery check',''); $('snapshotTitle').textContent = `${s.business} · ${s.band}`; $('snapshotStamp').textContent = s.band; }
-function renderCards(){ const s=snapshot(); const rows = [['Market',s.market],['Likely leak',s.topLeak],['First wedge',s.wedge],['Next step',s.firstStep]]; $('snapshotCards').innerHTML = rows.map(([a,b]) => `<article><span>${esc(a)}</span><strong>${esc(b)}</strong></article>`).join(''); $('exportText').value = markdown(); }
-function renderAll(){ applyTheme(); bindInputs(); renderLeakChecks(); renderMetrics(); renderCards(); saveState(); }
-function update(){ textFields.forEach(k => state[k] = $(k).value); state.wedgeType = $('wedgeType').value; ranges.forEach(k => state[k] = Number($(k).value)); renderAll(); }
-function toast(msg){ const el=$('toast'); el.textContent=msg; el.classList.add('show'); clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.classList.remove('show'),1700); }
-function download(name,text,type){ const blob = new Blob([text], {type}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download=name; a.click(); URL.revokeObjectURL(url); }
-function copy(text){ navigator.clipboard?.writeText(text).then(()=>toast('Copied')).catch(()=>{ $('exportText').focus(); $('exportText').select(); toast('Select/copy from export'); }); }
-[...textFields,'wedgeType'].forEach(k => $(k).addEventListener('input', update));
-ranges.forEach(k => $(k).addEventListener('input', update));
-$('themeToggle').addEventListener('click', () => { state.theme = state.theme === 'light' ? 'dark' : 'light'; renderAll(); toast(`${state.theme === 'light' ? 'Light':'Dark'} mode saved`); });
-$('demoBtn').addEventListener('click', () => { state = clone(demoState); renderAll(); toast('Demo snapshot loaded'); });
-$('blankBtn').addEventListener('click', () => { state = { ...clone(demoState), businessName:'', businessType:'', market:'', publicSignal:'', trustSignals:'', frictionNotes:'', wedgeReason:'', nextStep:'', leaks:{} }; renderAll(); toast('Blank fieldbook ready'); });
-$('copyMarkdown').addEventListener('click', () => copy($('exportText').value));
-$('downloadJson').addEventListener('click', () => download('local-biz-snapshot.json', JSON.stringify({ ...state, snapshot:snapshot(), markdown:markdown(), generatedAt:new Date().toISOString(), safety:'draft-only human review required' }, null, 2), 'application/json'));
-$('downloadCsv').addEventListener('click', () => download('local-biz-snapshot.csv', csv(), 'text/csv'));
-renderAll();
-
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_START
+/* Local Biz Snapshot — prospect dossier builder.
+   Local-first, draft-only. No scraping, no outreach, no external calls. */
 (() => {
-  const root = document.getElementById('script-rehearsal-room-bridge');
-  if(!root) return;
-  const cards = document.getElementById('scriptRehearsalCards');
-  const text = document.getElementById('scriptRehearsalText');
-  const clean = v => String(v || '').trim().replace(/\s+/g,' ');
-  const val = id => clean(document.getElementById(id)?.value || document.getElementById(id)?.textContent);
-  const escBridge = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const blob = () => clean([document.title, val('exportText'), val('localBizSnapshotText'), val('pilotPricingText'), val('metricFit'), val('metricValue'), val('metricRecovered'), val('metricOpenValue')].join(' '));
-  function context(){
-    const source = document.title || 'Local app';
-    const raw = blob();
-    const lower = raw.toLowerCase();
-    const prospect = val('businessName') || val('prospect') || val('customer') || val('caller') || val('client') || 'Owner / prospect';
-    const objective = lower.includes('quote') ? 'ask where quote follow-up stalls and propose a tiny cleanup test' : lower.includes('review') ? 'learn what proof customers trust and rehearse a low-pressure ask' : lower.includes('pricing') ? 'validate whether the pilot scope and proof window feel fair' : lower.includes('triage') || lower.includes('call') ? 'understand intake friction and pick one safe next question' : 'find one practical workflow leak worth a small proof step';
-    const prompt = lower.includes('price') || lower.includes('pricing') ? 'What price range feels low-risk enough to test, and what proof would change your mind?' : lower.includes('review') ? 'Which customer result would you feel comfortable asking about manually?' : lower.includes('quote') ? 'Which open quote should get a human follow-up first, and why?' : 'Where does the current workflow slow down when the team is busy?';
-    const objection = lower.includes('cost') || lower.includes('price') || lower.includes('pricing') ? 'We do not have budget.' : lower.includes('busy') || lower.includes('triage') ? 'I am too busy right now.' : 'How do I know this works?';
-    const response = objection.includes('budget') ? 'Keep the answer tied to a short proof window and a small manual pilot before any build.' : objection.includes('busy') ? 'Ask for one ten-minute sample review instead of a full meeting.' : 'Point to measured proof and avoid any revenue promise until facts are verified.';
-    return { source, prospect:prospect.slice(0,120), objective, opening:`I want to keep this useful and low-pressure. The goal is to ${objective}, then decide whether one human-reviewed proof step is worth doing.`, prompt, objection, response, boundary:'Draft rehearsal only. Get human approval before calls, sends, recordings, CRM updates, claims, or customer-facing action.' };
-  }
-  function packet(){ const c=context(); return ['# Script Rehearsal Room bridge','',`Source app: ${c.source}`,`Prospect/customer cue: ${c.prospect}`,`Call objective: ${c.objective}`,'',`Opening line: ${c.opening}`,'','Discovery prompts:',`1. ${c.prompt}`,'2. What would count as proof that this is worth testing?','3. Who needs to approve the smallest next step?','',`Objection card: ${c.objection}`,`Practice response: ${c.response}`,'',`Safety boundary: ${c.boundary}`].join('\n'); }
-  function render(){ const c=context(); cards.innerHTML = [['Prospect cue',c.prospect],['Objective',c.objective],['Objection',c.objection],['Boundary','Human approval first']].map(([a,b]) => `<article><span>${escBridge(a)}</span><strong>${escBridge(b)}</strong></article>`).join(''); text.value = packet(); }
-  function downloadBridge(){ const c=context(); const blobObj = new Blob([JSON.stringify({ ...c, markdown:packet(), generatedAt:new Date().toISOString(), safety:'draft-only script rehearsal' }, null, 2)], {type:'application/json'}); const url=URL.createObjectURL(blobObj); const a=document.createElement('a'); a.href=url; a.download='script-rehearsal-room-bridge.json'; a.click(); URL.revokeObjectURL(url); }
-  document.getElementById('copyScriptRehearsalBridge')?.addEventListener('click', () => navigator.clipboard?.writeText(text.value));
-  document.getElementById('downloadScriptRehearsalBridge')?.addEventListener('click', downloadBridge);
-  ['input','change','click'].forEach(evt => document.addEventListener(evt, () => window.requestAnimationFrame(render)));
-  render();
-})();
-// DAY12_SCRIPT_REHEARSAL_ROOM_BRIDGE_END
+  'use strict';
 
-// Day 13 Proof Vault bridge: source-output-to-evidence handoff.
-(() => {
-  const section = document.getElementById('proof-vault-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('proofVaultCards');
-  const textEl = document.getElementById('proofVaultText');
-  const copyBtn = document.getElementById('copyProofVault');
-  const downloadBtn = document.getElementById('downloadProofVault');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escPv = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'proofVaultText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    const live = clean(document.querySelector('main')?.innerText || document.body.innerText || '');
-    return live.slice(0, 900);
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const headline = clean(document.querySelector('h1')?.textContent || name);
-    const resultCue = output.match(/\$[0-9,.kK]+|[0-9]+%|ready|approval|recover|score|proof/i)?.[0] || 'add measured result before external use';
+  /* ---------------- constants ---------------- */
+
+  const STORAGE_KEY = 'fable-remake:day-11-local-biz-snapshot:v1';
+  const LEGACY_KEY = 'local-biz-snapshot-v1';
+
+  const STATUSES = [
+    { id: 'researching', label: 'Researching' },
+    { id: 'ready', label: 'Dossier ready' },
+    { id: 'contacted', label: 'Contacted' },
+    { id: 'parked', label: 'Parked' }
+  ];
+
+  const LEAKS = [
+    {
+      id: 'missedCalls', name: 'Missed & after-hours calls', icon: '☎', impact: 5,
+      hint: 'Calls that ring out are the most expensive leak for a service business.',
+      signals: [
+        { id: 'noAfterHours', label: 'No after-hours answering — voicemail only or rings out' },
+        { id: 'phoneOnlyCta', label: 'Phone is the main call-to-action with no text-back or callback option' },
+        { id: 'ownerAnswers', label: 'Owner answers personally / mentions being slammed' }
+      ]
+    },
+    {
+      id: 'staleQuotes', name: 'Slow quote follow-up', icon: '⌛', impact: 4,
+      hint: 'Quotes that sit for days quietly hand jobs to competitors.',
+      signals: [
+        { id: 'noPromise', label: 'No stated response time for quotes or estimates' },
+        { id: 'reviewsMentionWait', label: 'Reviews mention waiting for callbacks or estimates' },
+        { id: 'noSystem', label: 'Follow-up lives in someone’s head or inbox — no visible system' }
+      ]
+    },
+    {
+      id: 'formFriction', name: 'Contact form friction', icon: '⌨', impact: 3,
+      hint: 'Every extra field costs a share of the people who almost reached out.',
+      signals: [
+        { id: 'manyFields', label: 'Form asks 6+ fields before a human ever responds' },
+        { id: 'noConfirmation', label: 'No confirmation of what happens after submitting' },
+        { id: 'hardToFind', label: 'Form is buried — more than two clicks from the homepage' }
+      ]
+    },
+    {
+      id: 'weakProof', name: 'Weak review & proof engine', icon: '★', impact: 3,
+      hint: 'Thin or stale proof makes every other channel work harder.',
+      signals: [
+        { id: 'fewerReviews', label: 'Noticeably fewer reviews than nearby competitors' },
+        { id: 'staleReviews', label: 'No new public reviews in the last 90 days' },
+        { id: 'noReplies', label: 'Negative reviews sit unanswered' }
+      ]
+    },
+    {
+      id: 'bookingGap', name: 'Unclear booking path', icon: '▤', impact: 4,
+      hint: 'If a stranger can’t book in under a minute, many won’t bother.',
+      signals: [
+        { id: 'noOnlineBooking', label: 'No online booking or scheduling link anywhere' },
+        { id: 'unclearBasics', label: 'Hours, service area, or pricing basics are unclear' },
+        { id: 'competingCtas', label: 'Multiple competing CTAs — call, form, chat, socials' }
+      ]
+    },
+    {
+      id: 'manualIntake', name: 'Manual intake & office memory', icon: '✎', impact: 3,
+      hint: 'Paper and memory drop the details that win repeat work.',
+      signals: [
+        { id: 'onePerson', label: 'Intake depends on one person’s memory or notepad' },
+        { id: 'noRecords', label: 'No CRM or shared record of past jobs and customers' },
+        { id: 'repeatAsks', label: 'Customers report repeating details they already gave' }
+      ]
+    }
+  ];
+
+  const WEDGES = [
+    { id: 'missedCallRecovery', name: 'Missed-call recovery check', leak: 'missedCalls', effort: 'Low',
+      pitch: 'Track one week of missed and after-hours calls, then show the owner the recovered value before proposing anything bigger.' },
+    { id: 'quoteCleanup', name: 'Quote follow-up cleanup', leak: 'staleQuotes', effort: 'Low',
+      pitch: 'List every open quote, agree a simple follow-up rhythm, and revive the two oldest with a human touch.' },
+    { id: 'formSimplify', name: 'Contact form simplification', leak: 'formFriction', effort: 'Low',
+      pitch: 'Cut the form to three fields, add a response-time promise, and measure the change in completed enquiries.' },
+    { id: 'reviewTuneUp', name: 'Review request tune-up', leak: 'weakProof', effort: 'Medium',
+      pitch: 'Build a simple post-job review ask for happy customers and a reply routine for the reviews already sitting there.' },
+    { id: 'bookingClarity', name: 'Booking path clarity pass', leak: 'bookingGap', effort: 'Medium',
+      pitch: 'Make the one obvious next step unmissable: hours, service area, and a single clear way to book.' },
+    { id: 'intakeChecklist', name: 'Intake checklist & owner daily report', leak: 'manualIntake', effort: 'Medium',
+      pitch: 'Replace memory with a one-page intake checklist and a short daily summary the owner actually reads.' }
+  ];
+
+  const LIKELIHOOD = [
+    { min: 3, pct: 90, band: 'Very likely', cls: 'very' },
+    { min: 2, pct: 70, band: 'Likely', cls: 'likely' },
+    { min: 1, pct: 40, band: 'Possible', cls: 'possible' },
+    { min: 0, pct: 0, band: 'No evidence', cls: 'none' }
+  ];
+
+  const FIT_BANDS = [
+    { min: 75, label: 'Hot wedge', cls: 'hot' },
+    { min: 55, label: 'Worth a look', cls: 'warm' },
+    { min: 0, label: 'Needs proof', cls: 'cold' }
+  ];
+
+  const GUARDRAIL = 'Internal snapshot only. Verify facts manually and get human approval before contacting the business or making claims.';
+
+  /* ---------------- helpers ---------------- */
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+  const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const clampNum = (v, lo, hi, fb) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : fb;
+  };
+  const str = (v, max) => typeof v === 'string' ? v.slice(0, max) : '';
+  const statusLabel = (id) => (STATUSES.find((s) => s.id === id) || STATUSES[0]).label;
+
+  /* ---------------- state ---------------- */
+
+  let state;
+  let saveTimer = null;
+  let toastTimer = null;
+  let undoBuffer = null;
+  let helpOpener = null;
+
+  function blankProspect() {
     return {
-      sourceApp: name,
-      artifactType: 'Report snippet / screenshot candidate',
-      proofTitle: `${name} output evidence`,
-      location: 'Capture a local screenshot or export from this app before sharing.',
-      snippet: output,
-      result: `Evidence cue: ${resultCue}. Verify against real owner/customer data before using as proof.`,
-      caseStudyAngle: `${headline} can become a Proof Vault card if the screenshot/snippet is redacted, tied to a measured result, and approved by the owner.`,
-      redactionChecklist: ['Remove customer names and identifiers', 'Confirm no API keys, tokens, account IDs, phone numbers, or private URLs are visible', 'Mark owner approval before any external case-study use'],
-      safety: 'Draft-only local handoff. Do not publish, send, or claim results without redaction and explicit human approval.',
-      generatedAt: new Date().toISOString()
+      id: uid(), createdAt: Date.now(), updatedAt: Date.now(),
+      name: '', type: '', market: '', contact: '', status: 'researching',
+      presence: '', trust: '', friction: '',
+      revenueFit: 5, proofFit: 5, accessFit: 5,
+      leaks: {}, wedgeId: 'auto', wedgeReason: '', nextStep: ''
     };
   }
-  function markdown(packet){
-    return ['# Proof Vault evidence card','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Redact and obtain explicit approval before external use.','',`## Source app`,packet.sourceApp,'',`## Proof title`,packet.proofTitle,'',`## Artifact type`,packet.artifactType,'',`## Location`,packet.location,'',`## Evidence snippet`,packet.snippet,'',`## Result / signal`,packet.result,'',`## Case-study angle`,packet.caseStudyAngle,'',`## Redaction checklist`,...packet.redactionChecklist.map(item => `- [ ] ${item}`),'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Source', packet.sourceApp],
-      ['Artifact', packet.artifactType],
-      ['Result cue', packet.result],
-      ['Boundary', 'Redact + owner approval']
-    ].map(([label, value]) => `<article><span>${escPv(label)}</span><strong>${escPv(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify(packet, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-proof-vault-card.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 14 SOP Builder bridge: current-output-to-repeatable-procedure handoff.
-(() => {
-  const section = document.getElementById('sop-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('sopBuilderCards');
-  const textEl = document.getElementById('sopBuilderText');
-  const copyBtn = document.getElementById('copySopBuilder');
-  const downloadBtn = document.getElementById('downloadSopBuilder');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escSop = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'sopBuilderText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 900);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 900);
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const title = clean(document.querySelector('h1')?.textContent || name);
-    const trigger = output.match(/when|after|if|before|daily|lead|quote|approval|proof|review/i)?.[0] || 'When this workflow output needs to be repeated';
-    const stepA = `Open ${name}, load or enter the working context, and confirm the task is still draft-only.`;
-    const stepB = `Use the current output to decide the next internal handoff: ${output.slice(0, 180) || 'document the workflow result'}.`;
-    const stepC = 'Run the quality checks, get human approval for customer-facing action, then log the decision outside this bridge.';
-    return {
-      sourceApp: name,
-      sopTitle: `${name} repeatable handoff SOP`,
-      trigger,
-      owner: 'Human operator / owner delegate',
-      inputs: 'Current app output, source notes, approval status, and any measured result cues.',
-      doneDefinition: 'The handoff is copied/exported, reviewed by a human, and either approved, revised, or parked.',
-      steps: [stepA, stepB, stepC],
-      qualityChecks: ['No secrets, tokens, account IDs, or private customer identifiers are visible', 'Claims are tied to visible evidence or marked as assumptions', 'Human approval is required before sends, CRM writes, quotes, public changes, or customer contact'],
-      exceptionPath: 'If context is unclear, sensitive, or high-risk, stop and ask the owner for review instead of acting.',
-      sourceSnippet: output,
-      safety: 'Draft-only SOP handoff. No customer-facing action, CRM write, send, quote, or destructive change from this bridge.',
-      generatedAt: new Date().toISOString(),
-      headline: title
-    };
-  }
-  function markdown(packet){
-    return ['# SOP Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local handoff. Human approval is required before customer-facing or destructive action.','',`## SOP`,packet.sopTitle,`Source app: ${packet.sourceApp}`,`Trigger: ${packet.trigger}`,`Owner: ${packet.owner}`,`Inputs: ${packet.inputs}`,`Done definition: ${packet.doneDefinition}`,'',`## Steps`,...packet.steps.map((step, idx) => `${idx + 1}. ${step}`),'',`## Quality checks`,...packet.qualityChecks.map(item => `- [ ] ${item}`),'',`## Exception path`,packet.exceptionPath,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.safety].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Trigger', packet.trigger],
-      ['Owner', packet.owner],
-      ['Steps', `${packet.steps.length} starter stations`],
-      ['Boundary', 'Human approval before action']
-    ].map(([label, value]) => `<article><span>${escSop(label)}</span><strong>${escSop(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-sop-builder-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 15 Daily Cash Board bridge: current-output-to-cash-action handoff.
-(() => {
-  const section = document.getElementById('daily-cash-board-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('dailyCashBoardCards');
-  const textEl = document.getElementById('dailyCashBoardText');
-  const copyBtn = document.getElementById('copyDailyCashBoard');
-  const downloadBtn = document.getElementById('downloadDailyCashBoard');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCash = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'dailyCashBoardText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1000);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1000);
-  }
-  function valueCue(text){
-    const match = text.match(/\$\s?([0-9][0-9,]*(?:\.\d{1,2})?)/);
-    return match ? `$${match[1]}` : 'Value not set';
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const dueSignal = /today|daily|now|urgent|stale|follow|invoice|quote|call/i.test(output) ? 'Due today / review now' : 'Schedule the next review date';
-    return {
-      sourceApp: name,
-      cashSignal: valueCue(output),
-      offerCheckpoint: `If ${name} reveals a clear wedge, draft one narrow offer and route it for human approval.`,
-      followupCheckpoint: `If the output mentions a quote, lead, proof, review, or owner decision, create one follow-up task instead of letting it sit.`,
-      callCheckpoint: 'If discovery is needed, book or prepare one human-led call; do not send from this bridge.',
-      invoiceCheckpoint: 'If work is complete or approved, check invoice/collection status outside this app.',
-      nextAction: `${dueSignal}: copy this cash brief into Daily Cash Board and choose the single highest-cash next move.`,
-      risk: 'No customer-facing sends, CRM writes, invoices, payments, public changes, pricing promises, or destructive actions from this bridge.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Daily Cash Board bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local cash brief. Human approval is required before customer-facing, billing, CRM, payment, or public actions.','',`## Source`,packet.sourceApp,`Cash/value cue: ${packet.cashSignal}`,'',`## Cash checkpoints`,`- Offer: ${packet.offerCheckpoint}`,`- Follow-up: ${packet.followupCheckpoint}`,`- Booked call: ${packet.callCheckpoint}`,`- Invoice / collect: ${packet.invoiceCheckpoint}`,'',`## Next action`,packet.nextAction,'',`## Source snippet`,packet.sourceSnippet,'',`## Guardrail`,packet.risk].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Value cue', packet.cashSignal],
-      ['Offer', 'Draft only'],
-      ['Follow-up', 'One due action'],
-      ['Invoice', 'Check status'],
-      ['Boundary', 'Human approval']
-    ].map(([label, value]) => `<article><span>${escCash(label)}</span><strong>${escCash(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-daily-cash-board-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 16 Meeting Follow-up Kit bridge: current-output-to-recap handoff.
-(() => {
-  const section = document.getElementById('meeting-followup-kit-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('meetingFollowupCards');
-  const textEl = document.getElementById('meetingFollowupText');
-  const copyBtn = document.getElementById('copyMeetingFollowup');
-  const downloadBtn = document.getElementById('downloadMeetingFollowup');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escMeeting = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'meetingFollowupText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1200);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1200);
-  }
-  function firstSentence(text){ const match = clean(text).match(/[^.!?]+[.!?]/); return match ? match[0].trim() : clean(text).slice(0, 160); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const decisionCue = /(approve|approved|decision|choose|selected|ready|won|yes|no|price|pilot|scope)/i.test(output) ? 'Decision cue found' : 'Decision needs owner confirmation';
-    const riskCue = /(risk|block|guardrail|approval|secret|payment|invoice|customer|public|send|crm)/i.test(output) ? 'Risk/approval cue found' : 'No obvious risk cue';
-    return {
-      sourceApp: name,
-      recapHeadline: firstSentence(output) || `${name} output needs a meeting recap.`,
-      followupEmail: `Subject: Follow-up from ${name}\n\nHi all,\n\nQuick recap: ${firstSentence(output) || 'we reviewed the current app output.'}\n\nProposed next action: assign one owner, one due date, and one approval check before anything customer-facing happens.\n\nPlease confirm the decisions, risks, and open questions below before sending or acting.`,
-      ownerTasks: [`Name one owner for the next ${name} action`, 'Set a due date before the next review', 'Copy the guardrail into the handoff'],
-      decisions: [decisionCue, 'Confirm whether this output is ready for the next app/workflow'],
-      risks: [riskCue, 'No sends, CRM writes, invoices, payments, public changes, or customer contact from this bridge'],
-      questions: ['Who owns the next step?', 'What must be approved before real-world action?'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Meeting Follow-up Kit bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: draft-only local recap. Human approval is required before sending email, calendar invites, CRM updates, customer messages, billing, or public changes.','',`## Source`,packet.sourceApp,'',`## Recap headline`,packet.recapHeadline,'',`## Draft follow-up email`,'```',packet.followupEmail,'```','',`## Tasks`,...packet.ownerTasks.map(v => `- ${v}`),'',`## Decisions`,...packet.decisions.map(v => `- ${v}`),'',`## Risks`,...packet.risks.map(v => `- ${v}`),'',`## Open questions`,...packet.questions.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Recap', 'Ready'],
-      ['Email', 'Draft only'],
-      ['Tasks', String(packet.ownerTasks.length)],
-      ['Risks', String(packet.risks.length)],
-      ['Boundary', 'Human review']
-    ].map(([label, value]) => `<article><span>${escMeeting(label)}</span><strong>${escMeeting(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-meeting-followup-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 17 Credential Handoff Checklist bridge: no-secret access custody handoff.
-(() => {
-  const section = document.getElementById('credential-handoff-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('credentialHandoffCards');
-  const textEl = document.getElementById('credentialHandoffText');
-  const copyBtn = document.getElementById('copyCredentialHandoff');
-  const downloadBtn = document.getElementById('downloadCredentialHandoff');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escCred = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'credentialHandoffText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1400);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1400);
-  }
-  function findSystems(text){
-    const lower = text.toLowerCase();
-    const systems = [];
-    if(/email|inbox|follow-up|message|sms/.test(lower)) systems.push('Messaging/inbox access');
-    if(/calendar|booking|appointment|schedule/.test(lower)) systems.push('Booking/calendar access');
-    if(/crm|lead|customer|quote|invoice/.test(lower)) systems.push('CRM/customer record access');
-    if(/api|webhook|integration|automation/.test(lower)) systems.push('API/integration access');
-    if(/payment|billing|price|cash|invoice/.test(lower)) systems.push('Billing/payment portal access');
-    return systems.length ? [...new Set(systems)].slice(0,4) : ['App/operator access'];
-  }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const systems = findSystems(output);
-    const riskWords = (output.match(/secret|token|key|password|customer|payment|send|crm|public|invoice|api/gi) || []).length;
-    return {
-      sourceApp: name,
-      systems,
-      primaryOwner: 'Assign primary owner',
-      backupOwner: 'Assign backup owner',
-      storageReference: 'Password-manager item label only — do not paste secret value',
-      requiredChecks: ['MFA confirmed', 'Least privilege confirmed', 'Storage reference verified', 'Revocation path documented', 'Rotation date set', 'No raw secret stored in this app/export'],
-      revocationPlan: systems.map(system => `${system}: document where to remove user/key and who can execute it.`),
-      riskFlags: riskWords ? [`${riskWords} sensitive/action words detected in source output; review access boundaries.`] : ['No obvious credential/action keywords detected; still review manually.'],
-      approvalBoundary: 'Human approval required before sharing, rotating, revoking, sending, CRM changes, billing actions, customer contact, or public changes.',
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Credential Handoff Checklist bridge','',`Generated: ${new Date().toLocaleString()}`,'Safety: metadata only. Do not paste raw passwords, tokens, API keys, cookies, private keys, MFA seed phrases, recovery codes, customer PII, or payment details. Use an encrypted/password-manager workflow for the actual secret handoff.','',`## Source`,packet.sourceApp,'',`## Systems/access surfaces`,...packet.systems.map(v => `- ${v}`),'',`## Owners`,`- Primary owner: ${packet.primaryOwner}`,`- Backup owner: ${packet.backupOwner}`,'',`## Storage reference`,packet.storageReference,'',`## Required checks`,...packet.requiredChecks.map(v => `- [ ] ${v}`),'',`## Revocation plan`,...packet.revocationPlan.map(v => `- ${v}`),'',`## Risk flags`,...packet.riskFlags.map(v => `- ${v}`),'',`## Approval boundary`,packet.approvalBoundary,'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Surfaces', String(packet.systems.length)],
-      ['Secret values', 'Never store'],
-      ['Checks', String(packet.requiredChecks.length)],
-      ['Revoke path', 'Required'],
-      ['Approval', 'Human gate']
-    ].map(([label, value]) => `<article><span>${escCred(label)}</span><strong>${escCred(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-credential-handoff-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 18 Content Repurposer bridge: draft-only publishing packet.
-(() => {
-  const section = document.getElementById('content-repurposer-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('contentRepurposerCards');
-  const textEl = document.getElementById('contentRepurposerText');
-  const copyBtn = document.getElementById('copyContentRepurposer');
-  const downloadBtn = document.getElementById('downloadContentRepurposer');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escContent = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'contentRepurposerText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function splitSentences(text){ return clean(text).split(/(?<=[.!?])\s+/).filter(Boolean); }
-  function buildPacket(){
-    const name = appName();
-    const output = currentOutput();
-    const sentences = splitSentences(output);
-    const proofWords = (output.match(/verified|smoke|browser|export|recording|phone|proof|score|ready|passed/gi) || []).length;
-    const publicWords = (output.match(/send|publish|post|customer|client|public|crm|payment|billing/gi) || []).length;
-    const title = `${name}: turn the output into a proof-ready draft`.slice(0, 92);
-    const chapters = [
-      ['00:00', 'What the app produced', sentences[0] || `${name} generated a useful local-first output.`],
-      ['00:35', 'Core workflow', sentences[1] || 'Walk through the main inputs, decisions, and generated packet.'],
-      ['01:15', 'Proof and caveats', sentences[2] || 'Show verification, limits, and human-review boundaries.'],
-      ['02:00', 'Next action', 'Copy/export the draft packet, then review before public use.']
-    ];
-    return {
-      sourceApp: name,
-      title,
-      description: `${name} produced a local-first business workflow output. This bridge repurposes it into a draft content packet with proof notes, caveats, chapters, and short posts. Human review is required before publishing.`,
-      chapters,
-      shortPosts: [
-        `Built/useful output from ${name}: now it has a draft content packet with title, description, chapters, proof notes, and caveats.`,
-        `The important boundary: this is content drafting only. Review before anything public, customer-facing, or promotional.`,
-        proofWords ? `Proof cues detected in the source: ${proofWords}. Keep those in the public story instead of hype.` : `Add verification proof before publishing this story.`
-      ],
-      checklist: ['Confirm claims match the source output', 'Add proof and screenshots only if secret-safe', 'Keep caveats visible', 'Human approval before public posting', 'No customer data or secrets in exported content'],
-      flags: publicWords ? [`${publicWords} public/customer/action words detected; approval review required.`] : ['No obvious public-action terms detected; still review manually.'],
-      sourceSnippet: output,
-      generatedAt: new Date().toISOString()
-    };
-  }
-  function markdown(packet){
-    return ['# Content Repurposer bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Does not post, upload, send, call APIs, or publish. Human approval required before public use.','',`## Source`,packet.sourceApp,'',`## YouTube title`,packet.title,'',`## Description`,packet.description,'',`## Chapters`,...packet.chapters.map(c => `- ${c[0]} — ${c[1]}: ${c[2]}`),'',`## Short posts`,...packet.shortPosts.map((v,i)=>`### Post ${i+1}\n${v}`),'',`## Review checklist`,...packet.checklist.map(v => `- [ ] ${v}`),'',`## Flags`,...packet.flags.map(v => `- ${v}`),'',`## Source snippet`,packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildPacket();
-    cardsEl.innerHTML = [
-      ['Title', '1 draft'],
-      ['Chapters', String(packet.chapters.length)],
-      ['Posts', String(packet.shortPosts.length)],
-      ['Proof gate', 'Required'],
-      ['Public action', 'Human review']
-    ].map(([label, value]) => `<article><span>${escContent(label)}</span><strong>${escContent(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-content-repurposer-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
-
-// Day 19 Home Service Route Planner bridge: draft-only service route sheet.
-(() => {
-  const section = document.getElementById('home-service-route-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('homeServiceRouteCards');
-  const textEl = document.getElementById('homeServiceRouteText');
-  const copyBtn = document.getElementById('copyHomeServiceRoute');
-  const downloadBtn = document.getElementById('downloadHomeServiceRoute');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escRoute = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'homeServiceRouteText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1600);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1600);
-  }
-  function chunks(text){ const parts = clean(text).split(/(?<=[.!?])\s+|\n+/).filter(Boolean); return parts.length ? parts : ['Review generated output', 'Confirm next action', 'Owner approval checkpoint']; }
-  function buildRoute(){
-    const name = appName();
-    const output = currentOutput();
-    const parts = chunks(output).slice(0, 5);
-    const base = 8 * 60;
-    const stops = parts.map((part, index) => {
-      const priority = /urgent|risk|overdue|stale|critical|high|emergency/i.test(part) ? 5 : (/review|approve|owner|proof/i.test(part) ? 4 : 3);
-      const arrive = base + index * 105;
-      return { order:index+1, customer:`${name} stop ${index+1}`, area:['North route','East route','South route','West route','Overflow'][index] || 'Route TBD', priority, windowStart:`${String(Math.floor(arrive/60)).padStart(2,'0')}:${String(arrive%60).padStart(2,'0')}`, duration: priority >= 5 ? 90 : 60, work:part };
+  function normalizeProspect(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const p = blankProspect();
+    p.id = typeof raw.id === 'string' && raw.id ? raw.id : p.id;
+    p.createdAt = Number(raw.createdAt) || p.createdAt;
+    p.updatedAt = Number(raw.updatedAt) || p.updatedAt;
+    p.name = str(raw.name, 90);
+    p.type = str(raw.type, 80);
+    p.market = str(raw.market, 100);
+    p.contact = str(raw.contact, 90);
+    p.status = STATUSES.some((s) => s.id === raw.status) ? raw.status : 'researching';
+    p.presence = str(raw.presence, 600);
+    p.trust = str(raw.trust, 600);
+    p.friction = str(raw.friction, 600);
+    p.revenueFit = clampNum(raw.revenueFit, 1, 10, 5);
+    p.proofFit = clampNum(raw.proofFit, 1, 10, 5);
+    p.accessFit = clampNum(raw.accessFit, 1, 10, 5);
+    p.wedgeId = raw.wedgeId === 'auto' || WEDGES.some((w) => w.id === raw.wedgeId) ? raw.wedgeId : 'auto';
+    p.wedgeReason = str(raw.wedgeReason, 600);
+    p.nextStep = str(raw.nextStep, 600);
+    p.leaks = {};
+    LEAKS.forEach((leak) => {
+      const src = raw.leaks && typeof raw.leaks === 'object' ? raw.leaks[leak.id] : null;
+      if (!src || typeof src !== 'object') return;
+      const signals = {};
+      leak.signals.forEach((sig) => {
+        if (src.signals && src.signals[sig.id]) signals[sig.id] = true;
+      });
+      const note = str(src.note, 180);
+      if (Object.keys(signals).length || note) p.leaks[leak.id] = { signals, note };
     });
-    const totalDrive = Math.max(0, stops.length - 1) * 22;
-    const totalWork = stops.reduce((sum, stop) => sum + stop.duration, 0);
-    const flags = [];
-    if(/send|publish|customer|client|dispatch|public|crm|payment/gi.test(output)) flags.push('Customer/public/dispatch action words detected; confirm manually before use.');
-    if(stops.length > 4) flags.push('Route has more than four derived stops; dispatcher should tighten scope.');
-    if(!/proof|verified|review|approve|check/gi.test(output)) flags.push('Add verification/proof checks before committing this route.');
-    return { sourceApp:name, depot:'Draft depot / confirm before dispatch', technician:'Unassigned tech', driveBufferMinutes:22, stops, totals:{drive:totalDrive, work:totalWork, total:totalDrive + totalWork + 30}, flags: flags.length ? flags : ['No blocking route flags detected. Confirm traffic/windows manually.'], sourceSnippet:output, generatedAt:new Date().toISOString() };
+    return p;
   }
-  function markdown(packet){
-    return ['# Home Service Route Planner bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only. Confirm traffic, customer windows, technician constraints, and approvals before dispatch.','',`Source app: ${packet.sourceApp}`,`Depot: ${packet.depot}`,`Technician: ${packet.technician}`,'','## Route summary',`- Stops: ${packet.stops.length}`,`- Drive buffer: ${packet.totals.drive} minutes`,`- Work time: ${packet.totals.work} minutes`,`- Total with admin buffer: ${packet.totals.total} minutes`,'','## Stop order',...packet.stops.map(stop => `### ${stop.order}. ${stop.customer}\n- Area: ${stop.area}\n- Window: ${stop.windowStart}\n- Priority: ${stop.priority >= 5 ? 'Emergency' : stop.priority >= 4 ? 'High' : 'Normal'}\n- Duration: ${stop.duration} minutes\n- Work: ${stop.work}`),'','## Review flags',...packet.flags.map(v => `- ${v}`),'','## Source snippet',packet.sourceSnippet].join('\n');
-  }
-  function render(){
-    const packet = buildRoute();
-    cardsEl.innerHTML = [
-      ['Stops', String(packet.stops.length)],
-      ['Drive buffer', `${packet.totals.drive}m`],
-      ['Work', `${packet.totals.work}m`],
-      ['Flags', String(packet.flags.length)],
-      ['Boundary', 'Draft-only']
-    ].map(([label, value]) => `<article><span>${escRoute(label)}</span><strong>${escRoute(value)}</strong></article>`).join('');
-    textEl.value = markdown(packet);
-    return packet;
-  }
-  function download(packet){
-    const blob = new Blob([JSON.stringify({ ...packet, markdown: markdown(packet) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${packet.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-route-planner-bridge.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
-// Day 20 Intake Form Builder bridge: draft-only intake form spec.
-(() => {
-  const section = document.getElementById('intake-form-builder-bridge');
-  if (!section) return;
-  const cardsEl = document.getElementById('intakeFormCards');
-  const textEl = document.getElementById('intakeFormText');
-  const copyBtn = document.getElementById('copyIntakeForm');
-  const downloadBtn = document.getElementById('downloadIntakeForm');
-  const clean = value => String(value || '').replace(/\s+/g, ' ').trim();
-  const escForm = value => String(value || '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  function appName(){ return clean(document.querySelector('title')?.textContent || document.querySelector('h1')?.textContent || 'Current app'); }
-  function currentOutput(){
-    const textareas = [...document.querySelectorAll('textarea')].filter(el => el.id !== 'intakeFormText');
-    const filled = textareas.map(el => clean(el.value || el.textContent)).find(v => v.length > 80);
-    if (filled) return filled.slice(0, 1700);
-    return clean(document.querySelector('main')?.innerText || document.body.innerText || '').slice(0, 1700);
+  function normalize(raw) {
+    const s = raw && typeof raw === 'object' ? raw : {};
+    const out = {
+      version: 1,
+      theme: s.theme === 'light' || s.theme === 'dark' ? s.theme : null,
+      seenGuide: !!s.seenGuide,
+      view: s.view === 'compare' ? 'compare' : 'dossier',
+      activeId: typeof s.activeId === 'string' ? s.activeId : null,
+      prospects: Array.isArray(s.prospects) ? s.prospects.map(normalizeProspect).filter(Boolean) : []
+    };
+    if (!out.prospects.some((p) => p.id === out.activeId)) {
+      out.activeId = out.prospects.length ? out.prospects[0].id : null;
+    }
+    return out;
   }
-  function inferQuestions(output){
-    const base = [
-      ['Contact name and best callback', 'short-text', 'Contact', true, 'Name, phone, and best time to respond.'],
-      ['Service location or account context', 'short-text', 'Contact', true, 'Enough context to route the request; do not ask for unnecessary IDs.'],
-      ['What should we help with?', 'long-text', 'Job details', true, 'Let the requester explain the need in plain words.']
+
+  function migrateLegacy() {
+    try {
+      const raw = localStorage.getItem(LEGACY_KEY);
+      if (!raw) return null;
+      const old = JSON.parse(raw);
+      if (!old || typeof old !== 'object') return null;
+      const map = { missedCalls: 'missedCalls', slowForms: 'formFriction', staleQuotes: 'staleQuotes', weakProof: 'weakProof', bookingGap: 'bookingGap', manualIntake: 'manualIntake' };
+      const leaks = {};
+      Object.entries(old.leaks || {}).forEach(([key, on]) => {
+        const id = map[key];
+        if (!id || !on) return;
+        const leak = LEAKS.find((l) => l.id === id);
+        leaks[id] = { signals: { [leak.signals[0].id]: true }, note: 'Imported from v1 snapshot — re-verify signals' };
+      });
+      const wedge = WEDGES.find((w) => w.name.toLowerCase() === String(old.wedgeType || '').toLowerCase());
+      const p = normalizeProspect({
+        ...blankProspect(),
+        name: old.businessName, type: old.businessType, market: old.market,
+        presence: old.publicSignal, trust: old.trustSignals, friction: old.frictionNotes,
+        revenueFit: old.revenueFit, proofFit: old.proofFit, accessFit: old.accessFit,
+        leaks, wedgeId: wedge ? wedge.id : 'auto',
+        wedgeReason: old.wedgeReason, nextStep: old.nextStep
+      });
+      if (!p || (!p.name && !Object.keys(p.leaks).length)) return null;
+      return normalize({ theme: old.theme, seenGuide: true, prospects: [p], activeId: p.id });
+    } catch { return null; }
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch { /* fall through */ }
+    return migrateLegacy() || normalize(null);
+  }
+
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage full/blocked */ }
+    }, 250);
+  }
+
+  const activeProspect = () => state.prospects.find((p) => p.id === state.activeId) || null;
+
+  function ensureLeak(p, leakId) {
+    if (!p.leaks[leakId]) p.leaks[leakId] = { signals: {}, note: '' };
+    return p.leaks[leakId];
+  }
+
+  /* ---------------- domain logic (pure) ---------------- */
+
+  function signalCount(p, leak) {
+    const entry = p.leaks[leak.id];
+    if (!entry) return 0;
+    return leak.signals.filter((s) => entry.signals && entry.signals[s.id]).length;
+  }
+
+  function leakAssessment(p, leak) {
+    const count = signalCount(p, leak);
+    const step = LIKELIHOOD.find((s) => count >= s.min);
+    return {
+      leak, count,
+      pct: step.pct, band: step.band, cls: step.cls,
+      score: (step.pct / 100) * leak.impact,
+      reasons: leak.signals.filter((s) => p.leaks[leak.id]?.signals?.[s.id]).map((s) => s.label),
+      note: p.leaks[leak.id]?.note || ''
+    };
+  }
+
+  function leakPriority(p) {
+    return LEAKS.map((leak) => leakAssessment(p, leak))
+      .sort((a, b) => b.score - a.score || b.leak.impact - a.leak.impact);
+  }
+
+  function fitParts(p) {
+    const sliderPart = Math.round(p.revenueFit * 2.4 + p.proofFit * 1.8 + p.accessFit * 1.8); // max 60
+    const evidence = LEAKS.reduce((sum, leak) => sum + leakAssessment(p, leak).score, 0);
+    const leakPart = Math.min(40, Math.round(evidence * 3)); // max 40
+    const score = Math.max(0, Math.min(100, sliderPart + leakPart));
+    return { sliderPart, leakPart, score };
+  }
+
+  const fitBand = (score) => FIT_BANDS.find((b) => score >= b.min);
+
+  function recommendedWedge(p) {
+    const top = leakPriority(p)[0];
+    if (!top || top.pct === 0) return null;
+    return { wedge: WEDGES.find((w) => w.leak === top.leak.id), evidence: top };
+  }
+
+  function chosenWedge(p) {
+    if (p.wedgeId === 'auto') {
+      const rec = recommendedWedge(p);
+      return rec ? rec.wedge : null;
+    }
+    return WEDGES.find((w) => w.id === p.wedgeId) || null;
+  }
+
+  function recReasonText(rec) {
+    return `Targets “${rec.evidence.leak.name}” — ${rec.evidence.band} (${rec.evidence.count} of ${rec.evidence.leak.signals.length} signals observed, impact ${rec.evidence.leak.impact}/5), your strongest evidence.`;
+  }
+
+  /* ---------------- exports (pure builders) ---------------- */
+
+  function dossierMarkdown(p) {
+    const parts = fitParts(p);
+    const band = fitBand(parts.score);
+    const prio = leakPriority(p);
+    const withEvidence = prio.filter((x) => x.pct > 0);
+    const without = prio.filter((x) => x.pct === 0);
+    const rec = recommendedWedge(p);
+    const chosen = chosenWedge(p);
+    const lines = [
+      `# Prospect dossier — ${p.name || 'Unnamed prospect'}`, '',
+      `Generated: ${new Date().toLocaleString()}`,
+      `Status: ${statusLabel(p.status)}`,
+      'Draft for human review — manually researched, no scraping or automated outreach.', '',
+      '## Profile',
+      `- Business: ${p.name || '—'}`,
+      `- Type: ${p.type || '—'}`,
+      `- Market: ${p.market || '—'}`,
+      `- Contact: ${p.contact || '—'}`,
+      `- Public presence: ${p.presence || '—'}`,
+      `- Trust signals: ${p.trust || '—'}`,
+      `- Observed friction: ${p.friction || '—'}`, '',
+      '## Lead-leak likelihoods'
     ];
-    if(/urgent|risk|critical|emergency|stale|overdue/i.test(output)) base.push(['How urgent is this request?', 'select', 'Urgency', true, 'Emergency | Today | This week | Planning ahead']);
-    if(/proof|screenshot|photo|evidence|result/i.test(output)) base.push(['What proof or files are available?', 'long-text', 'Proof / files', false, 'Describe evidence; do not upload sensitive material here.']);
-    if(/price|quote|invoice|cash|revenue|roi|cost/i.test(output)) base.push(['What value, quote, or budget context matters?', 'short-text', 'Commercial context', false, 'Keep estimates draft-only until reviewed.']);
-    if(/meeting|call|follow|schedule|route|dispatch|appointment/i.test(output)) base.push(['Preferred timing or next appointment window', 'checkboxes', 'Scheduling', false, 'Morning | Midday | Afternoon | Flexible']);
-    base.push(['Consent to be contacted about this request', 'select', 'Consent', true, 'Yes, contact me about this request | No, do not contact me']);
-    return base.map((row,index) => ({order:index+1,label:row[0],type:row[1],section:row[2],required:row[3],helper:row[4]}));
+    if (withEvidence.length) {
+      withEvidence.forEach((x) => {
+        lines.push(`### ${x.leak.name} — ${x.band} (${x.pct}%, impact ${x.leak.impact}/5)`);
+        x.reasons.forEach((r) => lines.push(`- Signal: ${r}`));
+        if (x.note) lines.push(`- Evidence note: ${x.note}`);
+        lines.push('');
+      });
+    } else {
+      lines.push('- No leak evidence recorded yet.', '');
+    }
+    if (without.length) lines.push(`No evidence yet: ${without.map((x) => x.leak.name).join(', ')}.`, '');
+    lines.push(
+      `## Fit score: ${parts.score}/100 — ${band.label}`,
+      `- Revenue upside: ${p.revenueFit}/10`,
+      `- Proof visibility: ${p.proofFit}/10`,
+      `- Access ease: ${p.accessFit}/10`,
+      `- Leak-evidence contribution: ${parts.leakPart}/40`, '',
+      '## First wedge'
+    );
+    if (chosen) {
+      lines.push(`- Wedge: ${chosen.name} (${chosen.effort} effort)${p.wedgeId === 'auto' ? ' — auto-recommended' : ' — manually chosen'}`);
+      lines.push(`- Angle: ${chosen.pitch}`);
+      if (p.wedgeId === 'auto' && rec) lines.push(`- Why: ${recReasonText(rec)}`);
+      if (p.wedgeId !== 'auto' && rec && rec.wedge.id !== chosen.id) {
+        lines.push(`- Note: evidence currently points to “${rec.wedge.name}” instead.`);
+      }
+    } else {
+      lines.push('- No wedge yet — check leak signals to unlock a recommendation.');
+    }
+    lines.push(
+      `- Why (your words): ${p.wedgeReason || '—'}`,
+      `- Human next step: ${p.nextStep || '—'}`, '',
+      '## Guardrail', GUARDRAIL
+    );
+    return lines.join('\n');
   }
-  function buildSpec(){
-    const sourceApp = appName();
-    const output = currentOutput();
-    const questions = inferQuestions(output);
-    const flags = [];
-    if(/password|secret|token|api key|credit card|ssn|social security/i.test(output)) flags.push('Sensitive-data wording detected. Remove secret/payment/SSN/password questions before use.');
-    if(/send|publish|customer|crm|webhook|public|dispatch/i.test(output)) flags.push('Public/customer/action wording detected. Keep this as a draft spec until approved.');
-    if(!/review|approve|proof|check|confirm/i.test(output)) flags.push('Add explicit human review/proof confirmation before publishing the form.');
-    return { sourceApp, formName:`${sourceApp} intake draft`, channel:'Draft local form spec', questions, flags:flags.length ? flags : ['No blocking draft flags detected. Privacy review still required.'], privacyRule:'Do not collect secrets, payment cards, SSNs, medical data, or unnecessary IDs.', sourceSnippet:output, generatedAt:new Date().toISOString() };
+
+  function compareRows() {
+    return state.prospects
+      .map((p) => {
+        const parts = fitParts(p);
+        const top = leakPriority(p)[0];
+        const chosen = chosenWedge(p);
+        return {
+          p, score: parts.score, band: fitBand(parts.score),
+          topLeak: top && top.pct > 0 ? `${top.leak.name} (${top.band})` : 'No evidence yet',
+          likelyCount: leakPriority(p).filter((x) => x.pct >= 70).length,
+          wedge: chosen ? chosen.name : '—'
+        };
+      })
+      .sort((a, b) => b.score - a.score);
   }
-  function markdown(spec){
-    return ['# Intake Form Builder bridge','',`Generated: ${new Date().toLocaleString()}`,'Draft-only form spec. Do not publish or collect customer submissions until privacy/proof review is complete.','',`Source app: ${spec.sourceApp}`,`Form name: ${spec.formName}`,'','## Questions',...spec.questions.map(q => `### ${q.order}. ${q.label}\n- Type: ${q.type}\n- Section: ${q.section}\n- Required: ${q.required ? 'yes' : 'no'}\n- Helper/choices: ${q.helper}`),'','## Privacy rule',spec.privacyRule,'','## Review flags',...spec.flags.map(v => `- ${v}`),'','## Source snippet',spec.sourceSnippet].join('\n');
+
+  function compareMarkdown() {
+    const rows = compareRows();
+    if (!rows.length) return '# Prospect comparison\n\nNo prospects yet.';
+    const lines = [
+      '# Prospect comparison', '',
+      `Generated: ${new Date().toLocaleString()} — draft for human review.`, '',
+      '| # | Prospect | Fit | Band | Top leak | Likely+ leaks | Wedge | Status |',
+      '|---|----------|-----|------|----------|---------------|-------|--------|'
+    ];
+    rows.forEach((r, i) => {
+      lines.push(`| ${i + 1} | ${r.p.name || 'Unnamed prospect'} | ${r.score}/100 | ${r.band.label} | ${r.topLeak} | ${r.likelyCount} | ${r.wedge} | ${statusLabel(r.p.status)} |`);
+    });
+    lines.push('', GUARDRAIL);
+    return lines.join('\n');
   }
-  function render(){
-    const spec = buildSpec();
-    const required = spec.questions.filter(q => q.required).length;
-    cardsEl.innerHTML = [
-      ['Questions', String(spec.questions.length)],
-      ['Required', String(required)],
-      ['Flags', String(spec.flags.length)],
-      ['Channel', 'Draft spec'],
-      ['Boundary', 'No publish']
-    ].map(([label, value]) => `<article><span>${escForm(label)}</span><strong>${escForm(value)}</strong></article>`).join('');
-    textEl.value = markdown(spec);
-    return spec;
+
+  function compareCsv() {
+    const rows = [['rank', 'business', 'type', 'market', 'status', 'fit_score', 'fit_band', 'top_leak', 'likely_plus_leaks', 'wedge', 'next_step', 'note']];
+    compareRows().forEach((r, i) => {
+      rows.push([i + 1, r.p.name || 'Unnamed prospect', r.p.type, r.p.market, statusLabel(r.p.status),
+        r.score, r.band.label, r.topLeak, r.likelyCount, r.wedge, r.p.nextStep,
+        'draft-only, human review required']);
+    });
+    return rows.map((row) => row.map((cell) => `"${String(cell ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
   }
-  function download(spec){
-    const blob = new Blob([JSON.stringify({ ...spec, markdown: markdown(spec) }, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
+
+  /* ---------------- demo data ---------------- */
+
+  function demoProspects() {
+    const now = Date.now();
+    const mk = (o) => ({ ...blankProspect(), ...o, id: uid(), createdAt: now, updatedAt: now });
+    return [
+      mk({
+        name: 'North Star Plumbing', type: 'Residential plumbing', market: 'North Dallas suburbs',
+        contact: 'Dana (owner)', status: 'ready',
+        presence: 'Active Google profile, emergency service promoted, website form visible.',
+        trust: '4.7 stars across 210 reviews, licensed & insured, before/after photos.',
+        friction: 'Emergency line is strong but the form asks 9 fields; nothing answers after hours.',
+        revenueFit: 9, proofFit: 8, accessFit: 7,
+        leaks: {
+          missedCalls: { signals: { noAfterHours: true, phoneOnlyCta: true, ownerAnswers: true }, note: 'Called Tue 6:10pm — voicemail after 6 rings.' },
+          staleQuotes: { signals: { noPromise: true, reviewsMentionWait: true }, note: 'Two reviews mention waiting days for an estimate.' },
+          formFriction: { signals: { manyFields: true }, note: '' }
+        },
+        wedgeId: 'auto',
+        wedgeReason: 'Dana already pays for emergency ads; missed after-hours calls are the cheapest revenue to recover.',
+        nextStep: 'Ask Dana for one week of call logs and count missed after-hours calls by hand.'
+      }),
+      mk({
+        name: 'Bluebonnet Family Dental', type: 'Dental clinic', market: 'Plano, TX',
+        contact: 'Front office — Maria', status: 'researching',
+        presence: 'Polished website, active Instagram, no online booking anywhere.',
+        trust: '4.9 stars but only 38 reviews; the nearest competitor shows 400+.',
+        friction: '“Request appointment” goes to a form with no response-time promise.',
+        revenueFit: 7, proofFit: 6, accessFit: 5,
+        leaks: {
+          bookingGap: { signals: { noOnlineBooking: true, competingCtas: true }, note: 'Call, form, DM, and email all compete on the homepage.' },
+          weakProof: { signals: { fewerReviews: true, staleReviews: true }, note: 'Newest public review is 4 months old.' }
+        },
+        wedgeId: 'auto', wedgeReason: '',
+        nextStep: 'Walk the booking path as a new patient and note every point of hesitation.'
+      }),
+      mk({
+        name: 'Casa Verde Landscaping', type: 'Landscaping & lawn care', market: 'East Austin',
+        contact: 'Rob (owner-operator)', status: 'parked',
+        presence: 'Facebook page only, no website; quotes handled over text message.',
+        trust: 'Word-of-mouth is strong; job photos on Facebook get good engagement.',
+        friction: 'Rob quotes from memory; repeat customers re-explain their yard every season.',
+        revenueFit: 5, proofFit: 4, accessFit: 8,
+        leaks: {
+          manualIntake: { signals: { onePerson: true, noRecords: true, repeatAsks: true }, note: 'Rob confirmed jobs live in his head and a notes app.' },
+          staleQuotes: { signals: { noSystem: true }, note: '' }
+        },
+        wedgeId: 'intakeChecklist',
+        wedgeReason: 'Rob is easy to reach but small; a light intake checklist proves value without a big build.',
+        nextStep: 'Draft a one-page intake checklist and review it with Rob over coffee.'
+      })
+    ];
+  }
+
+  /* ---------------- render ---------------- */
+
+  function applyTheme() {
+    const theme = state.theme || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    document.documentElement.dataset.theme = theme;
+    const btn = $('themeToggle');
+    btn.textContent = theme === 'dark' ? '☀ Light' : '☾ Dark';
+    btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+    btn.setAttribute('aria-label', `Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`);
+  }
+
+  function renderStats() {
+    const ps = state.prospects;
+    $('statProspects').textContent = ps.length;
+    $('statTopFit').textContent = ps.length ? `${Math.max(...ps.map((p) => fitParts(p).score))}` : '–';
+    $('statHighLeaks').textContent = ps.reduce((n, p) => n + leakPriority(p).filter((x) => x.pct >= 70).length, 0);
+    $('statReady').textContent = ps.filter((p) => p.status === 'ready').length;
+  }
+
+  function renderList() {
+    const list = $('prospectList');
+    $('listEmpty').hidden = state.prospects.length > 0;
+    list.innerHTML = state.prospects.map((p) => {
+      const parts = fitParts(p);
+      const band = fitBand(parts.score);
+      const active = p.id === state.activeId;
+      return `<li class="prospect-row${active ? ' active' : ''}">
+        <button class="prospect-item" type="button" data-select="${esc(p.id)}" aria-current="${active ? 'true' : 'false'}">
+          <span class="pi-name">${esc(p.name || 'Unnamed prospect')}</span>
+          <span class="pi-meta">${esc(p.type || 'Type not set')} · ${esc(statusLabel(p.status))}</span>
+        </button>
+        <span class="pi-score ${band.cls}" title="Fit ${parts.score}/100 — ${esc(band.label)}">${parts.score}</span>
+        <button class="pi-delete" type="button" data-delete="${esc(p.id)}" aria-label="Delete ${esc(p.name || 'unnamed prospect')}">✕</button>
+      </li>`;
+    }).join('');
+  }
+
+  function buildLeakCards() {
+    $('leakGrid').innerHTML = LEAKS.map((leak) => `
+      <article class="leak-card">
+        <div class="leak-head">
+          <span class="leak-icon" aria-hidden="true">${leak.icon}</span>
+          <div class="leak-title">
+            <h3>${esc(leak.name)}</h3>
+            <p class="hint">${esc(leak.hint)} Impact ${leak.impact}/5.</p>
+          </div>
+          <span class="leak-badge none" id="badge-${leak.id}">No evidence</span>
+        </div>
+        <div class="leak-meter" aria-hidden="true"><span id="meter-${leak.id}"></span></div>
+        <div class="leak-signals">
+          ${leak.signals.map((sig) => `
+            <label class="check-row">
+              <input type="checkbox" id="sig-${leak.id}-${sig.id}" data-leak="${leak.id}" data-signal="${sig.id}" />
+              <span>${esc(sig.label)}</span>
+            </label>`).join('')}
+        </div>
+        <label class="leak-note-label" for="note-${leak.id}">Evidence note (optional)</label>
+        <input id="note-${leak.id}" class="leak-note" data-leaknote="${leak.id}" maxlength="180"
+               placeholder="e.g. called Tue 6pm — straight to voicemail" autocomplete="off" />
+      </article>`).join('');
+  }
+
+  function buildWedgeOptions() {
+    $('wedgeSelect').innerHTML = ['<option value="auto">Auto — follow the strongest evidence</option>']
+      .concat(WEDGES.map((w) => `<option value="${w.id}">${esc(w.name)} (${w.effort} effort)</option>`)).join('');
+  }
+
+  function fillEditor(p) {
+    $('fName').value = p.name; $('fType').value = p.type; $('fMarket').value = p.market;
+    $('fContact').value = p.contact; $('fStatus').value = p.status;
+    $('fPresence').value = p.presence; $('fTrust').value = p.trust; $('fFriction').value = p.friction;
+    ['revenueFit', 'proofFit', 'accessFit'].forEach((k) => {
+      $(k).value = p[k];
+      $(k + 'Out').textContent = p[k];
+    });
+    $('wedgeSelect').value = p.wedgeId;
+    $('fWedgeReason').value = p.wedgeReason; $('fNextStep').value = p.nextStep;
+    LEAKS.forEach((leak) => {
+      leak.signals.forEach((sig) => {
+        $(`sig-${leak.id}-${sig.id}`).checked = !!(p.leaks[leak.id]?.signals?.[sig.id]);
+      });
+      $(`note-${leak.id}`).value = p.leaks[leak.id]?.note || '';
+    });
+  }
+
+  function renderLeakDerived(p) {
+    LEAKS.forEach((leak) => {
+      const a = leakAssessment(p, leak);
+      const badge = $(`badge-${leak.id}`);
+      badge.textContent = a.pct > 0 ? `${a.band} · ${a.pct}%` : 'No evidence';
+      badge.className = `leak-badge ${a.cls}`;
+      $(`meter-${leak.id}`).style.width = `${a.pct}%`;
+    });
+  }
+
+  function renderFitReadout(p) {
+    const parts = fitParts(p);
+    const band = fitBand(parts.score);
+    $('fitReadout').innerHTML = `
+      <div class="fit-top">
+        <span class="fit-score"><strong>${parts.score}</strong>/100</span>
+        <span class="stamp ${band.cls}">${esc(band.label)}</span>
+      </div>
+      <div class="fit-bar" aria-hidden="true"><span style="width:${parts.score}%"></span></div>
+      <p class="hint">Sliders ${parts.sliderPart}/60 + leak evidence ${parts.leakPart}/40</p>`;
+  }
+
+  function renderWedgeRec(p) {
+    const rec = recommendedWedge(p);
+    const chosen = chosenWedge(p);
+    let html;
+    if (!rec) {
+      html = `<p class="rec-kicker">Recommended wedge</p>
+        <p class="rec-empty">No recommendation yet — check the leak signals you observed above and the strongest-evidence wedge will appear here.</p>`;
+    } else {
+      const overridden = p.wedgeId !== 'auto' && chosen && chosen.id !== rec.wedge.id;
+      html = `<p class="rec-kicker">Recommended wedge</p>
+        <h3>${esc(rec.wedge.name)} <span class="effort">${esc(rec.wedge.effort)} effort</span></h3>
+        <p>${esc(rec.wedge.pitch)}</p>
+        <p class="rec-why">${esc(recReasonText(rec))}</p>
+        ${overridden ? `<p class="rec-override">You overrode this with “${esc(chosen.name)}” — that’s fine if you know something the signals don’t.</p>` : ''}`;
+    }
+    $('wedgeRec').innerHTML = html;
+  }
+
+  function renderPreview(p) {
+    const parts = fitParts(p);
+    const band = fitBand(parts.score);
+    const prio = leakPriority(p);
+    const withEvidence = prio.filter((x) => x.pct > 0);
+    const without = prio.filter((x) => x.pct === 0);
+    const rec = recommendedWedge(p);
+    const chosen = chosenWedge(p);
+    $('dossierPreview').innerHTML = `
+      <header class="dp-head">
+        <div>
+          <h3>${esc(p.name || 'Unnamed prospect')}</h3>
+          <p>${esc(p.type || 'Type not set')} · ${esc(p.market || 'Market not set')} · ${esc(statusLabel(p.status))}</p>
+        </div>
+        <span class="stamp ${band.cls}">${parts.score}/100 · ${esc(band.label)}</span>
+      </header>
+      <section>
+        <h4>Profile</h4>
+        <dl class="dp-dl">
+          <dt>Contact</dt><dd>${esc(p.contact || '—')}</dd>
+          <dt>Public presence</dt><dd>${esc(p.presence || '—')}</dd>
+          <dt>Trust signals</dt><dd>${esc(p.trust || '—')}</dd>
+          <dt>Observed friction</dt><dd>${esc(p.friction || '—')}</dd>
+        </dl>
+      </section>
+      <section>
+        <h4>Lead-leak likelihoods</h4>
+        ${withEvidence.length ? `<ul class="dp-leaks">${withEvidence.map((x) => `
+          <li>
+            <div class="dp-leak-line"><strong>${esc(x.leak.name)}</strong><span class="leak-badge ${x.cls}">${esc(x.band)} · ${x.pct}%</span></div>
+            <ul>${x.reasons.map((r) => `<li>${esc(r)}</li>`).join('')}${x.note ? `<li class="dp-note">Note: ${esc(x.note)}</li>` : ''}</ul>
+          </li>`).join('')}</ul>` : '<p class="dp-muted">No leak evidence recorded yet.</p>'}
+        ${without.length ? `<p class="dp-muted">No evidence yet: ${without.map((x) => esc(x.leak.name)).join(', ')}.</p>` : ''}
+      </section>
+      <section>
+        <h4>Fit</h4>
+        <p>Revenue upside ${p.revenueFit}/10 · Proof visibility ${p.proofFit}/10 · Access ease ${p.accessFit}/10 · Leak evidence ${parts.leakPart}/40</p>
+      </section>
+      <section>
+        <h4>First wedge</h4>
+        ${chosen ? `
+          <p><strong>${esc(chosen.name)}</strong> (${esc(chosen.effort)} effort)${p.wedgeId === 'auto' ? ' — auto-recommended' : ' — manually chosen'}</p>
+          <p>${esc(chosen.pitch)}</p>
+          ${p.wedgeId === 'auto' && rec ? `<p class="dp-muted">${esc(recReasonText(rec))}</p>` : ''}` :
+        '<p class="dp-muted">No wedge yet — check leak signals to unlock a recommendation.</p>'}
+        ${p.wedgeReason ? `<p><em>Why:</em> ${esc(p.wedgeReason)}</p>` : ''}
+        <p><em>Human next step:</em> ${esc(p.nextStep || '—')}</p>
+      </section>
+      <p class="dp-guardrail">${esc(GUARDRAIL)}</p>`;
+  }
+
+  function renderValidation(p) {
+    const missing = !p.name.trim();
+    $('fName').classList.toggle('invalid', missing);
+    $('nameErr').hidden = !missing;
+  }
+
+  function renderDerived() {
+    const p = activeProspect();
+    if (!p) return;
+    renderLeakDerived(p);
+    renderFitReadout(p);
+    renderWedgeRec(p);
+    renderPreview(p);
+    renderValidation(p);
+  }
+
+  function renderCompare() {
+    const rows = compareRows();
+    if (!rows.length) {
+      $('compareWrap').innerHTML = `<div class="empty-state">
+        <p><strong>Nothing to compare yet.</strong></p>
+        <p>Add at least one prospect in the Dossier view (or load the demo) and this table will rank them by fit score.</p>
+      </div>`;
+      return;
+    }
+    $('compareWrap').innerHTML = `<table class="compare-table">
+      <thead><tr>
+        <th scope="col">#</th><th scope="col">Prospect</th><th scope="col">Fit</th>
+        <th scope="col">Top leak</th><th scope="col">Likely+ leaks</th>
+        <th scope="col">Wedge</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Open</span></th>
+      </tr></thead>
+      <tbody>${rows.map((r, i) => `<tr>
+        <td>${i + 1}</td>
+        <td class="ct-name">${esc(r.p.name || 'Unnamed prospect')}<span class="ct-sub">${esc(r.p.market || '')}</span></td>
+        <td><span class="pi-score ${r.band.cls}">${r.score}</span> ${esc(r.band.label)}</td>
+        <td>${esc(r.topLeak)}</td>
+        <td>${r.likelyCount}</td>
+        <td>${esc(r.wedge)}</td>
+        <td>${esc(statusLabel(r.p.status))}</td>
+        <td><button class="btn btn-sm" type="button" data-open="${esc(r.p.id)}">Open</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function renderEditorVisibility() {
+    const has = !!activeProspect();
+    $('editorEmpty').hidden = has;
+    $('editorBody').hidden = !has;
+    if (has) fillEditor(activeProspect());
+  }
+
+  function renderView() {
+    const compare = state.view === 'compare';
+    $('viewDossier').hidden = compare;
+    $('viewCompare').hidden = !compare;
+    $('tabDossier').setAttribute('aria-pressed', String(!compare));
+    $('tabCompare').setAttribute('aria-pressed', String(compare));
+    if (compare) renderCompare();
+  }
+
+  function renderAll() {
+    applyTheme();
+    renderStats();
+    renderList();
+    renderEditorVisibility();
+    renderDerived();
+    renderView();
+  }
+
+  /* ---------------- toast & clipboard ---------------- */
+
+  function showToast(msg, opts = {}) {
+    $('toastMsg').textContent = msg;
+    $('toastUndo').hidden = !opts.undo;
+    const t = $('toast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      t.classList.remove('show');
+      $('toastUndo').hidden = true;
+      if (opts.undo) undoBuffer = null;
+    }, opts.undo ? 7000 : 2400);
+  }
+
+  function copyText(text, okMsg) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch { ok = false; }
+      ta.remove();
+      showToast(ok ? okMsg : 'Copy blocked — use Download JSON instead');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast(okMsg)).catch(fallback);
+    } else fallback();
+  }
+
+  function downloadFile(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${spec.sourceApp.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}-intake-form-bridge.json`;
+    a.download = name;
     a.click();
     URL.revokeObjectURL(url);
   }
-  copyBtn?.addEventListener('click', () => navigator.clipboard?.writeText(textEl.value).catch(() => { textEl.focus(); textEl.select(); }));
-  downloadBtn?.addEventListener('click', () => download(render()));
-  window.addEventListener('input', () => window.requestAnimationFrame(render));
-  window.addEventListener('change', () => window.requestAnimationFrame(render));
-  render();
-})();
 
+  /* ---------------- actions ---------------- */
+
+  function addProspect() {
+    const p = blankProspect();
+    state.prospects.unshift(p);
+    state.activeId = p.id;
+    state.view = 'dossier';
+    save();
+    renderAll();
+    $('fName').focus();
+    showToast('New prospect created — name it first');
+  }
+
+  function selectProspect(id) {
+    if (!state.prospects.some((p) => p.id === id)) return;
+    state.activeId = id;
+    state.view = 'dossier';
+    save();
+    renderAll();
+  }
+
+  function deleteProspect(id) {
+    const idx = state.prospects.findIndex((p) => p.id === id);
+    if (idx < 0) return;
+    const [removed] = state.prospects.splice(idx, 1);
+    undoBuffer = { prospect: removed, index: idx, wasActive: state.activeId === id };
+    if (state.activeId === id) {
+      state.activeId = (state.prospects[Math.min(idx, state.prospects.length - 1)] || {}).id || null;
+    }
+    save();
+    renderAll();
+    showToast(`Deleted “${removed.name || 'Unnamed prospect'}”`, { undo: true });
+  }
+
+  function undoDelete() {
+    if (!undoBuffer) return;
+    const { prospect, index, wasActive } = undoBuffer;
+    undoBuffer = null;
+    state.prospects.splice(Math.min(index, state.prospects.length), 0, prospect);
+    if (wasActive) state.activeId = prospect.id;
+    save();
+    renderAll();
+    showToast('Prospect restored');
+  }
+
+  function copyDossier() {
+    const p = activeProspect();
+    if (!p) { showToast('Create or select a prospect first'); return; }
+    copyText(dossierMarkdown(p), 'Dossier Markdown copied');
+  }
+
+  function openHelp() {
+    helpOpener = document.activeElement;
+    $('helpModal').showModal();
+  }
+
+  function setView(view) {
+    state.view = view;
+    save();
+    renderView();
+  }
+
+  /* ---------------- event wiring ---------------- */
+
+  function wire() {
+    $('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.dataset.theme;
+      state.theme = current === 'dark' ? 'light' : 'dark';
+      save();
+      applyTheme();
+      showToast(`${state.theme === 'light' ? 'Light' : 'Dark'} mode on`);
+    });
+
+    $('helpBtn').addEventListener('click', openHelp);
+    $('helpClose').addEventListener('click', () => $('helpModal').close());
+    $('helpModal').addEventListener('close', () => {
+      if (helpOpener && document.contains(helpOpener)) helpOpener.focus();
+      helpOpener = null;
+    });
+    $('helpModal').addEventListener('click', (e) => {
+      if (e.target === $('helpModal')) $('helpModal').close();
+    });
+
+    $('tabDossier').addEventListener('click', () => setView('dossier'));
+    $('tabCompare').addEventListener('click', () => setView('compare'));
+
+    $('demoBtn').addEventListener('click', () => {
+      state.prospects = demoProspects();
+      state.activeId = state.prospects[0].id;
+      save();
+      renderAll();
+      showToast('Demo pipeline loaded — 3 prospects');
+    });
+
+    $('resetBtn').addEventListener('click', () => {
+      if (!window.confirm('Reset everything? This clears all prospects from this browser.')) return;
+      state = normalize({ theme: state.theme, seenGuide: state.seenGuide });
+      save();
+      renderAll();
+      showToast('All data cleared');
+    });
+
+    $('newProspectBtn').addEventListener('click', addProspect);
+    $('emptyNewBtn').addEventListener('click', addProspect);
+    $('emptyDemoBtn').addEventListener('click', () => $('demoBtn').click());
+
+    $('prospectList').addEventListener('click', (e) => {
+      const del = e.target.closest('[data-delete]');
+      if (del) { deleteProspect(del.dataset.delete); return; }
+      const sel = e.target.closest('[data-select]');
+      if (sel) selectProspect(sel.dataset.select);
+    });
+
+    $('compareWrap').addEventListener('click', (e) => {
+      const open = e.target.closest('[data-open]');
+      if (open) selectProspect(open.dataset.open);
+    });
+
+    $('editorBody').addEventListener('input', (e) => {
+      const p = activeProspect();
+      if (!p) return;
+      const t = e.target;
+      if (t.dataset.field) {
+        if (t.type === 'range') {
+          const v = clampNum(t.value, 1, 10, 5);
+          p[t.dataset.field] = v;
+          $(t.id + 'Out').textContent = v;
+        } else {
+          p[t.dataset.field] = t.value;
+        }
+      } else if (t.dataset.leaknote) {
+        ensureLeak(p, t.dataset.leaknote).note = t.value.slice(0, 180);
+      } else if (t.dataset.leak && t.dataset.signal) {
+        ensureLeak(p, t.dataset.leak).signals[t.dataset.signal] = t.checked;
+      } else {
+        return;
+      }
+      p.updatedAt = Date.now();
+      save();
+      renderDerived();
+      renderList();
+      renderStats();
+    });
+
+    $('toastUndo').addEventListener('click', () => {
+      $('toast').classList.remove('show');
+      $('toastUndo').hidden = true;
+      clearTimeout(toastTimer);
+      undoDelete();
+    });
+
+    $('exportMd').addEventListener('click', copyDossier);
+    $('compareCopy').addEventListener('click', () => copyText(compareMarkdown(), 'Comparison table copied'));
+
+    $('exportJson').addEventListener('click', () => {
+      downloadFile('local-biz-snapshot.json', JSON.stringify({
+        app: 'local-biz-snapshot', version: 1,
+        exportedAt: new Date().toISOString(),
+        safety: 'draft-only, human review required',
+        state
+      }, null, 2), 'application/json');
+      showToast('JSON downloaded');
+    });
+
+    $('exportCsv').addEventListener('click', () => {
+      if (!state.prospects.length) { showToast('Nothing to export yet'); return; }
+      downloadFile('local-biz-comparison.csv', compareCsv(), 'text/csv');
+      showToast('Comparison CSV downloaded');
+    });
+
+    $('importBtn').addEventListener('click', () => $('importFile').click());
+    $('importFile').addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const raw = JSON.parse(reader.result);
+          const incoming = raw && typeof raw === 'object' && raw.state ? raw.state : raw;
+          const next = normalize(incoming);
+          if (!next.prospects.length) { showToast('No prospects found in that file'); return; }
+          next.theme = state.theme;
+          next.seenGuide = true;
+          state = next;
+          save();
+          renderAll();
+          showToast(`Imported ${state.prospects.length} prospect${state.prospects.length === 1 ? '' : 's'}`);
+        } catch {
+          showToast('Import failed — not valid JSON');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    $('printBtn').addEventListener('click', () => {
+      if (!activeProspect()) { showToast('Create or select a prospect first'); return; }
+      setView('dossier');
+      window.print();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        copyDossier();
+        return;
+      }
+      const tag = (document.activeElement || {}).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === '?') { e.preventDefault(); openHelp(); }
+      else if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); addProspect(); }
+    });
+  }
+
+  /* ---------------- init ---------------- */
+
+  state = load();
+  buildLeakCards();
+  buildWedgeOptions();
+  wire();
+  renderAll();
+  if (!state.seenGuide) {
+    state.seenGuide = true;
+    save();
+    openHelp();
+  }
+})();

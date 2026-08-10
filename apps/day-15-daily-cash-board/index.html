@@ -1,179 +1,182 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Daily Cash Board — a cash-first daily control room for offers, follow-ups, booked calls, invoices, and collections. Local-first, draft-only." />
   <title>Daily Cash Board</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="cash-floor">
-    <header class="cash-hero" aria-label="Daily Cash Board header">
-      <div class="coin-stack" aria-hidden="true"><span>$</span><i></i><b></b></div>
-      <section class="hero-copy">
-        <p class="kicker">Day 15 · Daily Cash Board</p>
-        <h1>Run the day from cash-first moves, not vague busyness.</h1>
-        <p class="lede">A local-first control room for offers, follow-ups, booked calls, invoices, expected cash, and the next action that should happen today. Draft-only: no sends, no CRM writes, no payments, no cloud.</p>
-      </section>
-      <nav class="hero-actions" aria-label="Board controls">
-        <button id="loadDemo" type="button">Load demo</button>
-        <button id="addItem" type="button">Add cash move</button>
-        <button id="themeToggle" type="button" aria-pressed="false">Light</button>
-      </nav>
-    </header>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">CB</span>
+      <div class="brand-copy">
+        <p class="brand-name">Daily Cash Board</p>
+        <p class="brand-tag">Run the day from cash-first moves, not vague busyness.</p>
+      </div>
+    </div>
+    <nav class="header-actions" aria-label="App controls">
+      <a class="btn btn-ghost back-link" href="../../index.html">&larr; All apps</a>
+      <button id="btnDemo" type="button" class="btn">Load demo</button>
+      <button id="btnHelp" type="button" class="btn">How to use</button>
+      <button id="btnTheme" type="button" class="btn" aria-pressed="false" aria-label="Switch to light theme">Light</button>
+    </nav>
+  </header>
 
-    <section class="cash-tape" aria-label="Daily cash metrics">
-      <article><span>Expected</span><strong id="metricExpected">$0</strong></article>
-      <article><span>Today due</span><strong id="metricDue">0</strong></article>
-      <article><span>Invoices</span><strong id="metricInvoices">$0</strong></article>
-      <article><span>Next move</span><strong id="metricNext">None</strong></article>
+  <main class="shell">
+    <!-- Stat strip -->
+    <section class="stat-strip" aria-label="Today's cash metrics" aria-live="polite">
+      <article class="stat">
+        <strong id="statExpected">$0</strong>
+        <span>Cash-in potential <em id="statExpectedSub">weighted pipeline</em></span>
+      </article>
+      <article class="stat stat-risk">
+        <strong id="statRisk">$0</strong>
+        <span>Cash at risk <em id="statRiskSub">0 overdue moves</em></span>
+      </article>
+      <article class="stat">
+        <strong id="statDueToday">0</strong>
+        <span>Due today <em id="statDueTodaySub">$0 face value</em></span>
+      </article>
+      <article class="stat stat-won">
+        <strong id="statClosed">$0</strong>
+        <span>Closed today <em id="statClosedSub">0 moves done</em></span>
+      </article>
     </section>
 
-    <section class="flow-board" aria-label="Cashflow lanes">
-      <div class="lane" data-stage="offer"><span>01</span><strong>Offers</strong><p id="laneOffer">0 open</p></div>
-      <div class="lane" data-stage="followup"><span>02</span><strong>Follow-ups</strong><p id="laneFollowup">0 due</p></div>
-      <div class="lane" data-stage="call"><span>03</span><strong>Booked calls</strong><p id="laneCall">0 booked</p></div>
-      <div class="lane" data-stage="invoice"><span>04</span><strong>Invoices</strong><p id="laneInvoice">0 unpaid</p></div>
-      <div class="lane" data-stage="collect"><span>05</span><strong>Collect / close</strong><p id="laneCollect">0 ready</p></div>
-    </section>
-
-    <section class="command-grid">
-      <section class="panel editor-panel" aria-label="Cash move editor">
-        <div class="panel-title"><span>Input</span><div><p class="kicker">Cash move</p><h2>Choose what deserves attention.</h2></div></div>
-        <div class="form-grid">
-          <label>Move title<input id="titleInput" maxlength="120" placeholder="Send pilot offer to Acme HVAC" /></label>
-          <label>Stage<select id="stageInput"><option value="offer">Offer</option><option value="followup">Follow-up</option><option value="call">Booked call</option><option value="invoice">Invoice</option><option value="collect">Collect / close</option></select></label>
-          <label>Value ($)<input id="valueInput" type="number" min="0" step="50" /></label>
-          <label>Confidence (%)<input id="confidenceInput" type="number" min="0" max="100" step="5" /></label>
-          <label>Due date<input id="dueInput" type="date" /></label>
-          <label>Owner<input id="ownerInput" maxlength="80" /></label>
-          <label class="wide">Notes / next action<textarea id="notesInput" maxlength="500"></textarea></label>
+    <!-- Daily focus -->
+    <section class="panel focus-panel" aria-labelledby="focusHeading">
+      <div class="panel-head">
+        <div>
+          <h2 id="focusHeading">Today's top 3</h2>
+          <p class="panel-sub" id="focusDateLabel">Pick the three moves that matter most today.</p>
         </div>
-        <div class="editor-actions">
-          <button id="saveItem" type="button">Save selected</button>
-          <button id="clearEditor" type="button" class="secondary">Clear editor</button>
+        <span class="focus-count" id="focusCount">0 / 3 picked</span>
+      </div>
+      <div id="focusList" class="focus-list" aria-live="polite"></div>
+    </section>
+
+    <!-- Board -->
+    <section class="panel board-panel" aria-labelledby="boardHeading">
+      <div class="panel-head board-head">
+        <div>
+          <h2 id="boardHeading">Cash lanes</h2>
+          <p class="panel-sub">Offers &rarr; follow-ups &rarr; calls &rarr; invoices &rarr; collect. Overdue moves glow red.</p>
         </div>
-      </section>
-
-      <aside class="panel forecast-panel" aria-label="Cash forecast">
-        <div class="panel-title"><span>Forecast</span><div><p class="kicker">Weighted view</p><h2>What cash can move?</h2></div></div>
-        <div class="forecast-dial" id="forecastDial">$0</div>
-        <ol id="priorityList" class="priority-list"></ol>
-      </aside>
+        <div class="board-tools">
+          <div id="filterBar" class="filter-bar" role="group" aria-label="Filter moves">
+            <button type="button" class="chip is-active" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="chip" data-filter="today" aria-pressed="false">Due today</button>
+            <button type="button" class="chip" data-filter="overdue" aria-pressed="false">Overdue</button>
+            <button type="button" class="chip" data-filter="done" aria-pressed="false">Done</button>
+          </div>
+          <button id="btnAddItem" type="button" class="btn-primary">+ Add cash move</button>
+        </div>
+      </div>
+      <div id="board" class="board"></div>
     </section>
 
-    <section class="panel queue-panel" aria-label="Action queue">
-      <div class="panel-title"><span>Queue</span><div><p class="kicker">Today's moves</p><h2>Sort by due date, value, and confidence.</h2></div></div>
-      <div id="itemRail" class="item-rail" aria-live="polite"></div>
-    </section>
-
-    <section class="output-grid">
-      <section class="panel brief-panel" aria-label="Cash brief output">
-        <div class="panel-title"><span>Brief</span><div><p class="kicker">Draft-only output</p><h2>Copy the daily cash brief.</h2></div></div>
-        <textarea id="exportText" readonly aria-label="Generated daily cash brief"></textarea>
+    <!-- Export & handoff -->
+    <section class="panel export-panel" aria-labelledby="exportHeading">
+      <div class="panel-head">
+        <div>
+          <h2 id="exportHeading">Export &amp; handoff</h2>
+          <p class="panel-sub">End-of-day summary, draft-only. Review before anything customer-facing happens.</p>
+        </div>
         <div class="export-actions">
-          <button id="copyMarkdown" type="button">Copy brief</button>
-          <button id="downloadJson" type="button">Download JSON</button>
-          <button id="downloadCsv" type="button">Download CSV</button>
-        </div>
-      </section>
-      <aside class="panel guardrail-panel" aria-label="Safety guardrails">
-        <p class="kicker">Safety line</p>
-        <h2>Board only. Human action elsewhere.</h2>
-        <ul>
-          <li>No emails, texts, invoices, payments, CRM writes, or customer contact happen here.</li>
-          <li>Customer-facing moves stay draft-only until a human approves them.</li>
-          <li>Do not paste secrets, payment details, tokens, or private identifiers into exports.</li>
-        </ul>
-      </aside>
-    </section>
-  
-    <section id="meeting-followup-kit-bridge" class="meeting-followup-kit-bridge panel" aria-label="Meeting Follow-up Kit bridge">
-      <div class="panel-title">
-        <span>Meet</span>
-        <div>
-          <p class="kicker">Day 16 enhancement</p>
-          <h2>Meeting Follow-up Kit bridge</h2>
+          <button id="btnCopyMd" type="button" class="btn-primary">Copy Markdown</button>
+          <button id="btnJson" type="button" class="btn">Download JSON</button>
+          <button id="btnCsv" type="button" class="btn">Download CSV</button>
+          <button id="btnImport" type="button" class="btn">Import JSON</button>
+          <input id="importFile" type="file" accept="application/json,.json" class="visually-hidden" aria-label="Import JSON file" />
+          <button id="btnPrint" type="button" class="btn">Print</button>
+          <button id="btnReset" type="button" class="btn-danger">Reset</button>
         </div>
       </div>
-      <p class="meeting-followup-kit-intro">Turn this app's current output into a meeting recap: draft follow-up email, owner/task list, decisions, risks, questions, and a no-send approval boundary.</p>
-      <div id="meetingFollowupCards" class="meeting-followup-kit-cards" aria-live="polite"></div>
-      <textarea id="meetingFollowupText" readonly aria-label="Generated Meeting Follow-up Kit bridge"></textarea>
-      <div class="meeting-followup-kit-actions">
-        <button id="copyMeetingFollowup" type="button">Copy follow-up recap</button>
-        <button id="downloadMeetingFollowup" type="button">Download follow-up JSON</button>
-      </div>
+      <pre id="summaryPre" class="summary-pre" tabindex="0" aria-label="End-of-day summary preview"></pre>
+      <p class="guardrail">Board only — no emails, texts, invoices, payments, or CRM writes happen here. Every export is a draft for human review. Never paste secrets, payment details, or private identifiers.</p>
     </section>
-  
-    <section id="credential-handoff-bridge" class="credential-handoff-bridge panel" aria-label="Credential Handoff Checklist bridge">
-      <div class="panel-title">
-        <span>Keys</span>
-        <div>
-          <p class="kicker">Day 17 enhancement</p>
-          <h2>Credential Handoff Checklist bridge</h2>
-        </div>
-      </div>
-      <p class="credential-handoff-intro">Turn this app's current output into a no-secret access custody checklist: systems, owners, backup owners, storage references, MFA, rotation, revocation, risk flags, and human approval boundary.</p>
-      <div id="credentialHandoffCards" class="credential-handoff-cards" aria-live="polite"></div>
-      <textarea id="credentialHandoffText" readonly aria-label="Generated Credential Handoff Checklist bridge"></textarea>
-      <div class="credential-handoff-actions">
-        <button id="copyCredentialHandoff" type="button">Copy custody checklist</button>
-        <button id="downloadCredentialHandoff" type="button">Download custody JSON</button>
-      </div>
-    </section>
-  
-    <section id="content-repurposer-bridge" class="content-repurposer-bridge panel" aria-label="Content Repurposer bridge">
-      <div class="panel-title">
-        <span>Mix</span>
-        <div>
-          <p class="kicker">Day 18 enhancement</p>
-          <h2>Content Repurposer bridge</h2>
-        </div>
-      </div>
-      <p class="content-repurposer-intro">Turn this app's current output into a draft publishing packet: YouTube title, description, chapters, short posts, proof/caveat checklist, and human approval boundary.</p>
-      <div id="contentRepurposerCards" class="content-repurposer-cards" aria-live="polite"></div>
-      <textarea id="contentRepurposerText" readonly aria-label="Generated Content Repurposer bridge"></textarea>
-      <div class="content-repurposer-actions">
-        <button id="copyContentRepurposer" type="button">Copy content packet</button>
-        <button id="downloadContentRepurposer" type="button">Download content JSON</button>
-      </div>
-    </section>
-  
-    <section id="home-service-route-bridge" class="home-service-route-bridge panel" aria-label="Home Service Route Planner bridge">
-      <div class="panel-title">
-        <span>Map</span>
-        <div>
-          <p class="kicker">Day 19 enhancement</p>
-          <h2>Home Service Route Planner bridge</h2>
-        </div>
-      </div>
-      <p class="home-service-route-intro">Convert this app's current output into a draft service-day route: stop cards, priority, rough time windows, drive buffers, route order, and a copyable dispatch sheet.</p>
-      <div id="homeServiceRouteCards" class="home-service-route-cards" aria-live="polite"></div>
-      <textarea id="homeServiceRouteText" readonly aria-label="Generated Home Service Route Planner bridge"></textarea>
-      <div class="home-service-route-actions">
-        <button id="copyHomeServiceRoute" type="button">Copy route sheet</button>
-        <button id="downloadHomeServiceRoute" type="button">Download route JSON</button>
-      </div>
-    </section>
-  
-    <section id="intake-form-builder-bridge" class="intake-form-builder-bridge panel" aria-label="Intake Form Builder bridge">
-      <div class="panel-title">
-        <span>Form</span>
-        <div>
-          <p class="kicker">Day 20 enhancement</p>
-          <h2>Intake Form Builder bridge</h2>
-        </div>
-      </div>
-      <p class="intake-form-intro">Convert this app's current output into a draft service intake form: question set, field types, required flags, privacy prompts, and copyable form spec.</p>
-      <div id="intakeFormCards" class="intake-form-cards" aria-live="polite"></div>
-      <textarea id="intakeFormText" readonly aria-label="Generated Intake Form Builder bridge"></textarea>
-      <div class="intake-form-actions">
-        <button id="copyIntakeForm" type="button">Copy intake spec</button>
-        <button id="downloadIntakeForm" type="button">Download intake JSON</button>
-      </div>
-    </section>
+
+    <footer class="app-footer">
+      <p>Local-first &middot; No accounts &middot; No tracking &mdash; data stays in this browser.</p>
+      <a href="../../index.html">&larr; All apps</a>
+    </footer>
   </main>
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Item editor dialog -->
+  <dialog id="itemDialog" class="dialog" aria-labelledby="dialogTitle">
+    <form id="itemForm" method="dialog" novalidate>
+      <h2 id="dialogTitle">Add cash move</h2>
+      <div class="form-grid">
+        <label class="wide">Move title <span class="req" aria-hidden="true">*</span>
+          <input id="fldTitle" maxlength="120" placeholder="Send pilot offer to Acme HVAC" autocomplete="off" />
+          <span id="titleError" class="field-error" role="alert" hidden>Give this move a title.</span>
+        </label>
+        <label>Lane
+          <select id="fldStage">
+            <option value="offer">Offer out</option>
+            <option value="followup">Follow-up due</option>
+            <option value="call">Booked call</option>
+            <option value="invoice">Invoice out</option>
+            <option value="collect">Collect / close</option>
+          </select>
+        </label>
+        <label>Value ($)
+          <input id="fldValue" type="number" min="0" max="10000000" step="50" inputmode="decimal" />
+        </label>
+        <label>Confidence (%)
+          <input id="fldConfidence" type="number" min="0" max="100" step="5" inputmode="numeric" />
+        </label>
+        <label>Due date
+          <input id="fldDue" type="date" />
+        </label>
+        <label>Owner
+          <input id="fldOwner" maxlength="60" placeholder="Who moves it" autocomplete="off" />
+        </label>
+        <label class="wide">Notes / exact next action
+          <textarea id="fldNotes" maxlength="500" rows="3" placeholder="The one concrete step that moves this toward cash."></textarea>
+        </label>
+      </div>
+      <div class="dialog-actions">
+        <button id="btnCancelItem" type="button" class="btn">Cancel</button>
+        <button id="btnSaveItem" type="submit" class="btn-primary">Save move</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Help dialog -->
+  <dialog id="helpDialog" class="dialog help-dialog" aria-labelledby="helpTitle">
+    <h2 id="helpTitle">How to use Daily Cash Board</h2>
+    <ol class="help-steps">
+      <li><strong>Load the demo</strong> (header button) to see a realistic day: offers, follow-ups, a booked call, invoices, and one overdue collection.</li>
+      <li><strong>Add your own cash moves</strong> with <em>+ Add cash move</em>. Each move gets a lane, a dollar value, a confidence %, a due date, and one concrete next action.</li>
+      <li><strong>Watch the stat strip</strong>: cash-in potential (value &times; confidence), cash at risk (overdue value), due-today count, and what you closed today.</li>
+      <li><strong>Pick today's top 3</strong> with the &#9733; button on any card. The focus panel keeps them in front of you; it resets each morning.</li>
+      <li><strong>Work the lanes</strong>: <em>Advance</em> pushes a move to the next lane, <em>Done</em> closes it (counts toward "Closed today"), overdue cards glow red so risks never hide.</li>
+      <li><strong>Filter</strong> with the chips (Due today / Overdue / Done) when the board gets busy.</li>
+      <li><strong>End the day</strong>: the Export panel builds an end-of-day summary — copy it as Markdown, download JSON/CSV, or print it.</li>
+      <li><strong>Everything is draft-only.</strong> No emails, invoices, payments, or CRM writes happen here — a human executes approved actions elsewhere.</li>
+    </ol>
+    <h3>Keyboard shortcuts</h3>
+    <table class="shortcut-table">
+      <tbody>
+        <tr><td><kbd>?</kbd></td><td>Open this guide</td></tr>
+        <tr><td><kbd>N</kbd></td><td>Add a new cash move</td></tr>
+        <tr><td><kbd>Ctrl/Cmd + S</kbd></td><td>Copy the end-of-day summary (Markdown)</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close any dialog</td></tr>
+      </tbody>
+    </table>
+    <div class="dialog-actions">
+      <button id="btnCloseHelp" type="button" class="btn-primary">Got it</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button id="toastUndo" type="button" class="btn-ghost toast-undo" hidden>Undo</button>
+  </div>
+
   <script src="./app.js"></script>
 </body>
 </html>
